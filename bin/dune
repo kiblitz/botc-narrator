@@ -1,0 +1,5 @@
+(executable
+ (public_name botc_narrator_bin)
+ (name main)
+ (libraries botc_narrator_lib core)
+ (preprocess (pps ppx_jane)))

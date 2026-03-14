@@ -1,0 +1,5 @@
+(library
+ (name botc_narrator_characters)
+ (libraries botc_narrator_core core)
+ (preprocess (pps ppx_jane))
+ (wrapped false))
