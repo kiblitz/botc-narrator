@@ -20,32 +20,29 @@ let night_action ~player_id:pid ~night =
   else
     Some
       (let%bind.Botc_exec state = Botc_exec.get_state in
-       let died_tonight =
-         List.mem (Game_state.night_deaths state) pid ~equal:Player_id.equal
-       in
-       if not died_tonight
+       let is_dead = not (Game_state.is_alive state pid) in
+       if not is_dead
        then Botc_exec.return ()
        else (
          let%bind.Botc_exec () = Botc_exec.wake pid in
+         let candidates = Game_state.alive_ids state in
          let%bind.Botc_exec target =
-           Botc_exec.ask
-             pid
-             "Who do you want to learn about?"
-             (Game_state.alive_ids state)
+           Botc_exec.ask pid "Who do you want to learn about?" candidates
          in
          let%bind.Botc_exec () =
            if Game_state.is_poisoned state pid
            then (
-             let all_chars =
-               List.map (Game_state.seated_players state) ~f:(fun p -> Player.character p)
+             let all_names =
+               List.map (Game_state.seat_order state) ~f:(Game_state.character_name state)
              in
-             let%bind.Botc_exec char = Botc_exec.narrator_pick all_chars in
-             Botc_exec.tell pid (Char_display.name char))
+             let%bind.Botc_exec roles =
+               Botc_exec.narrator_pick "poisoned ravenkeeper role" all_names ~pick_count:1
+             in
+             let role = List.hd_exn roles in
+             Botc_exec.tell pid role)
            else (
-             let char =
-               Player.character (Map.find_exn (Game_state.players state) target)
-             in
-             Botc_exec.tell pid (Char_display.name char))
+             let role = Game_state.character_name state target in
+             Botc_exec.tell pid role)
          in
          Botc_exec.sleep pid))
 ;;

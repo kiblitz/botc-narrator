@@ -1,11 +1,14 @@
 open! Core
+module Kind = Character0.Kind
+module Alignment = Character0.Alignment
 
-module Make (_ : Character_intf.Base_S) : sig
-  include Character_intf.Base_S
-
-  val to_display : t -> Char_display.t
-  val narrator_pick_from : 'a list -> ('a * 'a list) Botc_exec.t
-  val pick_n : int -> 'a list -> 'a list Botc_exec.t
-  val alive_except : Game_state.t -> Player_id.t -> Player_id.t list
-  val if_alive : Player_id.t -> unit Botc_exec.t -> unit Botc_exec.t
+module Packed : sig
+  type t =
+    | T :
+        { state : 'a
+        ; character : (module Character_intf.S with type t = 'a)
+        }
+        -> t
 end
+
+module Make (_ : Character_intf.Input_S) : Character_intf.Base_S

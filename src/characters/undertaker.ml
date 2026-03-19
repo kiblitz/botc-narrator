@@ -29,17 +29,22 @@ let night_action ~player_id:pid ~night =
             let%bind.Botc_exec () =
               if Game_state.is_poisoned state pid
               then (
-                let all_chars =
-                  List.map (Game_state.seated_players state) ~f:(fun p ->
-                    Player.character p)
+                let all_names =
+                  List.map
+                    (Game_state.seat_order state)
+                    ~f:(Game_state.character_name state)
                 in
-                let%bind.Botc_exec char = Botc_exec.narrator_pick all_chars in
-                Botc_exec.tell pid (Char_display.name char))
+                let%bind.Botc_exec roles =
+                  Botc_exec.narrator_pick
+                    "poisoned undertaker role"
+                    all_names
+                    ~pick_count:1
+                in
+                let role = List.hd_exn roles in
+                Botc_exec.tell pid role)
               else (
-                let exec_char =
-                  Player.character (Map.find_exn (Game_state.players state) exec_id)
-                in
-                Botc_exec.tell pid (Char_display.name exec_char))
+                let role = Game_state.character_name state exec_id in
+                Botc_exec.tell pid role)
             in
             Botc_exec.sleep pid))
 ;;

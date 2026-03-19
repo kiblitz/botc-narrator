@@ -1,5 +1,3 @@
-module type S = Character_intf.S
-
 module Washerwoman = Washerwoman
 module Librarian = Librarian
 module Investigator = Investigator

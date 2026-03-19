@@ -26,11 +26,9 @@ let night_action ~player_id:pid ~night:_ =
         let result =
           if Game_state.is_poisoned state pid
           then false
-          else (
-            let char_of id =
-              Player.character (Map.find_exn (Game_state.players state) id)
-            in
-            is_demon (char_of p1) || is_demon (char_of p2))
+          else
+            Kind.equal (Game_state.kind state p1) Kind.Demon
+            || Kind.equal (Game_state.kind state p2) Kind.Demon
         in
         let%bind.Botc_exec () = Botc_exec.tell pid (if result then "Yes" else "No") in
         Botc_exec.sleep pid))

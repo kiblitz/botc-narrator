@@ -23,39 +23,54 @@ let night_action ~player_id:pid ~night =
          pid
          (let%bind.Botc_exec state = Botc_exec.get_state
           and () = Botc_exec.wake pid in
-          let pname id = Player.name (Map.find_exn (Game_state.players state) id) in
+          let pname id = Player_id.to_string id in
           let%bind.Botc_exec () =
             if Game_state.is_poisoned state pid
             then (
               let ids = Game_state.alive_ids state in
-              let%bind.Botc_exec p1, rest = narrator_pick_from ids in
-              let%bind.Botc_exec p2, _ = narrator_pick_from rest in
-              let minion_chars =
-                List.filter_map (Game_state.alive_players state) ~f:(fun p ->
-                  if is_minion (Player.character p)
-                  then Some (Player.character p)
+              let%bind.Botc_exec players =
+                narrator_pick "poisoned investigator players" ids ~pick_count:2
+              in
+              let p1 = List.nth_exn players 0 in
+              let p2 = List.nth_exn players 1 in
+              let minion_names =
+                List.filter_map (Game_state.alive_ids state) ~f:(fun id ->
+                  if Kind.equal (Game_state.kind state id) Kind.Minion
+                  then Some (Game_state.character_name state id)
                   else None)
               in
-              let%bind.Botc_exec char = Botc_exec.narrator_pick minion_chars in
+              let%bind.Botc_exec roles =
+                Botc_exec.narrator_pick
+                  "poisoned investigator role"
+                  minion_names
+                  ~pick_count:1
+              in
+              let role = List.hd_exn roles in
               let n1 = pname p1 in
               let n2 = pname p2 in
-              let role = Char_display.name char in
               Botc_exec.tell pid [%string "%{n1} and %{n2} — one is the %{role}"])
             else (
-              let minions =
-                List.filter (Game_state.alive_players state) ~f:(fun p ->
-                  is_minion (Player.character p))
+              let minion_ids =
+                List.filter (Game_state.alive_ids state) ~f:(fun id ->
+                  Kind.equal (Game_state.kind state id) Kind.Minion)
               in
-              let%bind.Botc_exec minion, _ = narrator_pick_from minions in
-              let other_ids = alive_except state (Player.id minion) in
-              let%bind.Botc_exec other, _ = narrator_pick_from other_ids in
-              let%bind.Botc_exec swap, _ = narrator_pick_from [ false; true ] in
-              let p1, p2 =
-                if swap then Player.id minion, other else other, Player.id minion
+              let%bind.Botc_exec minions =
+                narrator_pick "investigator minion" minion_ids ~pick_count:1
               in
+              let minion_id = List.hd_exn minions in
+              let other_ids = alive_except state minion_id in
+              let%bind.Botc_exec others =
+                narrator_pick "investigator other player" other_ids ~pick_count:1
+              in
+              let other = List.hd_exn others in
+              let%bind.Botc_exec order =
+                narrator_pick "investigator display order" [ false; true ] ~pick_count:1
+              in
+              let swap = List.hd_exn order in
+              let p1, p2 = if swap then minion_id, other else other, minion_id in
               let n1 = pname p1 in
               let n2 = pname p2 in
-              let role = Char_display.name (Player.character minion) in
+              let role = Game_state.character_name state minion_id in
               Botc_exec.tell pid [%string "%{n1} and %{n2} — one is the %{role}"])
           in
           Botc_exec.sleep pid))

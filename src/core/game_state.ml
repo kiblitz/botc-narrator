@@ -8,104 +8,180 @@ module Phase = struct
   [@@deriving sexp]
 end
 
+module Player_spec = struct
+  type t =
+    { id : Player_id.t
+    ; character_id : string
+    ; character_name : string
+    ; kind : Character0.Kind.t
+    ; alignment : Character0.Alignment.t
+    }
+end
+
+type player =
+  { character_id : string
+  ; character_name : string
+  ; kind : Character0.Kind.t
+  ; alignment : Character0.Alignment.t
+  ; alive : bool
+  ; has_ghost_vote : bool
+  ; poisoned : bool
+  ; monk_protected : bool
+  ; used_day_ability : bool
+  }
+[@@deriving sexp_of]
+
 type t =
-  { (* Seating order matters for Chef/Empath adjacency. *)
-    seat_order : Player_id.t list
-  ; players : Player.t Player_id.Map.t
+  { seat_order : Player_id.t list
+  ; players : player Player_id.Map.t
   ; phase : Phase.t
-  ; poisoned : Player_id.t option
-  ; monk_protected : Player_id.t option
-  ; night_deaths : Player_id.t list (* Killed during the current night. *)
-  ; last_execution : Player_id.t option (* Executed yesterday, for Undertaker. *)
-  ; used_day_abilities : Player_id.Set.t (* Once-per-game day abilities, e.g. Slayer. *)
+  ; night_deaths : Player_id.t list
+  ; last_execution : Player_id.t option
   }
 [@@deriving fields ~getters, sexp_of]
 
-let create seat_order players_list =
+let create seat_order specs =
   let players =
-    List.fold players_list ~init:Player_id.Map.empty ~f:(fun m p ->
-      Map.set m ~key:(Player.id p) ~data:p)
+    List.map specs ~f:(fun (s : Player_spec.t) ->
+      ( s.id
+      , { character_id = s.character_id
+        ; character_name = s.character_name
+        ; kind = s.kind
+        ; alignment = s.alignment
+        ; alive = true
+        ; has_ghost_vote = false
+        ; poisoned = false
+        ; monk_protected = false
+        ; used_day_ability = false
+        } ))
+    |> Player_id.Map.of_alist_exn
   in
-  { seat_order
-  ; players
-  ; phase = Phase.Setup
-  ; poisoned = None
-  ; monk_protected = None
-  ; night_deaths = []
-  ; last_execution = None
-  ; used_day_abilities = Player_id.Set.empty
+  { seat_order; players; phase = Phase.Setup; night_deaths = []; last_execution = None }
+;;
+
+let get t id = Map.find_exn t.players id
+
+let update_player t id ~f =
+  { t with
+    players =
+      Map.update t.players id ~f:(function
+        | None -> failwith "update_player: unknown player"
+        | Some p -> f p)
   }
 ;;
 
-let seated_players t = List.filter_map (seat_order t) ~f:(Map.find (players t))
-let alive_players t = List.filter (seated_players t) ~f:Player.alive
-let alive_ids t = List.map (alive_players t) ~f:Player.id
+(** Player queries *)
+
+let is_alive t id = (get t id).alive
+let kind t id = (get t id).kind
+let alignment t id = (get t id).alignment
+let character_id t id = (get t id).character_id
+let character_name t id = (get t id).character_name
+
+let is_evil t id =
+  Character0.Alignment.equal (get t id).alignment Character0.Alignment.Evil
+;;
+
+let is_good t id =
+  Character0.Alignment.equal (get t id).alignment Character0.Alignment.Good
+;;
+
+let alive_ids t = List.filter t.seat_order ~f:(fun id -> (get t id).alive)
 
 let find_character_id t char_id =
-  List.find (seated_players t) ~f:(fun p -> String.equal (Player.character_id p) char_id)
+  List.find t.seat_order ~f:(fun pid -> String.equal (get t pid).character_id char_id)
 ;;
 
-let is_poisoned t id = Option.equal Player_id.equal (poisoned t) (Some id)
+let is_poisoned t id =
+  match Map.find t.players id with
+  | Some p -> p.poisoned
+  | None -> false
+;;
+
+let monk_protected t id =
+  match Map.find t.players id with
+  | Some p -> p.monk_protected
+  | None -> false
+;;
+
+let has_used_day_ability t id =
+  match Map.find t.players id with
+  | Some p -> p.used_day_ability
+  | None -> false
+;;
+
+(** Mutations *)
 
 let kill t id =
-  let players' =
-    Map.update (players t) id ~f:(function
-      | None -> failwith "kill: unknown player"
-      | Some p -> { p with Player.alive = false; has_ghost_vote = true })
+  let killed = get t id in
+  let t =
+    update_player t id ~f:(fun p -> { p with alive = false; has_ghost_vote = true })
   in
-  let t' = { t with players = players'; night_deaths = id :: t.night_deaths } in
-  (* Scarlet Woman trigger: if the Demon died with 5+ players still alive,
-     the Scarlet Woman becomes the new Demon. *)
-  let killed = Map.find_exn (players t) id in
-  if not (Char_display.is_demon (Player.character killed))
-  then t'
+  let t = { t with night_deaths = id :: t.night_deaths } in
+  if not (Character0.Kind.equal killed.kind Character0.Kind.Demon)
+  then t
   else (
     match
-      List.find (alive_players t') ~f:(fun p ->
-        String.equal (Player.character_id p) "scarlet_woman")
+      List.find (alive_ids t) ~f:(fun pid ->
+        String.equal (get t pid).character_id "scarlet_woman")
     with
-    | None -> t'
-    | Some sw ->
-      if List.length (alive_players t') < 5
-      then t'
-      else (
-        let new_players =
-          Map.update (players t') (Player.id sw) ~f:(function
-            | None -> failwith "scarlet_woman trigger: missing player"
-            | Some p -> { p with Player.character = Player.character killed })
-        in
-        { t' with players = new_players }))
+    | None -> t
+    | Some sw_id ->
+      if List.length (alive_ids t) < 5
+      then t
+      else
+        update_player t sw_id ~f:(fun p ->
+          { p with
+            character_id = killed.character_id
+          ; character_name = killed.character_name
+          ; kind = killed.kind
+          ; alignment = killed.alignment
+          }))
 ;;
 
-let set_players t players = { t with players }
-let set_poisoned t id = { t with poisoned = Some id }
-let clear_poisoned t = { t with poisoned = None }
-let set_monk_protected t id = { t with monk_protected = Some id }
-let clear_monk_protected t = { t with monk_protected = None }
-let use_day_ability t id = { t with used_day_abilities = Set.add t.used_day_abilities id }
-let has_used_day_ability t id = Set.mem t.used_day_abilities id
+let clear_poisoned t =
+  { t with players = Map.map t.players ~f:(fun p -> { p with poisoned = false }) }
+;;
+
+let set_poisoned t id =
+  let t = clear_poisoned t in
+  update_player t id ~f:(fun p -> { p with poisoned = true })
+;;
+
+let clear_monk_protected t =
+  { t with players = Map.map t.players ~f:(fun p -> { p with monk_protected = false }) }
+;;
+
+let set_monk_protected t id =
+  let t = clear_monk_protected t in
+  update_player t id ~f:(fun p -> { p with monk_protected = true })
+;;
+
+let use_day_ability t id =
+  update_player t id ~f:(fun p -> { p with used_day_ability = true })
+;;
+
+let transform_into t id ~character_id ~character_name ~kind ~alignment =
+  update_player t id ~f:(fun p ->
+    { p with character_id; character_name; kind; alignment })
+;;
 
 let next_phase t =
   match t.phase with
   | Phase.Setup ->
-    { t with phase = Phase.Night { number = 1 }; night_deaths = []; monk_protected = None }
+    { (clear_monk_protected t) with
+      phase = Phase.Night { number = 1 }
+    ; night_deaths = []
+    }
   | Phase.Night { number } -> { t with phase = Phase.Day { number } }
   | Phase.Day { number } ->
-    { t with
+    { (clear_monk_protected t) with
       phase = Phase.Night { number = number + 1 }
     ; night_deaths = []
-    ; monk_protected = None
     }
 ;;
 
 let character_ids_in_play t =
-  List.map (seated_players t) ~f:Player.character_id
+  List.map t.seat_order ~f:(fun id -> (get t id).character_id)
   |> List.dedup_and_sort ~compare:String.compare
-;;
-
-let good_chars_not_in_play t (all_chars : Char_display.t list) =
-  let in_play = character_ids_in_play t in
-  List.filter all_chars ~f:(fun c ->
-    Char_display.is_good c
-    && not (List.mem in_play (Char_display.id c) ~equal:String.equal))
 ;;

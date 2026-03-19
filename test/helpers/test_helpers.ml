@@ -5,29 +5,31 @@ let p = Player_id.of_string
 
 let mk_players specs =
   List.map specs ~f:(fun (name, (module C : Character_intf.S)) ->
-    Player.create ~id:(p name) ~character:(C.to_display C.t))
+    { Game_state.Player_spec.id = p name
+    ; character_id = C.id
+    ; character_name = C.name
+    ; kind = C.kind C.t
+    ; alignment = C.alignment C.t
+    })
 ;;
 
-let mk_state players =
-  let seat_order = List.map players ~f:Player.id in
-  Game_state.create seat_order players
+let mk_state specs =
+  let seat_order = List.map specs ~f:(fun (s : Game_state.Player_spec.t) -> s.id) in
+  Game_state.create seat_order specs
 ;;
 
-let night_state players = mk_state players |> Game_state.next_phase
-let day_state players = mk_state players |> Game_state.next_phase |> Game_state.next_phase
+let night_state specs = mk_state specs |> Game_state.next_phase
+let day_state specs = mk_state specs |> Game_state.next_phase |> Game_state.next_phase
 
-let make_test_interp ~players ?(responses = []) ?(silent = false) () =
+let make_test_interp ~state ?(responses = []) ?(silent = false) () =
   let pname id =
-    match List.find players ~f:(fun p -> Player_id.equal (Player.id p) id) with
-    | Some p ->
-      let role = Char_display.name (Player.character p) in
-      [%string "%{Player.name p}(%{role})"]
-    | None -> Player_id.to_string id
+    let name = Player_id.to_string id in
+    let role = Game_state.character_name state id in
+    [%string "%{name}(%{role})"]
   in
   let responses = ref responses in
   (module struct
-    let print = if silent then Fun.ignore else print_endline
-
+    let print = if silent then ignore else print_endline
     let wake id = print [%string "narrator->%{pname id}: wake"]
     let sleep id = print [%string "narrator->%{pname id}: sleep"]
     let tell id msg = print [%string "narrator->%{pname id}: %{msg}"]
@@ -45,13 +47,13 @@ let make_test_interp ~players ?(responses = []) ?(silent = false) () =
       choice
     ;;
 
-    let narrator_pick xs = List.hd_exn xs
+    let narrator_pick _prompt xs = List.hd_exn xs
     let log s = print [%string "[log] %{s}"]
-  end : Botc_exec.Interp_S)
+  end : Botc_exec.Engine_S)
 ;;
 
-let run ~players ?(silent = false) ?(responses = []) ~action state =
-  let interp = make_test_interp ~players ~responses ~silent () in
+let run ?(silent = false) ?(responses = []) ~action state =
+  let interp = make_test_interp ~state ~responses ~silent () in
   let (), state = Botc_exec.run interp state action in
   state
 ;;
@@ -63,23 +65,21 @@ let night_action action ~night ~player_id =
 let day_action action ~player_id = Option.value_exn (action ~player_id:(p player_id))
 
 let print_grimoire state =
-  let seated = Game_state.seated_players state in
-  let label player =
-    let name = Player.name player in
-    let role = Char_display.name (Player.character player) in
+  let seated = Game_state.seat_order state in
+  let label id =
+    let name = Player_id.to_string id in
+    let role = Game_state.character_name state id in
     let tags =
       List.filter_opt
-        [ (if not (Player.alive player) then Some "dead" else None)
-        ; (if Game_state.is_poisoned state (Player.id player)
-           then Some "poisoned"
-           else None)
+        [ (if not (Game_state.is_alive state id) then Some "dead" else None)
+        ; (if Game_state.is_poisoned state id then Some "poisoned" else None)
         ]
     in
     match tags with
     | [] -> [%string "%{name}(%{role})"]
     | ts -> [%string "%{name}(%{role}) [%{String.concat ts ~sep:\", \"}]"]
   in
-  let labels = List.mapi seated ~f:(fun i p -> i, label p) in
+  let labels = List.mapi seated ~f:(fun i id -> i, label id) in
   let n = List.length labels in
   let pi = Float.pi in
   let radius_r = 6.0 in
@@ -91,15 +91,22 @@ let print_grimoire state =
       let c = Float.iround_nearest_exn (radius_c *. Float.cos angle) in
       lbl, r, c)
   in
-  let min_r = List.fold positions ~init:0 ~f:(fun acc (_, r, _) -> min acc r) in
+  let min_r =
+    List.map positions ~f:(fun (_, r, _) -> r)
+    |> List.min_elt ~compare:Int.compare
+    |> Option.value ~default:0
+  in
   let min_c =
-    List.fold positions ~init:0 ~f:(fun acc (lbl, _, c) ->
-      min acc (c - (String.length lbl / 2)))
+    List.map positions ~f:(fun (lbl, _, c) -> c - (String.length lbl / 2))
+    |> List.min_elt ~compare:Int.compare
+    |> Option.value ~default:0
   in
   let rows = (2 * Float.iround_nearest_exn radius_r) + 2 in
   let cols =
-    List.fold positions ~init:0 ~f:(fun acc (lbl, _, c) ->
-      max acc (c - min_c + (String.length lbl / 2) + String.length lbl))
+    List.map positions ~f:(fun (lbl, _, c) ->
+      c - min_c + (String.length lbl / 2) + String.length lbl)
+    |> List.max_elt ~compare:Int.compare
+    |> Option.value ~default:0
   in
   let grid = Array.init rows ~f:(fun _ -> Bytes.make cols ' ') in
   List.iter positions ~f:(fun (lbl, r, c) ->

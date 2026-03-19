@@ -3,75 +3,65 @@ open! Core
 let minion_info () =
   let%bind.Botc_exec state = Botc_exec.get_state in
   let minions =
-    List.filter (Game_state.alive_players state) ~f:(fun p ->
-      Char_display.is_minion (Player.character p))
+    List.filter (Game_state.alive_ids state) ~f:(fun id ->
+      Character.Kind.equal (Game_state.kind state id) Character.Kind.Minion)
   in
   if List.is_empty minions
   then Botc_exec.return ()
   else (
     let evil_names =
-      List.filter_map (Game_state.alive_players state) ~f:(fun p ->
-        if Char_display.is_evil (Player.character p) then Some (Player.name p) else None)
+      List.filter_map (Game_state.alive_ids state) ~f:(fun id ->
+        if
+          Character.Alignment.equal
+            (Game_state.alignment state id)
+            Character.Alignment.Evil
+        then Some (Player_id.to_string id)
+        else None)
     in
+    let%bind.Botc_exec () = Botc_exec.iter minions ~f:(fun id -> Botc_exec.wake id) in
     let%bind.Botc_exec () =
-      List.fold minions ~init:(Botc_exec.return ()) ~f:(fun acc p ->
-        let%bind.Botc_exec () = acc in
-        Botc_exec.wake (Player.id p))
+      Botc_exec.iter minions ~f:(fun id ->
+        Botc_exec.tell id ("Evil: " ^ String.concat evil_names ~sep:", "))
     in
-    let%bind.Botc_exec () =
-      List.fold minions ~init:(Botc_exec.return ()) ~f:(fun acc p ->
-        let%bind.Botc_exec () = acc in
-        Botc_exec.tell (Player.id p) ("Evil: " ^ String.concat evil_names ~sep:", "))
-    in
-    List.fold minions ~init:(Botc_exec.return ()) ~f:(fun acc p ->
-      let%bind.Botc_exec () = acc in
-      Botc_exec.sleep (Player.id p)))
+    Botc_exec.iter minions ~f:(fun id -> Botc_exec.sleep id))
 ;;
 
 let demon_info all () =
   let%bind.Botc_exec state = Botc_exec.get_state in
   let demon =
-    List.find (Game_state.alive_players state) ~f:(fun p ->
-      Char_display.is_demon (Player.character p))
+    List.find (Game_state.alive_ids state) ~f:(fun id ->
+      Character.Kind.equal (Game_state.kind state id) Character.Kind.Demon)
   in
   match demon with
   | None -> Botc_exec.return ()
   | Some d ->
+    let in_play = Game_state.character_ids_in_play state in
     let not_in_play =
-      Game_state.good_chars_not_in_play
-        state
-        (List.map all ~f:(fun (module C : Character_intf.S) -> C.to_display C.t))
+      List.filter_map all ~f:(fun (module C : Character_intf.S) ->
+        if
+          Character.Alignment.equal (C.alignment C.t) Character.Alignment.Good
+          && not (List.mem in_play C.id ~equal:String.equal)
+        then Some C.name
+        else None)
     in
     let count = min 3 (List.length not_in_play) in
-    let rec pick_n n xs =
-      if n = 0
-      then Botc_exec.return []
-      else (
-        let n_xs = List.length xs in
-        let%bind.Botc_exec i = Botc_exec.narrator_pick (List.init n_xs ~f:Fn.id) in
-        let chosen = List.nth_exn xs i in
-        let rest = List.filteri xs ~f:(fun j _ -> j <> i) in
-        let%map.Botc_exec tail = pick_n (n - 1) rest in
-        chosen :: tail)
+    let%bind.Botc_exec () = Botc_exec.wake d in
+    let%bind.Botc_exec bluffs =
+      Botc_exec.narrator_pick "demon bluffs" not_in_play ~pick_count:count
     in
-    let%bind.Botc_exec () = Botc_exec.wake (Player.id d)
-    and bluffs = pick_n count not_in_play in
     let%bind.Botc_exec () =
-      Botc_exec.tell
-        (Player.id d)
-        ("Bluffs: " ^ (List.map bluffs ~f:Char_display.name |> String.concat ~sep:", "))
+      Botc_exec.tell d ("Bluffs: " ^ String.concat bluffs ~sep:", ")
     in
-    Botc_exec.sleep (Player.id d)
+    Botc_exec.sleep d
 ;;
 
 let run_order order night =
-  List.fold order ~init:(Botc_exec.return ()) ~f:(fun acc (module C : Character_intf.S) ->
-    let%bind.Botc_exec () = acc in
+  Botc_exec.iter order ~f:(fun (module C : Character_intf.S) ->
     let%bind.Botc_exec state = Botc_exec.get_state in
     match Game_state.find_character_id state C.id with
     | None -> Botc_exec.return ()
-    | Some player ->
-      (match C.night_action ~player_id:(Player.id player) ~night with
+    | Some pid ->
+      (match C.night_action ~player_id:pid ~night with
        | None -> Botc_exec.return ()
        | Some m -> m))
 ;;

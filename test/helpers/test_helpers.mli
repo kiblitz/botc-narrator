@@ -3,14 +3,16 @@ open Botc_narrator_lib
 
 val p : string -> Player_id.t
 
-val mk_players : (string * (module Character_intf.S)) list -> Player.t list
-val mk_state : Player.t list -> Game_state.t
-val night_state : Player.t list -> Game_state.t
-val day_state : Player.t list -> Game_state.t
+val mk_players
+  :  (string * (module Character_intf.S)) list
+  -> Game_state.Player_spec.t list
+
+val mk_state : Game_state.Player_spec.t list -> Game_state.t
+val night_state : Game_state.Player_spec.t list -> Game_state.t
+val day_state : Game_state.Player_spec.t list -> Game_state.t
 
 val run
-  :  players:Player.t list
-  -> ?silent:bool
+  :  ?silent:bool
   -> ?responses:Player_id.t list
   -> action:unit Botc_exec.t
   -> Game_state.t

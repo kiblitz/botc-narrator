@@ -24,6 +24,9 @@ let on_night_kill ~player_id:pid =
   Some
     (let%bind.Botc_exec state = Botc_exec.get_state in
      let candidates = alive_except state pid in
-     let%bind.Botc_exec target = Botc_exec.narrator_pick candidates in
+     let%bind.Botc_exec targets =
+       Botc_exec.narrator_pick "mayor redirect target" candidates ~pick_count:1
+     in
+     let target = List.hd_exn targets in
      Botc_exec.modify_state (fun s -> Game_state.kill s target))
 ;;

@@ -20,8 +20,6 @@ let players =
     ]
 ;;
 
-let run = run ~players
-
 let night_1 ?(silent = false) state =
   let run = run ~silent in
   let night_action = night_action ~night:1 in

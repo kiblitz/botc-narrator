@@ -39,8 +39,7 @@ module type Botc_exec = sig
   val sleep : Player_id.t -> unit t
   val tell : Player_id.t -> string -> unit t
   val ask : Player_id.t -> string -> Player_id.t list -> Player_id.t t
-  val narrator_pick : string -> 'a list -> 'a t
-  val narrator_pick_from : string -> 'a list -> pick_count:int -> 'a list t
+  val narrator_pick : string -> 'a list -> pick_count:int -> 'a list t
   val log : string -> unit t
   val get_state : Game_state.t t
   val set_state : Game_state.t -> unit t

@@ -26,15 +26,18 @@ let night_action ~player_id:pid ~night =
           let%bind.Botc_exec () =
             if Game_state.is_poisoned state pid
             then (
-              let%bind.Botc_exec n = Botc_exec.narrator_pick [ 0; 1; 2; 3 ] in
+              let%bind.Botc_exec ns =
+                Botc_exec.narrator_pick "poisoned chef count" [ 0; 1; 2; 3 ] ~pick_count:1
+              in
+              let n = List.hd_exn ns in
               Botc_exec.tell pid [%string "%{n#Int} evil pairs"])
             else (
-              let alive = Game_state.alive_players state in
+              let alive = Game_state.alive_ids state in
               let n = List.length alive in
               let count =
-                List.foldi alive ~init:0 ~f:(fun i acc p ->
+                List.counti alive ~f:(fun i pid ->
                   let next = List.nth_exn alive ((i + 1) mod n) in
-                  if Player.is_evil p && Player.is_evil next then acc + 1 else acc)
+                  Game_state.is_evil state pid && Game_state.is_evil state next)
               in
               Botc_exec.tell pid [%string "%{count#Int} evil pairs"])
           in

@@ -19,8 +19,6 @@ let players =
     ]
 ;;
 
-let run = run ~players
-
 let night_1 ?(silent = false) state =
   let run = run ~silent in
   let night_action = night_action ~night:1 in
@@ -46,10 +44,11 @@ let%expect_test "day 1: townsfolk nominates virgin and dies" =
     |> fun s ->
     Game_state.next_phase s
     |> run
-         ~action:(Option.value_exn
-            (Characters.Virgin.on_nominated
-               ~player_id:(p "Maiden")
-               ~nominator:(p "Gordon")))
+         ~action:
+           (Option.value_exn
+              (Characters.Virgin.on_nominated
+                 ~player_id:(p "Maiden")
+                 ~nominator:(p "Gordon")))
   in
   print_grimoire state;
   [%expect

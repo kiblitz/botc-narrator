@@ -22,9 +22,7 @@ let night_action ~player_id:pid ~night =
         and state = Botc_exec.get_state in
         let%bind.Botc_exec () =
           if night = 1
-          then
-            (* Night 1: demon bluffs shown by demon_info helper in the script *)
-            Botc_exec.return ()
+          then Botc_exec.return ()
           else (
             let candidates = Game_state.alive_ids state in
             let%bind.Botc_exec target =
@@ -33,31 +31,32 @@ let night_action ~player_id:pid ~night =
             if Player_id.equal target pid
             then (
               (* Starpassing *)
-              let minions =
-                List.filter (Game_state.alive_players state) ~f:(fun p ->
-                  is_minion (Player.character p))
+              let minion_ids =
+                List.filter (Game_state.alive_ids state) ~f:(fun id ->
+                  Kind.equal (Game_state.kind state id) Kind.Minion)
               in
-              match minions with
+              match minion_ids with
               | [] -> Botc_exec.modify_state (fun s -> Game_state.kill s pid)
               | _ ->
-                let%bind.Botc_exec new_imp, _ = narrator_pick_from minions in
+                let%bind.Botc_exec new_imps =
+                  narrator_pick "imp starpass target" minion_ids ~pick_count:1
+                in
+                let new_imp_id = List.hd_exn new_imps in
                 Botc_exec.modify_state (fun s ->
                   let s = Game_state.kill s pid in
-                  let players =
-                    Map.update (Game_state.players s) (Player.id new_imp) ~f:(function
-                      | None -> failwith "imp starpass: target missing"
-                      | Some p -> { p with Player.character = to_display t })
-                  in
-                  Game_state.set_players s players))
+                  Game_state.transform_into
+                    s
+                    new_imp_id
+                    ~character_id:id
+                    ~character_name:name
+                    ~kind:(kind t)
+                    ~alignment:(alignment t)))
             else (
               let%bind.Botc_exec st = Botc_exec.get_state in
-              let is_protected =
-                Option.equal Player_id.equal (Game_state.monk_protected st) (Some target)
+              let is_protected = Game_state.monk_protected st target in
+              let is_soldier =
+                String.equal (Game_state.character_id st target) "soldier"
               in
-              let target_char =
-                Player.character (Map.find_exn (Game_state.players st) target)
-              in
-              let is_soldier = String.equal (Char_display.id target_char) "soldier" in
               if is_protected || is_soldier
               then Botc_exec.return ()
               else Botc_exec.modify_state (fun s -> Game_state.kill s target)))

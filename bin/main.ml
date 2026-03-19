@@ -1,19 +1,15 @@
 open! Core
 open Botc_narrator_lib
 
-let make_console_interp (state : Game_state.t) : (module Botc_exec.Interp_S) =
-  let pname id =
-    match Map.find (Game_state.players state) id with
-    | Some p -> Player.name p
-    | None -> Player_id.to_string id
-  in
+let make_console_interp (_state : Game_state.t) : (module Botc_exec.Engine_S) =
+  let pname id = Player_id.to_string id in
   (module struct
     let wake id = printf "[wake]  %s\n%!" (pname id)
     let sleep id = printf "[sleep] %s\n%!" (pname id)
     let tell id msg = printf "[tell -> %-10s] %s\n%!" (pname id) msg
     let ask _id _question cs = List.hd_exn cs
 
-    let narrator_pick = function
+    let narrator_pick _prompt = function
       | [] -> failwith "narrator_pick: empty"
       | x :: _ -> x
     ;;
@@ -23,21 +19,25 @@ let make_console_interp (state : Game_state.t) : (module Botc_exec.Interp_S) =
 ;;
 
 let () =
-  let mk name char = Player.create ~id:(Player_id.of_string name) ~character:char in
-  let players =
-    [ mk "Alice" (Characters.Imp.to_display Characters.Imp.t)
-    ; mk "Bob" (Characters.Poisoner.to_display Characters.Poisoner.t)
-    ; mk "Carol" (Characters.Empath.to_display Characters.Empath.t)
-    ; mk "Dave" (Characters.Washerwoman.to_display Characters.Washerwoman.t)
-    ; mk "Eve" (Characters.Fortune_teller.to_display Characters.Fortune_teller.t)
-    ; mk "Frank" (Characters.Chef.to_display Characters.Chef.t)
+  let mk name (module C : Character_intf.S) =
+    { Game_state.Player_spec.id = Player_id.of_string name
+    ; character_id = C.id
+    ; character_name = C.name
+    ; kind = C.kind C.t
+    ; alignment = C.alignment C.t
+    }
+  in
+  let specs =
+    [ mk "Alice" (module Characters.Imp)
+    ; mk "Bob" (module Characters.Poisoner)
+    ; mk "Carol" (module Characters.Empath)
+    ; mk "Dave" (module Characters.Washerwoman)
+    ; mk "Eve" (module Characters.Fortune_teller)
+    ; mk "Frank" (module Characters.Chef)
     ]
   in
-  let seat_order = List.map players ~f:Player.id in
-  let state =
-    Game_state.create seat_order players
-    |> fun s -> { s with Game_state.phase = Game_state.Phase.Night { number = 1 } }
-  in
+  let seat_order = List.map specs ~f:(fun (s : Game_state.Player_spec.t) -> s.id) in
+  let state = Game_state.create seat_order specs |> Game_state.next_phase in
   let interp = make_console_interp state in
   printf "=== Night 1 ===\n%!";
   let (), _final =

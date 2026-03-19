@@ -19,8 +19,6 @@ let players =
     ]
 ;;
 
-let run = run ~players
-
 let night_1 ?(silent = false) state =
   let run = run ~silent in
   let night_action = night_action ~night:1 in
@@ -82,7 +80,7 @@ let%expect_test "night 2: imp starpasses to poisoner" =
     narrator->Troi(Empath): sleep
     narrator->Zoltar(Fortune Teller): wake
     narrator->Zoltar(Fortune Teller): Choose a player
-    Zoltar(Fortune Teller)->narrator: Ivy(Poisoner)
+    Zoltar(Fortune Teller)->narrator: Ivy(Imp)
     narrator->Zoltar(Fortune Teller): Choose a player
     Zoltar(Fortune Teller)->narrator: Diablo(Imp)
     narrator->Zoltar(Fortune Teller): Yes

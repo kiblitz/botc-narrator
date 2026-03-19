@@ -28,10 +28,7 @@ let day_action ~player_id:pid =
        let%bind.Botc_exec target =
          Botc_exec.ask pid "Who do you want to slay?" (Game_state.alive_ids state)
        in
-       let target_char =
-         Player.character (Map.find_exn (Game_state.players state) target)
-       in
-       if is_demon target_char
+       if Kind.equal (Game_state.kind state target) Kind.Demon
        then Botc_exec.modify_state (fun s -> Game_state.kill s target)
        else Botc_exec.return ()))
 ;;

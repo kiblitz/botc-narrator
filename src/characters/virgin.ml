@@ -27,10 +27,7 @@ let on_nominated ~player_id:pid ~nominator =
        let%bind.Botc_exec () =
          Botc_exec.modify_state (fun s -> Game_state.use_day_ability s pid)
        in
-       let nom_char =
-         Player.character (Map.find_exn (Game_state.players state) nominator)
-       in
-       if is_townsfolk nom_char
+       if Kind.equal (Game_state.kind state nominator) Kind.Townsfolk
        then Botc_exec.modify_state (fun s -> Game_state.kill s nominator)
        else Botc_exec.return ()))
 ;;

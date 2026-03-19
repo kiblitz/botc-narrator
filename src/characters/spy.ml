@@ -20,16 +20,12 @@ let night_action ~player_id:pid ~night:_ =
        pid
        (let%bind.Botc_exec state = Botc_exec.get_state
         and () = Botc_exec.wake pid in
-        let grimoire =
-          List.map (Game_state.seated_players state) ~f:(fun p ->
-            Player.id p, Player.character p)
-        in
         let%bind.Botc_exec () =
           Botc_exec.tell
             pid
-            (List.map grimoire ~f:(fun (pid, c) ->
-               let name = Player_id.to_string pid in
-               let role = Char_display.name c in
+            (List.map (Game_state.seat_order state) ~f:(fun id ->
+               let name = Player_id.to_string id in
+               let role = Game_state.character_name state id in
                [%string "%{name}=%{role}"])
              |> String.concat ~sep:", ")
         in
