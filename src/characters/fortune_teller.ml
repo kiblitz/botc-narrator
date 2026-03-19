@@ -1,24 +1,43 @@
 open! Core
+open! Import
 
-let ( let* ) = Narrator_monad.( let* )
+include Character.Make (struct
+    type t =
+      { kind : Kind.t
+      ; alignment : Alignment.t
+      }
 
-let id        = "fortune_teller"
-let name      = "Fortune Teller"
-let kind      = Character_intf.Townsfolk
-let alignment = Character_intf.Good
+    let id = "fortune_teller"
+    let name = "Fortune Teller"
+    let t = { kind = Kind.Townsfolk; alignment = Alignment.Good }
+    let kind { kind; _ } = kind
+    let alignment { alignment; _ } = alignment
+  end)
 
 let night_action ~player_id:pid ~night:_ =
-  Some (Character.if_alive pid begin
-    let* state     = Narrator_monad.get_state in
-    let* ()        = Narrator_monad.wake pid in
-    let candidates = Game_state.alive_ids state in
-    let* (p1, p2)  = Narrator_monad.player_points_two pid candidates in
-    let result =
-      if Game_state.is_poisoned state pid then false
-      else
-        let char_of id = (Map.find_exn state.Game_state.players id).Player.character in
-        Character_intf.is_demon (char_of p1) || Character_intf.is_demon (char_of p2)
-    in
-    let* () = Narrator_monad.show_info pid (Narrator_monad.Yes_or_no result) in
-    Narrator_monad.sleep pid
-  end)
+  Some
+    (if_alive
+       pid
+       (let%bind.Botc_exec state = Botc_exec.get_state
+        and () = Botc_exec.wake pid in
+        let candidates = Game_state.alive_ids state in
+        let%bind.Botc_exec p1 = Botc_exec.ask pid "Choose a player" candidates in
+        let%bind.Botc_exec p2 = Botc_exec.ask pid "Choose a player" candidates in
+        let result =
+          if Game_state.is_poisoned state pid
+          then false
+          else (
+            let char_of id =
+              Player.character (Map.find_exn (Game_state.players state) id)
+            in
+            is_demon (char_of p1) || is_demon (char_of p2))
+        in
+        let%bind.Botc_exec () = Botc_exec.tell pid (if result then "Yes" else "No") in
+        Botc_exec.sleep pid))
+;;
+
+let day_action ~player_id:_ = None
+let on_setup ~player_id:_ = None
+let on_nominated ~player_id:_ ~nominator:_ = None
+let on_executed ~player_id:_ = None
+let on_night_kill ~player_id:_ = None

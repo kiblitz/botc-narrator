@@ -1,0 +1,5 @@
+(library
+ (name test_helpers)
+ (libraries botc_narrator_lib core)
+ (preprocess
+  (pps ppx_jane)))

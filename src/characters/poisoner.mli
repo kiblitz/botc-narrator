@@ -1,2 +1,1 @@
-open! Core
-include Character.WITH_NIGHT_ACTION
+include Character_intf.S

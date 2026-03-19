@@ -1,0 +1,6 @@
+(library
+ (name test_trouble_brewing)
+ (libraries test_helpers botc_narrator_lib core)
+ (inline_tests)
+ (preprocess
+  (pps ppx_jane)))

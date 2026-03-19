@@ -1,30 +1,40 @@
 open! Core
 
-type kind      = Townsfolk | Outsider | Minion | Demon [@@deriving sexp, equal, compare]
-type alignment = Good      | Evil                      [@@deriving sexp, equal, compare]
+(** The minimal input to the [Make] functor. [type t] is abstract and
+    character-specific, allowing each character to carry its own state. *)
+module type Base_S = sig
+  val id : string
+  val name : string
 
-(** Static, monad-free properties of a character. *)
-module type S = sig
-  (** Snake-case unique identifier, e.g. ["imp"], ["fortune_teller"]. *)
-  val id        : string
-  val name      : string
-  val kind      : kind
-  val alignment : alignment
+  type t
+
+  val t : t
+  val kind : t -> Kind.t
+  val alignment : t -> Alignment.t
 end
 
-type t = (module S)
+(** Full character interface produced by [Make] and exposed by every character's [.mli]. *)
+module type S = sig
+  include Base_S
 
-let id        (module C : S) = C.id
-let name      (module C : S) = C.name
-let kind      (module C : S) = C.kind
-let alignment (module C : S) = C.alignment
+  val to_display : t -> Char_display.t
+  val night_action : player_id:Player_id.t -> night:int -> unit Botc_exec.t option
+  val day_action : player_id:Player_id.t -> unit Botc_exec.t option
+  val on_setup : player_id:Player_id.t -> unit Botc_exec.t option
 
-let equal   a b = String.equal   (id a) (id b)
-let compare a b = String.compare (id a) (id b)
+  val on_nominated
+    :  player_id:Player_id.t
+    -> nominator:Player_id.t
+    -> unit Botc_exec.t option
 
-let is_townsfolk c = equal_kind      (kind c) Townsfolk
-let is_outsider  c = equal_kind      (kind c) Outsider
-let is_minion    c = equal_kind      (kind c) Minion
-let is_demon     c = equal_kind      (kind c) Demon
-let is_evil      c = equal_alignment (alignment c) Evil
-let is_good      c = equal_alignment (alignment c) Good
+  val on_executed : player_id:Player_id.t -> unit Botc_exec.t option
+  val on_night_kill : player_id:Player_id.t -> unit Botc_exec.t option
+  val narrator_pick_from : 'a list -> ('a * 'a list) Botc_exec.t
+  val pick_n : int -> 'a list -> 'a list Botc_exec.t
+  val alive_except : Game_state.t -> Player_id.t -> Player_id.t list
+  val if_alive : Player_id.t -> unit Botc_exec.t -> unit Botc_exec.t
+end
+
+module type Character = sig
+  module Make (_ : Base_S) : S
+end

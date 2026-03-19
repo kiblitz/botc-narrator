@@ -1,41 +1,44 @@
 open! Core
 
-type phase =
-  | Setup
-  | Day   of { number : int }
-  | Night of { number : int }
-[@@deriving sexp]
+module Phase : sig
+  type t =
+    | Setup
+    | Day of { number : int }
+    | Night of { number : int }
+  [@@deriving sexp]
+end
 
-type t =
-  { seat_order     : Player_id.t list
-  ; players        : Player.t Player_id.Map.t
-  ; phase          : phase
-  ; poisoned       : Player_id.t option
-  ; monk_protected : Player_id.t option
-  ; night_deaths   : Player_id.t list
-  ; last_execution : Player_id.t option
-  ; imp_starpass   : bool
-  }
+type t [@@deriving sexp_of]
 
 val create : Player_id.t list -> Player.t list -> t
 
+(** Getters *)
+
+val phase : t -> Phase.t
+val players : t -> Player.t Player_id.Map.t
+val night_deaths : t -> Player_id.t list
+val last_execution : t -> Player_id.t option
+val monk_protected : t -> Player_id.t option
 val seated_players : t -> Player.t list
-val alive_players  : t -> Player.t list
-val alive_ids      : t -> Player_id.t list
+val alive_players : t -> Player.t list
+val alive_ids : t -> Player_id.t list
 
 (** Find the first player whose actual character has the given id. *)
 val find_character_id : t -> string -> Player.t option
 
-val is_poisoned : t -> Player_id.t -> bool
+(** Advance phase: Setup → Night 1 → Day 1 → Night 2 → Day 2 → ... *)
+val next_phase : t -> t
 
-val kill               : t -> Player_id.t -> t
-val set_poisoned       : t -> Player_id.t -> t
-val clear_poisoned     : t -> t
+(** Mutations *)
+
+val is_poisoned : t -> Player_id.t -> bool
+val kill : t -> Player_id.t -> t
+val set_players : t -> Player.t Player_id.Map.t -> t
+val set_poisoned : t -> Player_id.t -> t
+val clear_poisoned : t -> t
 val set_monk_protected : t -> Player_id.t -> t
 val clear_monk_protected : t -> t
-
-val begin_night : t -> int -> t
-val begin_day   : t -> int -> t
-
-val character_ids_in_play       : t -> string list
-val good_char_names_not_in_play : t -> Character_intf.t list -> string list
+val use_day_ability : t -> Player_id.t -> t
+val has_used_day_ability : t -> Player_id.t -> bool
+val character_ids_in_play : t -> string list
+val good_chars_not_in_play : t -> Char_display.t list -> Char_display.t list

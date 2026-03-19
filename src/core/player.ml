@@ -1,21 +1,19 @@
 open! Core
 
 type t =
-  { id             : Player_id.t
-  ; name           : string
-  (** The character they actually are.  The Drunk is [Drunk], but
-      [shown_character] is the Townsfolk they believe themselves to be. *)
-  ; character      : Character_intf.t
-  (** What this player was told they are (differs only for the Drunk). *)
-  ; shown_character: Character_intf.t
-  ; alive          : bool
-  (** Dead players retain one ghost vote. *)
+  { id : Player_id.t
+  ; character : Char_display.t
+  ; shown_character : Char_display.t
+  ; alive : bool
   ; has_ghost_vote : bool
   }
+[@@deriving fields ~getters, sexp_of]
 
-let create ~id ~name ~character =
-  { id; name; character; shown_character = character; alive = true; has_ghost_vote = false }
+let create ~id ~character =
+  { id; character; shown_character = character; alive = true; has_ghost_vote = false }
+;;
 
-let is_evil      p = Character_intf.is_evil p.character
-let is_good      p = Character_intf.is_good p.character
-let character_id p = Character_intf.id      p.character
+let name p = Player_id.to_string (id p)
+let character_id p = Char_display.id (character p)
+let is_evil p = Char_display.is_evil (character p)
+let is_good p = Char_display.is_good (character p)
