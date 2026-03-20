@@ -18,7 +18,7 @@ let night_action ~player_id:_ ~night:_ = None
 
 let day_action ~player_id:pid =
   Some
-    (let%bind.Botc_exec state = Botc_exec.get_state in
+    (let%bind.Botc_exec state = Botc_exec.get_state () in
      if Game_state.has_used_day_ability state pid
      then Botc_exec.return ()
      else (

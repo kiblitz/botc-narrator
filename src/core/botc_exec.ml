@@ -16,20 +16,22 @@ module Instr = struct
     | Set_state : Game_state.t -> unit t
 end
 
-(** Free monad over [Instr.t].
+type ro = |
+type rw = |
 
+(** Free monad over [Instr.t], with phantom permission parameter.
+
+    [ro] computations only read game state; [rw] computations may also modify it.
     The [Both] constructor captures two independent computations that don't
-    depend on each other's results. A synchronous engine runs them sequentially,
-    but an async engine can run them in parallel. Use [let%map x = a and y = b]
-    to produce [Both] nodes. *)
-type 'a t =
-  | Return : 'a -> 'a t
-  | Step : 'b Instr.t * ('b -> 'a t) -> 'a t
-  | Both : 'b t * 'c t * ('b * 'c -> 'a t) -> 'a t
+    depend on each other's results. *)
+type ('a, 'perm) t =
+  | Return : 'a -> ('a, _) t
+  | Step : 'b Instr.t * ('b -> ('a, 'perm) t) -> ('a, 'perm) t
+  | Both : ('b, 'perm) t * ('c, 'perm) t * ('b * 'c -> ('a, 'perm) t) -> ('a, 'perm) t
 
 let return x = Return x
 
-let rec bind : type a b. a t -> f:(a -> b t) -> b t =
+let rec bind : type a b p. (a, p) t -> f:(a -> (b, p) t) -> (b, p) t =
   fun m ~f ->
   match m with
   | Return x -> f x
@@ -39,19 +41,9 @@ let rec bind : type a b. a t -> f:(a -> b t) -> b t =
 
 let map m ~f = bind m ~f:(fun x -> return (f x))
 let both l r = Both (l, r, fun p -> Return p)
+let ( >>= ) m f = bind m ~f
+let ( >>| ) m f = map m ~f
 
-include (
-  Monad.Make (struct
-    type nonrec 'a t = 'a t
-
-    let return = return
-    let bind = bind
-    let map = `Custom map
-  end) :
-    Monad.S with type 'a t := 'a t)
-
-(* Override Let_syntax so that [let%map ... and ...] uses our parallel [both]
-   instead of the sequential one derived by [Monad.Make]. *)
 module Let_syntax = struct
   let return = return
   let ( >>= ) = ( >>= )
@@ -73,14 +65,16 @@ let tell p msg = lift (Instr.Tell (p, msg))
 let ask p question cs = lift (Instr.Ask (p, question, cs))
 let pick_one prompt xs = lift (Instr.Narrator_pick (prompt, xs))
 let log s = lift (Instr.Log s)
-let get_state = lift Instr.Get_state
+let get_state () = lift Instr.Get_state
 let set_state s = lift (Instr.Set_state s)
-let modify_state f = bind get_state ~f:(fun s -> set_state (f s))
+let modify_state f = bind (get_state ()) ~f:(fun s -> set_state (f s))
 let when_ pred m = if pred then m else return ()
 
 let iter xs ~f =
   List.fold xs ~init:(return ()) ~f:(fun acc x -> bind acc ~f:(fun () -> f x))
 ;;
+
+let as_rw : type a. (a, ro) t -> (a, rw) t = fun m -> (Obj.magic m : (a, rw) t)
 
 let rec narrator_pick prompt xs ~pick_count =
   if pick_count = 0
@@ -99,17 +93,10 @@ let rec narrator_pick prompt xs ~pick_count =
 
 module type Engine_S = Botc_exec_intf.Engine_S
 
-let rec has_visible_effect : type a. a t -> bool = function
-  | Return _ -> false
-  | Step (Instr.Get_state, _) -> false
-  | Step (_, _) -> true
-  | Both (l, r, _) -> has_visible_effect l || has_visible_effect r
-;;
-
-let run (type a) (module I : Engine_S) (initial_state : Game_state.t) (m : a t)
+let run (type a) (module I : Engine_S) (initial_state : Game_state.t) (m : (a, rw) t)
   : a * Game_state.t
   =
-  let rec go : type b. Game_state.t -> b t -> b * Game_state.t =
+  let rec go : type b p. Game_state.t -> (b, p) t -> b * Game_state.t =
     fun state -> function
       | Return x -> x, state
       | Step (Instr.Wake p, k) ->
@@ -130,10 +117,7 @@ let run (type a) (module I : Engine_S) (initial_state : Game_state.t) (m : a t)
       | Step (Instr.Get_state, k) -> go state (k state)
       | Step (Instr.Set_state s, k) -> go s (k ())
       | Both (l, r, k) ->
-        let log_parallel = has_visible_effect l && has_visible_effect r in
-        if log_parallel then I.log "[parallel 0]";
         let lv, state = go state l in
-        if log_parallel then I.log "[parallel 1]";
         let rv, state = go state r in
         go state (k (lv, rv))
   in

@@ -1,7 +1,7 @@
 open! Core
 
 let minion_info () =
-  let%bind.Botc_exec state = Botc_exec.get_state in
+  let%bind.Botc_exec state = Botc_exec.get_state () in
   let minions =
     List.filter (Game_state.alive_ids state) ~f:(fun id ->
       Character.Kind.equal (Game_state.kind state id) Character.Kind.Minion)
@@ -27,7 +27,7 @@ let minion_info () =
 ;;
 
 let demon_info all () =
-  let%bind.Botc_exec state = Botc_exec.get_state in
+  let%bind.Botc_exec state = Botc_exec.get_state () in
   let demon =
     List.find (Game_state.alive_ids state) ~f:(fun id ->
       Character.Kind.equal (Game_state.kind state id) Character.Kind.Demon)
@@ -55,19 +55,61 @@ let demon_info all () =
     Botc_exec.sleep d
 ;;
 
+(** Combine a list of read-only actions into a single computation using [Both]
+    nodes so the engine can run them in parallel. Logs parallel markers when
+    there are multiple actions. *)
+let combine_ro actions =
+  let indexed =
+    List.mapi actions ~f:(fun i m ->
+      let%bind.Botc_exec () = Botc_exec.log [%string "[parallel %{i#Int}]"] in
+      m)
+  in
+  let rec go = function
+    | [] -> Botc_exec.return ()
+    | [ m ] -> m
+    | m :: rest ->
+      let%map.Botc_exec () = m
+      and () = go rest in
+      ()
+  in
+  go indexed
+;;
+
+(** Split a list of tagged actions into a leading batch of [Read_only] actions
+    and the remaining tail starting from the first [Read_write] action. *)
+let rec take_ro_prefix = function
+  | Character_intf.Read_only m :: rest ->
+    let batch, remaining = take_ro_prefix rest in
+    m :: batch, remaining
+  | other -> [], other
+;;
+
+(** Run a list of tagged night actions, batching consecutive [Read_only] actions
+    in parallel and treating [Read_write] actions as sequential sync points. *)
+let rec run_batched = function
+  | [] -> Botc_exec.return ()
+  | Character_intf.Read_write m :: rest ->
+    let%bind.Botc_exec () = m in
+    run_batched rest
+  | Character_intf.Read_only _ :: _ as actions ->
+    let ro_batch, rest = take_ro_prefix actions in
+    let%bind.Botc_exec () = Botc_exec.as_rw (combine_ro ro_batch) in
+    run_batched rest
+;;
+
 let run_order order night =
-  Botc_exec.iter order ~f:(fun (module C : Character_intf.S) ->
-    let%bind.Botc_exec state = Botc_exec.get_state in
-    match Game_state.find_character_id state C.id with
-    | None -> Botc_exec.return ()
-    | Some pid ->
-      (match C.night_action ~player_id:pid ~night with
-       | None -> Botc_exec.return ()
-       | Some m -> m))
+  let%bind.Botc_exec state = Botc_exec.get_state () in
+  let tagged =
+    List.filter_map order ~f:(fun (module C : Character_intf.S) ->
+      match Game_state.find_character_id state C.id with
+      | None -> None
+      | Some pid -> C.night_action ~player_id:pid ~night)
+  in
+  run_batched tagged
 ;;
 
 let run_night (module S : Script_intf.S) () =
-  let%bind.Botc_exec state = Botc_exec.get_state in
+  let%bind.Botc_exec state = Botc_exec.get_state () in
   match Game_state.phase state with
   | Game_state.Phase.Night { number = 1 } ->
     let%bind.Botc_exec () = minion_info () in

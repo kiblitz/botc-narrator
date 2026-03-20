@@ -16,13 +16,16 @@ include Character.Make (struct
 
 let night_action ~player_id:pid ~night:_ =
   Some
-    (if_alive
-       pid
-       (let%bind.Botc_exec state = Botc_exec.get_state
-        and () = Botc_exec.wake pid in
-        let candidates = alive_except state pid in
-        let%bind.Botc_exec _master = Botc_exec.ask pid "Who is your master?" candidates in
-        Botc_exec.sleep pid))
+    (Character_intf.Read_only
+       (if_alive
+          pid
+          (let%bind.Botc_exec state = Botc_exec.get_state ()
+           and () = Botc_exec.wake pid in
+           let candidates = alive_except state pid in
+           let%bind.Botc_exec _master =
+             Botc_exec.ask pid "Who is your master?" candidates
+           in
+           Botc_exec.sleep pid)))
 ;;
 
 let day_action ~player_id:_ = None

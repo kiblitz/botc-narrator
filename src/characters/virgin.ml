@@ -20,7 +20,7 @@ let on_setup ~player_id:_ = None
 
 let on_nominated ~player_id:pid ~nominator =
   Some
-    (let%bind.Botc_exec state = Botc_exec.get_state in
+    (let%bind.Botc_exec state = Botc_exec.get_state () in
      if Game_state.has_used_day_ability state pid
      then Botc_exec.return ()
      else (

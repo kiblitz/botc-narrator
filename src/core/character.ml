@@ -20,7 +20,7 @@ module Make (C : Character_intf.Input_S) : Character_intf.Base_S = struct
   ;;
 
   let if_alive pid m =
-    let%bind.Botc_exec state = Botc_exec.get_state in
+    let%bind.Botc_exec state = Botc_exec.get_state () in
     Botc_exec.when_ (Game_state.is_alive state pid) m
   ;;
 end

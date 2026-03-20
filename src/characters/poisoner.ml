@@ -16,17 +16,18 @@ include Character.Make (struct
 
 let night_action ~player_id:pid ~night:_ =
   Some
-    (if_alive
-       pid
-       (let%bind.Botc_exec state = Botc_exec.get_state
-        and () = Botc_exec.wake pid in
-        let%bind.Botc_exec target =
-          Botc_exec.ask pid "Who do you want to poison?" (alive_except state pid)
-        in
-        let%bind.Botc_exec () =
-          Botc_exec.modify_state (fun s -> Game_state.set_poisoned s target)
-        in
-        Botc_exec.sleep pid))
+    (Character_intf.Read_write
+       (if_alive
+          pid
+          (let%bind.Botc_exec state = Botc_exec.get_state ()
+           and () = Botc_exec.wake pid in
+           let%bind.Botc_exec target =
+             Botc_exec.ask pid "Who do you want to poison?" (alive_except state pid)
+           in
+           let%bind.Botc_exec () =
+             Botc_exec.modify_state (fun s -> Game_state.set_poisoned s target)
+           in
+           Botc_exec.sleep pid)))
 ;;
 
 let day_action ~player_id:_ = None

@@ -16,22 +16,23 @@ include Character.Make (struct
 
 let night_action ~player_id:pid ~night:_ =
   Some
-    (if_alive
-       pid
-       (let%bind.Botc_exec state = Botc_exec.get_state
-        and () = Botc_exec.wake pid in
-        let candidates = Game_state.alive_ids state in
-        let%bind.Botc_exec p1 = Botc_exec.ask pid "Choose a player" candidates in
-        let%bind.Botc_exec p2 = Botc_exec.ask pid "Choose a player" candidates in
-        let result =
-          if Game_state.is_poisoned state pid
-          then false
-          else
-            Kind.equal (Game_state.kind state p1) Kind.Demon
-            || Kind.equal (Game_state.kind state p2) Kind.Demon
-        in
-        let%bind.Botc_exec () = Botc_exec.tell pid (if result then "Yes" else "No") in
-        Botc_exec.sleep pid))
+    (Character_intf.Read_only
+       (if_alive
+          pid
+          (let%bind.Botc_exec state = Botc_exec.get_state ()
+           and () = Botc_exec.wake pid in
+           let candidates = Game_state.alive_ids state in
+           let%bind.Botc_exec p1 = Botc_exec.ask pid "Choose a player" candidates in
+           let%bind.Botc_exec p2 = Botc_exec.ask pid "Choose a player" candidates in
+           let result =
+             if Game_state.is_poisoned state pid
+             then false
+             else
+               Kind.equal (Game_state.kind state p1) Kind.Demon
+               || Kind.equal (Game_state.kind state p2) Kind.Demon
+           in
+           let%bind.Botc_exec () = Botc_exec.tell pid (if result then "Yes" else "No") in
+           Botc_exec.sleep pid)))
 ;;
 
 let day_action ~player_id:_ = None

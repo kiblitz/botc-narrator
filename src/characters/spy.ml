@@ -16,20 +16,21 @@ include Character.Make (struct
 
 let night_action ~player_id:pid ~night:_ =
   Some
-    (if_alive
-       pid
-       (let%bind.Botc_exec state = Botc_exec.get_state
-        and () = Botc_exec.wake pid in
-        let%bind.Botc_exec () =
-          Botc_exec.tell
-            pid
-            (List.map (Game_state.seat_order state) ~f:(fun id ->
-               let name = Player_id.to_string id in
-               let role = Game_state.character_name state id in
-               [%string "%{name}=%{role}"])
-             |> String.concat ~sep:", ")
-        in
-        Botc_exec.sleep pid))
+    (Character_intf.Read_only
+       (if_alive
+          pid
+          (let%bind.Botc_exec state = Botc_exec.get_state ()
+           and () = Botc_exec.wake pid in
+           let%bind.Botc_exec () =
+             Botc_exec.tell
+               pid
+               (List.map (Game_state.seat_order state) ~f:(fun id ->
+                  let name = Player_id.to_string id in
+                  let role = Game_state.character_name state id in
+                  [%string "%{name}=%{role}"])
+                |> String.concat ~sep:", ")
+           in
+           Botc_exec.sleep pid)))
 ;;
 
 let day_action ~player_id:_ = None

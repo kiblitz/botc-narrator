@@ -19,32 +19,38 @@ let night_action ~player_id:pid ~night =
   then None
   else
     Some
-      (let%bind.Botc_exec state = Botc_exec.get_state in
-       let is_dead = not (Game_state.is_alive state pid) in
-       if not is_dead
-       then Botc_exec.return ()
-       else (
-         let%bind.Botc_exec () = Botc_exec.wake pid in
-         let candidates = Game_state.alive_ids state in
-         let%bind.Botc_exec target =
-           Botc_exec.ask pid "Who do you want to learn about?" candidates
-         in
-         let%bind.Botc_exec () =
-           if Game_state.is_poisoned state pid
-           then (
-             let all_names =
-               List.map (Game_state.seat_order state) ~f:(Game_state.character_name state)
-             in
-             let%bind.Botc_exec roles =
-               Botc_exec.narrator_pick "poisoned ravenkeeper role" all_names ~pick_count:1
-             in
-             let role = List.hd_exn roles in
-             Botc_exec.tell pid role)
-           else (
-             let role = Game_state.character_name state target in
-             Botc_exec.tell pid role)
-         in
-         Botc_exec.sleep pid))
+      (Character_intf.Read_only
+         (let%bind.Botc_exec state = Botc_exec.get_state () in
+          let is_dead = not (Game_state.is_alive state pid) in
+          if not is_dead
+          then Botc_exec.return ()
+          else (
+            let%bind.Botc_exec () = Botc_exec.wake pid in
+            let candidates = Game_state.alive_ids state in
+            let%bind.Botc_exec target =
+              Botc_exec.ask pid "Who do you want to learn about?" candidates
+            in
+            let%bind.Botc_exec () =
+              if Game_state.is_poisoned state pid
+              then (
+                let all_names =
+                  List.map
+                    (Game_state.seat_order state)
+                    ~f:(Game_state.character_name state)
+                in
+                let%bind.Botc_exec roles =
+                  Botc_exec.narrator_pick
+                    "poisoned ravenkeeper role"
+                    all_names
+                    ~pick_count:1
+                in
+                let role = List.hd_exn roles in
+                Botc_exec.tell pid role)
+              else (
+                let role = Game_state.character_name state target in
+                Botc_exec.tell pid role)
+            in
+            Botc_exec.sleep pid)))
 ;;
 
 let day_action ~player_id:_ = None

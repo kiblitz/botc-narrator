@@ -22,7 +22,7 @@ let on_executed ~player_id:_ = None
 
 let on_night_kill ~player_id:pid =
   Some
-    (let%bind.Botc_exec state = Botc_exec.get_state in
+    (let%bind.Botc_exec state = Botc_exec.get_state () in
      let candidates = alive_except state pid in
      let%bind.Botc_exec targets =
        Botc_exec.narrator_pick "mayor redirect target" candidates ~pick_count:1

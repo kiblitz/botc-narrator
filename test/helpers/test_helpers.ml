@@ -59,7 +59,9 @@ let run ?(silent = false) ?(responses = []) ~action state =
 ;;
 
 let night_action action ~night ~player_id =
-  Option.value_exn (action ~player_id:(p player_id) ~night)
+  match Option.value_exn (action ~player_id:(p player_id) ~night) with
+  | Character_intf.Read_only m -> Botc_exec.as_rw m
+  | Character_intf.Read_write m -> m
 ;;
 
 let day_action action ~player_id = Option.value_exn (action ~player_id:(p player_id))
