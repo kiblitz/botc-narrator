@@ -48,7 +48,7 @@ let make_test_interp ~state ?(responses = []) ?(silent = false) () =
     ;;
 
     let narrator_pick _prompt xs = List.hd_exn xs
-    let log s = print [%string "[log] %{s}"]
+    let log s = print s
   end : Botc_exec.Engine_S)
 ;;
 

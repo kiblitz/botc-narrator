@@ -56,23 +56,14 @@ let demon_info all () =
 ;;
 
 (** Combine a list of read-only actions into a single computation using [Both]
-    nodes so the engine can run them in parallel. Logs parallel markers when
-    there are multiple actions. *)
-let combine_ro actions =
-  let indexed =
-    List.mapi actions ~f:(fun i m ->
-      let%bind.Botc_exec () = Botc_exec.log [%string "[parallel %{i#Int}]"] in
-      m)
-  in
-  let rec go = function
-    | [] -> Botc_exec.return ()
-    | [ m ] -> m
-    | m :: rest ->
-      let%map.Botc_exec () = m
-      and () = go rest in
-      ()
-  in
-  go indexed
+    nodes so the engine can run them in parallel. *)
+let rec combine_ro = function
+  | [] -> Botc_exec.return ()
+  | [ m ] -> m
+  | m :: rest ->
+    let%map.Botc_exec () = m
+    and () = combine_ro rest in
+    ()
 ;;
 
 (** Split a list of tagged actions into a leading batch of [Read_only] actions
@@ -93,7 +84,15 @@ let rec run_batched = function
     run_batched rest
   | Character_intf.Read_only _ :: _ as actions ->
     let ro_batch, rest = take_ro_prefix actions in
-    let%bind.Botc_exec () = Botc_exec.as_rw (combine_ro ro_batch) in
+    let%bind.Botc_exec () =
+      match ro_batch with
+      | [ m ] -> Botc_exec.as_rw m
+      | _ ->
+        let n = List.length ro_batch in
+        let%bind.Botc_exec () = Botc_exec.log [%string "=== parallel (%{n#Int}) ==="] in
+        let%bind.Botc_exec () = Botc_exec.as_rw (combine_ro ro_batch) in
+        Botc_exec.log "=== end parallel ==="
+    in
     run_batched rest
 ;;
 
