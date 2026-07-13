@@ -179,6 +179,17 @@ fn imp_starpasses_to_a_minion() {
     assert_eq!(engine.grim.get(PlayerId(1)).kind, Kind::Demon);
     // The Scarlet Woman must NOT also have been promoted — a Demon already lives.
     assert_eq!(engine.grim.get(PlayerId(5)).role, ScarletWoman::ID);
+
+    // The transformed Imp must act as the Imp on the next night: dispatch is by
+    // believed role (for the Drunk), so transform must update it too.
+    engine.grim.advance_phase(); // Night 2 -> Day 2
+    engine.grim.advance_phase(); // Day 2   -> Night 3
+    let mut st = ScriptedStoryteller::new().with_responses([PlayerId(2)]); // new Imp kills Troi
+    engine.act(&mut st, Imp::ID, 3);
+    assert!(
+        !engine.grim.is_alive(PlayerId(2)),
+        "the starpassed Imp must be able to kill"
+    );
 }
 
 #[test]

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blood on the Clocktower — Narrator</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: #0d1117; color: #c9d1d9;
+         display: flex; justify-content: center; padding: 20px; }
+  #app { width: 100%; max-width: 640px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #8b949e; font-size: 13px; margin-bottom: 16px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+  .role { font-size: 15px; }
+  .role b { color: #d29922; }
+  .team-good { color: #58a6ff; } .team-evil { color: #ff7b72; }
+  input, button { font: inherit; }
+  input { background:#0d1117; border:1px solid #30363d; color:#c9d1d9; border-radius:6px; padding:8px 10px; width:100%; }
+  button { background:#21262d; color:#c9d1d9; border:1px solid #30363d; border-radius:6px;
+           padding:8px 12px; cursor:pointer; margin:4px 4px 0 0; }
+  button:hover:not(:disabled) { background:#30363d; }
+  button:disabled { opacity:.4; cursor:default; }
+  button.primary { background:#238636; border-color:#238636; color:#fff; }
+  button.evil { background:#da3633; border-color:#da3633; color:#fff; }
+  .seat { display:flex; align-items:center; gap:8px; padding:4px 0; }
+  .dot { width:9px; height:9px; border-radius:50%; background:#3fb950; flex:none; }
+  .dead .dot { background:#6e7681; } .dead .nm { color:#6e7681; text-decoration:line-through; }
+  .tag { font-size:11px; color:#8b949e; margin-left:auto; }
+  #log { max-height:220px; overflow:auto; font-size:13px; }
+  #log div { padding:2px 0; border-bottom:1px solid #21262d; }
+  .hidden { display:none; }
+  .phase { display:inline-block; font-size:12px; padding:2px 8px; border-radius:20px; background:#21262d; }
+  .night { background:#1c2a4a; color:#a5c8ff; } .day { background:#3a2f12; color:#ffd479; }
+  .wakebar { font-weight:600; color:#d29922; }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>Blood on the Clocktower</h1>
+  <div class="sub">Automated storyteller · Trouble Brewing</div>
+
+  <div id="join" class="card">
+    <input id="name" placeholder="Your name" autocomplete="off">
+    <button id="joinBtn" class="primary">Join</button>
+  </div>
+
+  <div id="lobby" class="card hidden">
+    <div><b>Lobby</b> <span id="count"></span></div>
+    <div id="lobbyList"></div>
+    <button id="startBtn" class="primary" disabled>Start game</button>
+  </div>
+
+  <div id="game" class="hidden">
+    <div class="card">
+      <span id="phase" class="phase">—</span>
+      <span id="wake" class="wakebar"></span>
+      <div id="roleBox" class="role" style="margin-top:8px"></div>
+    </div>
+    <div id="seats" class="card"></div>
+    <div id="prompt" class="card hidden"><div id="promptText"></div><div id="promptOpts"></div></div>
+    <div id="vote" class="card hidden"></div>
+    <div id="day" class="card hidden">
+      <div><b>Day</b> — nominate a player or pass</div>
+      <div id="nomOpts"></div>
+      <button id="passBtn">Pass</button>
+    </div>
+    <div id="over" class="card hidden"></div>
+    <div class="card"><b>Log</b><div id="log"></div></div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+let ws, me = null, players = [], alive = {};
+
+function connect() {
+  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onmessage = e => handle(JSON.parse(e.data));
+  ws.onclose = () => log("(disconnected)");
+}
+function send(obj) { ws.send(JSON.stringify(obj)); }
+function log(msg) { const d = document.createElement('div'); d.textContent = msg; $('log').prepend(d); }
+function nameOf(id) { const p = players.find(p => p.id === id); return p ? p.name : `#${id}`; }
+
+$('joinBtn').onclick = () => {
+  const name = $('name').value.trim(); if (!name) return;
+  if (!ws) connect();
+  const fire = () => send({type:'join', name});
+  if (ws.readyState === 1) fire(); else ws.onopen = fire;
+};
+$('startBtn').onclick = () => send({type:'start'});
+$('passBtn').onclick = () => send({type:'pass'});
+
+function handle(m) {
+  switch (m.type) {
+    case 'joined': me = m.you; $('join').classList.add('hidden'); $('lobby').classList.remove('hidden'); break;
+    case 'lobby':
+      $('lobbyList').innerHTML = m.players.map(n => `<div class="seat"><span class="dot"></span><span class="nm">${n}</span></div>`).join('');
+      $('count').textContent = `(${m.players.length})`;
+      $('startBtn').disabled = !m.can_start;
+      break;
+    case 'started': $('lobby').classList.add('hidden'); $('game').classList.remove('hidden'); log('Game started'); break;
+    case 'role':
+      $('roleBox').innerHTML = `You are the <b>${m.role}</b> · <span class="team-${m.team.toLowerCase()}">${m.team}</span>`;
+      break;
+    case 'public':
+      players = m.players; players.forEach(p => alive[p.id] = p.alive);
+      renderSeats(m.phase);
+      break;
+    case 'night_started': $('day').classList.add('hidden'); setPhase('night'); break;
+    case 'day_started': setPhase('day'); showDay(); break;
+    case 'wake': $('wake').textContent = '● awake'; break;
+    case 'sleep': $('wake').textContent = ''; break;
+    case 'info': log('ℹ ' + m.message); break;
+    case 'prompt': showPrompt(m); break;
+    case 'vote_open': showVote(m); break;
+    case 'vote_result':
+      log(`Vote on ${m.nominee_name}: ${m.votes} vote(s) — ${m.executed ? 'EXECUTED' : 'not enough'}`);
+      $('vote').classList.add('hidden');
+      break;
+    case 'game_over': showOver(m); break;
+    case 'error': log('⚠ ' + m.message); break;
+  }
+}
+
+function setPhase(p) { const el = $('phase'); el.textContent = p; el.className = 'phase ' + p; }
+function renderSeats(phase) {
+  $('seats').innerHTML = players.map(p =>
+    `<div class="seat ${p.alive?'':'dead'}"><span class="dot"></span><span class="nm">${p.name}</span>` +
+    `${p.id===me?'<span class="tag">you</span>':''}</div>`).join('');
+}
+function showPrompt(m) {
+  $('promptText').textContent = m.prompt;
+  $('promptOpts').innerHTML = '';
+  m.options.forEach(o => {
+    const b = document.createElement('button');
+    b.textContent = o.name; b.onclick = () => { send({type:'answer', target:o.id}); $('prompt').classList.add('hidden'); };
+    $('promptOpts').appendChild(b);
+  });
+  $('prompt').classList.remove('hidden');
+}
+function showVote(m) {
+  $('vote').innerHTML = `<div>Execute <b>${m.nominee_name}</b>? (needs ${m.threshold})</div>`;
+  const yes = document.createElement('button'); yes.textContent = 'Yes'; yes.className='evil';
+  const no = document.createElement('button'); no.textContent = 'No';
+  yes.onclick = () => { send({type:'vote', yes:true}); $('vote').classList.add('hidden'); };
+  no.onclick = () => { send({type:'vote', yes:false}); $('vote').classList.add('hidden'); };
+  $('vote').append(yes, no);
+  $('vote').classList.remove('hidden');
+}
+function showDay() {
+  $('day').classList.remove('hidden');
+  $('nomOpts').innerHTML = '';
+  players.filter(p => p.alive).forEach(p => {
+    const b = document.createElement('button');
+    b.textContent = 'Nominate ' + p.name;
+    b.onclick = () => send({type:'nominate', nominee:p.id});
+    $('nomOpts').appendChild(b);
+  });
+}
+function showOver(m) {
+  setPhase(''); $('phase').textContent = 'game over'; $('day').classList.add('hidden'); $('prompt').classList.add('hidden');
+  const roles = m.roles.map(r => `${r.name} — ${r.role}`).join('<br>');
+  $('over').innerHTML = `<h1>${m.winner} wins</h1><div class="sub">${roles}</div>`;
+  $('over').classList.remove('hidden');
+}
+</script>
+</body>
+</html>

@@ -294,12 +294,18 @@ impl Grimoire {
     }
 
     /// Replace a player's current role/kind/alignment (starpass, Scarlet Woman).
-    /// Their *believed* role is left untouched.
+    ///
+    /// Their *believed* role is updated to match: a transformed player knows and
+    /// acts as their new character (the new Imp wakes and kills), so the night
+    /// order — which dispatches by believed role to accommodate the Drunk — must
+    /// find them under the new role. Transform targets are never Drunks, so this
+    /// preserves the "believed ≠ role ⟺ deluded" invariant.
     pub fn transform(&mut self, id: PlayerId, info: CharacterInfo) {
         let p = self.get_mut(id);
         p.role = info.id;
         p.kind = info.kind;
         p.alignment = info.alignment;
+        p.believed_role = info.id;
     }
 
     // --- Phase transitions ------------------------------------------------
