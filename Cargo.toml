@@ -1,0 +1,19 @@
+[package]
+name = "botc-narrator"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+description = "A Blood on the Clocktower narrator (storyteller) engine, starting with Trouble Brewing"
+license = "MIT"
+repository = "https://github.com/kiblitz/botc-narrator"
+
+[lib]
+name = "botc_narrator"
+path = "src/lib.rs"
+
+[[bin]]
+name = "botc-narrator"
+path = "src/main.rs"
+
+[lints.clippy]
+all = "warn"

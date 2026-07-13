@@ -1,129 +1,157 @@
 # botc-narrator
 
-A Blood on the Clocktower narrator engine for the Trouble Brewing edition, written in OCaml with Jane Street conventions.
+A [Blood on the Clocktower](https://bloodontheclocktower.com/) narrator
+(storyteller) engine, written in Rust. It models the storyteller's job — waking
+players, giving them information, resolving abilities and deaths — for the
+**Trouble Brewing** edition, with an architecture built so that adding a
+character, a status, or a whole script is *append-only*.
 
-## How the narrator works
-
-In a real BotC game, the narrator (storyteller) orchestrates the game: they wake players at night, tell them information, ask them to point at other players, and make discretionary decisions (e.g. what fake info to give a poisoned player). This library models all of those interactions as a **free monad** (`Botc_exec.t`), which separates the game logic from how those interactions actually happen.
-
-### The free monad (`Botc_exec`)
-
-Every character action is a value of type `unit Botc_exec.t` — a description of what should happen, not an imperative program. The primitives are:
-
-| Primitive | Type | What it represents |
-|-----------|------|--------------------|
-| `wake id` | `unit t` | Wake a player up (they open their eyes) |
-| `sleep id` | `unit t` | Put a player back to sleep |
-| `tell id msg` | `unit t` | Tell a player something ("You see 2 evil neighbors") |
-| `ask id question candidates` | `Player_id.t t` | Ask a player a question; they point at one of the candidates ("Who do you want to poison?") |
-| `narrator_pick xs` | `'a t` | The narrator freely chooses one element from a list (narrator discretion) |
-| `log msg` | `unit t` | Log a narrator-facing message |
-| `get_state` / `set_state` / `modify_state` | `Game_state.t t` / `unit t` | Read or update game state |
-
-These compose with `let%bind.Botc_exec` and `let%map.Botc_exec`.
-
-### Asking vs telling vs narrator discretion
-
-There are three distinct kinds of interaction:
-
-- **`tell`** — one-way information from narrator to player. The Empath learns "1" (one evil neighbor). The Chef learns "2" (two adjacent evil pairs). The character formats its own message string.
-
-- **`ask`** — the narrator asks a player a question, and the player responds by pointing at someone. The Poisoner is asked "Who do you want to poison?" and picks a candidate. The Fortune Teller is asked "Choose a player" twice. Each character provides its own question text.
-
-- **`narrator_pick`** — the *narrator* (storyteller) makes a discretionary choice, not the player. This happens when the game rules give the storyteller freedom:
-  - A poisoned Chef should see a wrong number — the narrator picks which wrong number.
-  - The Washerwoman is shown "one of these two players is the Chef" — the narrator picks which non-Chef player to pair them with.
-  - Demon bluffs — the narrator picks which 3 not-in-play characters to show.
-
-In tests, `ask` and `narrator_pick` are both controlled via queues in the deterministic interpreter. `player_choices` feeds answers to `ask`; `narrator_choices` feeds indices to `narrator_pick`.
-
-### Interpreters (`Interp_S`)
-
-To actually run a `Botc_exec.t` program, you provide an interpreter — a module satisfying `Botc_exec.Interp_S`:
-
-```ocaml
-module type Interp_S = sig
-  val wake : Player_id.t -> unit
-  val sleep : Player_id.t -> unit
-  val tell : Player_id.t -> string -> unit
-  val ask : Player_id.t -> string -> Player_id.t list -> Player_id.t
-  val narrator_pick : 'a list -> 'a
-  val log : string -> unit
-end
+```sh
+cargo test    # 20 scenario tests
+cargo run     # a scripted console game
 ```
 
-Then `Botc_exec.run (module MyInterp) initial_state program` executes it. Different interpreters serve different purposes:
+## The design in one breath
 
-- **Console interpreter** (`bin/main.ml`): prints to stdout, always picks the first option.
-- **Test interpreter** (`test/helpers/test_helpers.ml`): feeds deterministic answers from queues, collects `tell` messages for assertions.
-- A future GUI/web interpreter would prompt real users.
+State is an open bag of **reminder tokens** on players. Behaviour lives in
+stateless **ability** objects held in a **registry** and selected by a data-only
+**script**. Roles never touch each other: they raise intents through a shared
+**context** — *"the demon attacks X"*, *"does Y register as evil?"* — and a
+**pipeline** resolves them by consulting every ability's hooks. I/O is behind a
+**storyteller** trait, so the same logic runs a console, a UI, or a
+deterministic test.
 
-## Architecture
+## Why it's built this way
+
+The previous (OCaml) version worked but wasn't *appendable*: characters reached
+into each other by hardcoded string identity, and status was hardcoded boolean
+fields. Three things fix that here.
+
+### 1. Status is tokens, not fields
+
+`token.rs` is an open enum: `Poisoned`, `Protected`, `RedHerring`,
+`Master(player)`, `DiedToday`, `UsedAbility`, … Adding a new status is adding a
+variant, never widening the player record. Cross-cutting questions are asked
+once over the bag:
+
+```rust
+// One definition every information role consults.
+pub fn is_impaired(&self) -> bool {
+    self.believed_role != self.role            // the Drunk, for free
+        || self.tokens.iter().any(|t| t.impairs())  // poison, drunkenness
+}
+```
+
+The Drunk needs *no* code of its own: a player who believes they are a character
+they are not is impaired by construction, so it runs its believed Townsfolk's
+ability and gets storyteller-chosen noise.
+
+### 2. Interactions are a pipeline, not cross-references
+
+The Imp does not know the Soldier, Monk, Mayor, or Scarlet Woman exist. It fires
+one intent:
+
+```rust
+ctx.demon_kill(target);   // that's the entire kill
+```
+
+`Ctx::demon_kill` then resolves the death by consulting abilities:
+
+* a `Protected` token (Monk) cancels it;
+* the target's `blocks_demon_kill` (Soldier) can refuse it;
+* the target's `redirect_death` (Mayor) can bounce it elsewhere;
+* once applied, `on_any_death` fans out to every ability — the Scarlet Woman
+  promotes, the Undertaker takes note, the Ravenkeeper wakes.
+
+Soldier, Monk, Mayor, and Scarlet Woman are therefore each **one self-contained
+file**. None of them is mentioned in the Imp, and none mentions the others.
+Starpass-vs-Scarlet-Woman precedence falls out naturally: a starpass makes the
+new Demon *before* the old one dies, so the resolved death already sees a living
+Demon and the Scarlet Woman stays put.
+
+### 3. Information routes through registration & impairment
+
+Misregistration (Recluse, Spy) and droison are handled centrally, not
+re-implemented per role. An information ability computes the *true* answer using
+registration queries, and the context does the rest:
+
+```rust
+// Empath: count neighbours that *register* as evil (a Recluse may, a Spy may not),
+// then deliver — impaired players get storyteller-chosen false info.
+let n = i32::from(ctx.registers_evil(left, "empath"))
+      + i32::from(ctx.registers_evil(right, "empath"));
+let shown = ctx.deliver(me, n, &[0, 1, 2]);
+```
+
+`registers_evil` / `registers_as_demon` / `registers_as_kind` /
+`registers_as_character` consult the target's declared registration span and ask
+the storyteller to resolve any ambiguity. `deliver` is the single place droison
+corrupts numeric/boolean info.
+
+## Adding things
+
+**A character** — implement `Ability`, register it, done:
+
+```rust
+character!(Gossip, "gossip", "Gossip", Kind::Townsfolk, Alignment::Good);
+
+impl Ability for Gossip {
+    fn info(&self) -> CharacterInfo { Self::INFO }
+    fn on_day_ability(&self, ctx: &mut Ctx, me: PlayerId, target: PlayerId) { /* … */ }
+}
+// reg.register(Gossip);
+```
+
+Only the hooks you use are written; every other hook defaults to a no-op.
+
+**A script** — a new file listing character ids and night orders (see
+`scripts/trouble_brewing.rs`). No engine changes.
+
+**A storyteller backend** — implement `Storyteller` (six methods). `ScriptedStoryteller`
+(tests) and `ConsoleStoryteller` (demo) are the two provided.
+
+## Layout
 
 ```
 src/
-  core/                        Core types and engine (botc_narrator_core)
-    kind.ml                    Townsfolk | Outsider | Minion | Demon
-    alignment.ml               Good | Evil
-    char_display.ml            Lightweight character record for display/storage
-    player_id.ml               Comparable integer wrapper
-    player.ml                  Player record (id, name, character, alive, etc.)
-    game_state.ml              Full game state (players, phase, status effects)
-    botc_exec.ml               Free monad for narrator instructions
-    character_intf.ml          Module type signatures (Base_S, S, Character)
-    character.ml               Make functor — shared helpers for all characters
-    narrator.ml                Night phase orchestration (minion/demon info, run_order)
-    script_intf.ml             Module type for scripts (all, night orders)
-
-  characters/                  Character implementations (botc_narrator_characters)
-    import.ml                  Prelude (re-exports Char_display)
-    characters.ml              Module re-exports for all 22 characters
-    <character>.ml             One file per character
-    <character>.mli            Each is just: include Character_intf.S
-
-  scripts/                     Script definitions (botc_narrator_scripts)
-    trouble_brewing.ml         Character roster + night orders for Trouble Brewing
-
-  botc_narrator_lib.ml         Top-level library re-exporting everything
-
-test/
-  helpers/                     Shared test utilities
-    test_helpers.ml            Deterministic interpreter, state builders, assertions
-  trouble_brewing/             Tests for the Trouble Brewing script
-    test_trouble_brewing.ml    Night and day action tests
+  ids.rs           PlayerId (seat) & CharacterId (interned string)
+  role.rs          Kind, Alignment, CharacterInfo
+  token.rs         the open reminder-token vocabulary
+  grimoire.rs      seating, life status, tokens — mechanical state only, no rules
+  storyteller.rs   the narrator I/O trait
+  interp/          scripted (test) and console storyteller backends
+  event.rs         DeathSource, Registration (misregistration spans)
+  ability.rs       the Ability trait: every hook a character can implement
+  ctx.rs           the interaction pipeline: I/O, deaths, registration, info
+  registry.rs      id -> behaviour map
+  script.rs        roster + night orders (data)
+  voting.rs        nomination tally: majority, ghost votes, master constraint
+  engine.rs        night/day orchestration (incl. the day vote)
+  characters/      one file per role (22 for Trouble Brewing, + Assassin demo)
+  scripts/         one file per script (trouble_brewing, homebrew)
+tests/
+  slice.rs             pipeline interactions (immunity, poison, starpass, promotion)
+  trouble_brewing.rs   full-script scenarios (Virgin, Slayer, Ravenkeeper, …)
+  voting.rs            thresholds, Butler master, ghost votes, ties
+  appendable.rs        a new character + a second script, with no engine changes
 ```
 
-## Characters
+## Voting
 
-Each character is a module satisfying `Character_intf.S`. A character is defined by:
+`voting.rs` tallies a nomination as a pure function of the grimoire: living
+players have one vote, dead players a single ghost vote, and a master-restricted
+voter (the Butler, read from its `Master` token) only counts when their master
+votes too. `Engine::call_vote` / `resolve_day` track who is on the block across
+a day and resolve the execution (a tie executes no one, which then runs the
+Mayor's endgame hook). The voting layer never names the Butler — any
+master-constrained role works through the same token.
 
-1. **`type t`** — abstract per-character state. Most characters use `{ kind : Kind.t; alignment : Alignment.t }`, but this can be extended (e.g. Slayer could track `used : bool`).
+## Status & fidelity
 
-2. **`Character.Make` functor** — provides shared helpers (`to_display`, `narrator_pick_from`, `pick_n`, `alive_except`, `if_alive`) from a `Base_S` input.
-
-3. **Actions and hooks** defined after the `include Character.Make(...)`:
-
-| Function | When it fires |
-|----------|--------------|
-| `night_action ~player_id ~night` | During the night phase, in script order |
-| `day_action ~player_id` | During the day phase (e.g. Slayer shoot) |
-| `on_setup ~player_id` | During game setup (e.g. Baron adds outsiders) |
-| `on_nominated ~player_id ~nominator` | When this player is nominated (e.g. Virgin) |
-| `on_executed ~player_id` | When this player is executed (e.g. Saint) |
-| `on_night_kill ~player_id` | When this player would die at night (e.g. Soldier blocks, Mayor redirects) |
-
-All return `unit Botc_exec.t option` — `None` means the hook doesn't apply, `Some m` means run `m`.
-
-## Running tests
-
-```sh
-opam exec -- dune runtest
-```
-
-## Running the demo
-
-```sh
-opam exec -- dune exec botc_narrator
-```
-
-This runs a hardcoded 6-player Night 1 scenario with console output.
+All 22 Trouble Brewing characters are implemented with full-rules fidelity:
+poison/drunk impairment, Monk protection, Soldier immunity, Mayor bounce,
+Scarlet Woman promotion, Imp starpass, Recluse/Spy misregistration, the Drunk,
+red herrings, and the Saint/Mayor/Demon-death win conditions — plus a day-vote
+layer. `tests/appendable.rs` demonstrates the core claim: the non-TB **Assassin**
+(one new file) and a **homebrew script** (one new file) drop in with zero changes
+to the engine or any existing role.
