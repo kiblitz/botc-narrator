@@ -230,6 +230,22 @@ impl Grimoire {
         self.get(id).is_impaired()
     }
 
+    #[must_use]
+    pub fn has_ghost_vote(&self, id: PlayerId) -> bool {
+        self.get(id).ghost_vote
+    }
+
+    /// The master a voting-restricted player (the Butler) must follow, if any.
+    /// Read from the `Master` token, so any master-constrained role works — the
+    /// voting layer never names the Butler.
+    #[must_use]
+    pub fn master_of(&self, id: PlayerId) -> Option<PlayerId> {
+        self.get(id).tokens().iter().find_map(|&t| match t {
+            Token::Master(m) => Some(m),
+            _ => None,
+        })
+    }
+
     // --- Token mutation ---------------------------------------------------
 
     pub fn add_token(&mut self, id: PlayerId, token: Token) {

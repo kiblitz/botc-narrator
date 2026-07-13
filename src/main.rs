@@ -2,9 +2,7 @@
 //! [`ConsoleStoryteller`](botc_narrator::interp::ConsoleStoryteller), which
 //! always takes the first available option. Run with `cargo run`.
 
-use botc_narrator::characters::{
-    self, Chef, Empath, FortuneTeller, Imp, Monk, Poisoner, Slayer,
-};
+use botc_narrator::characters::{self, Chef, Empath, FortuneTeller, Imp, Monk, Poisoner, Slayer};
 use botc_narrator::engine::Engine;
 use botc_narrator::grimoire::{Grimoire, PlayerSpec};
 use botc_narrator::ids::PlayerId;

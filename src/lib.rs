@@ -27,6 +27,7 @@ pub mod role;
 pub mod script;
 pub mod storyteller;
 pub mod token;
+pub mod voting;
 
 pub mod characters;
 pub mod scripts;

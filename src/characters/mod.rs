@@ -27,6 +27,7 @@ macro_rules! character {
 
 mod info_role;
 
+pub mod assassin;
 pub mod baron;
 pub mod butler;
 pub mod chef;
@@ -50,6 +51,7 @@ pub mod undertaker;
 pub mod virgin;
 pub mod washerwoman;
 
+pub use assassin::Assassin;
 pub use baron::Baron;
 pub use butler::Butler;
 pub use chef::Chef;
@@ -75,10 +77,14 @@ pub use washerwoman::Washerwoman;
 
 use crate::registry::Registry;
 
-/// A registry containing every Trouble Brewing character.
+/// A registry containing every implemented character. Scripts select a subset
+/// by id; a character registered here but absent from a script simply never
+/// appears (e.g. the [`Assassin`] is registered but only the homebrew script
+/// uses it).
 #[must_use]
 pub fn registry() -> Registry {
     let mut reg = Registry::new();
+    reg.register(Assassin);
     reg.register(Baron);
     reg.register(Butler);
     reg.register(Chef);

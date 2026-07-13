@@ -11,17 +11,33 @@ use crate::registry::Registry;
 use crate::role::Kind;
 use crate::script::Script;
 use crate::storyteller::Storyteller;
+use crate::voting::{self, VoteResult};
+
+/// The running tally for a single day: who currently holds the most valid votes
+/// and whether that top spot is tied (a tie means no execution).
+#[derive(Default)]
+struct Block {
+    highest: usize,
+    on_block: Option<PlayerId>,
+    tied: bool,
+}
 
 pub struct Engine<'a> {
     pub grim: Grimoire,
     reg: &'a Registry,
     script: &'a Script,
+    block: Block,
 }
 
 impl<'a> Engine<'a> {
     #[must_use]
     pub fn new(grim: Grimoire, reg: &'a Registry, script: &'a Script) -> Self {
-        Engine { grim, reg, script }
+        Engine {
+            grim,
+            reg,
+            script,
+            block: Block::default(),
+        }
     }
 
     /// Run `f` with a freshly-built [`Ctx`] borrowing this engine's grimoire and
@@ -197,5 +213,66 @@ impl<'a> Engine<'a> {
         let reg = self.reg;
         let role = self.grim.get(actor).believed_role;
         self.with_ctx(st, |ctx| reg.get(role).on_day_ability(ctx, actor, target));
+    }
+
+    // --- Voting -------------------------------------------------------------
+
+    /// Advance from night into the day and clear the day's vote tally.
+    pub fn begin_day(&mut self) {
+        if matches!(self.grim.phase, Phase::Night(_)) {
+            self.grim.advance_phase();
+        }
+        self.block = Block::default();
+    }
+
+    /// The player currently facing execution (highest un-tied vote count).
+    #[must_use]
+    pub fn on_the_block(&self) -> Option<PlayerId> {
+        if self.block.tied {
+            None
+        } else {
+            self.block.on_block
+        }
+    }
+
+    /// Run a nomination and its vote. Fires the nominee's on-nominated hook
+    /// (Virgin) first; if they survive, tallies `raised_hands`, spends any ghost
+    /// votes used, and updates who is on the block. Returns the tally.
+    pub fn call_vote(
+        &mut self,
+        st: &mut dyn Storyteller,
+        nominator: PlayerId,
+        nominee: PlayerId,
+        raised_hands: &[PlayerId],
+    ) -> VoteResult {
+        self.nominate(st, nominator, nominee);
+
+        let result = voting::tally(&self.grim, nominee, raised_hands);
+        // Dead voters spend their ghost vote whether or not the nomination passes.
+        let spent: Vec<PlayerId> = result.ghost_voters(&self.grim).collect();
+        for g in spent {
+            self.grim.spend_ghost_vote(g);
+        }
+
+        if self.grim.is_alive(nominee) && result.reached() {
+            if result.votes > self.block.highest {
+                self.block.highest = result.votes;
+                self.block.on_block = Some(nominee);
+                self.block.tied = false;
+            } else if result.votes == self.block.highest {
+                // Ties the current leader: nobody is executed unless broken.
+                self.block.tied = true;
+            }
+        }
+        result
+    }
+
+    /// Resolve the day: execute whoever is on the block, or fire the
+    /// no-execution hooks (Mayor) on a tie or an empty block. Returns the
+    /// executed player, if any.
+    pub fn resolve_day(&mut self, st: &mut dyn Storyteller) -> Option<PlayerId> {
+        let executed = self.on_the_block();
+        self.end_day(st, executed);
+        executed
     }
 }

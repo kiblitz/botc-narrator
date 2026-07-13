@@ -125,19 +125,33 @@ src/
   ctx.rs           the interaction pipeline: I/O, deaths, registration, info
   registry.rs      id -> behaviour map
   script.rs        roster + night orders (data)
-  engine.rs        night/day orchestration
-  characters/      one file per role (22 for Trouble Brewing)
-  scripts/         one file per script
+  voting.rs        nomination tally: majority, ghost votes, master constraint
+  engine.rs        night/day orchestration (incl. the day vote)
+  characters/      one file per role (22 for Trouble Brewing, + Assassin demo)
+  scripts/         one file per script (trouble_brewing, homebrew)
 tests/
   slice.rs             pipeline interactions (immunity, poison, starpass, promotion)
   trouble_brewing.rs   full-script scenarios (Virgin, Slayer, Ravenkeeper, …)
+  voting.rs            thresholds, Butler master, ghost votes, ties
+  appendable.rs        a new character + a second script, with no engine changes
 ```
+
+## Voting
+
+`voting.rs` tallies a nomination as a pure function of the grimoire: living
+players have one vote, dead players a single ghost vote, and a master-restricted
+voter (the Butler, read from its `Master` token) only counts when their master
+votes too. `Engine::call_vote` / `resolve_day` track who is on the block across
+a day and resolve the execution (a tie executes no one, which then runs the
+Mayor's endgame hook). The voting layer never names the Butler — any
+master-constrained role works through the same token.
 
 ## Status & fidelity
 
 All 22 Trouble Brewing characters are implemented with full-rules fidelity:
 poison/drunk impairment, Monk protection, Soldier immunity, Mayor bounce,
 Scarlet Woman promotion, Imp starpass, Recluse/Spy misregistration, the Drunk,
-red herrings, and the Saint/Mayor/Demon-death win conditions. Voting is
-represented only by the Butler's master token; a vote-tallying layer would be
-the natural next append.
+red herrings, and the Saint/Mayor/Demon-death win conditions — plus a day-vote
+layer. `tests/appendable.rs` demonstrates the core claim: the non-TB **Assassin**
+(one new file) and a **homebrew script** (one new file) drop in with zero changes
+to the engine or any existing role.
