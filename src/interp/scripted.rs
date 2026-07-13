@@ -81,20 +81,26 @@ impl ScriptedStoryteller {
 }
 
 impl Storyteller for ScriptedStoryteller {
-    fn wake(&mut self, who: &str) {
+    fn wake(&mut self, _who_id: PlayerId, who: &str) {
         self.transcript.push(format!("narrator->{who}: wake"));
     }
 
-    fn sleep(&mut self, who: &str) {
+    fn sleep(&mut self, _who_id: PlayerId, who: &str) {
         self.transcript.push(format!("narrator->{who}: sleep"));
     }
 
-    fn reveal(&mut self, who: &str, message: &str) {
+    fn reveal(&mut self, _who_id: PlayerId, who: &str, message: &str) {
         self.transcript.push(format!("narrator->{who}: {message}"));
         self.reveals.push((who.to_string(), message.to_string()));
     }
 
-    fn ask(&mut self, who: &str, prompt: &str, options: &[Candidate]) -> PlayerId {
+    fn ask(
+        &mut self,
+        _who_id: PlayerId,
+        who: &str,
+        prompt: &str,
+        options: &[Candidate],
+    ) -> PlayerId {
         assert!(!options.is_empty(), "ask with no candidates for {who}");
         self.transcript.push(format!("narrator->{who}: {prompt}"));
         let chosen = match self.responses.pop_front() {

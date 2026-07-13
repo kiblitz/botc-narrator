@@ -28,23 +28,31 @@ impl Candidate {
 
 /// The narrator I/O interface. Implementations decide how each interaction is
 /// surfaced and answered.
+///
+/// Each player-directed method receives both the player's [`PlayerId`] (so a
+/// networked backend can route the event to that seat's client) and a
+/// storyteller's-eye `who` label like `"Ivy(Poisoner)"` (handy for a console or
+/// transcript). A player-facing backend routes by id and never shows the label,
+/// which would leak the role.
 pub trait Storyteller {
-    /// Wake a player (they open their eyes). `who` is a display label.
-    fn wake(&mut self, who: &str);
+    /// Wake a player (they open their eyes).
+    fn wake(&mut self, who_id: PlayerId, who: &str);
 
     /// Put a player back to sleep.
-    fn sleep(&mut self, who: &str);
+    fn sleep(&mut self, who_id: PlayerId, who: &str);
 
     /// Give a player one-way information ("You see 2 evil neighbours").
-    fn reveal(&mut self, who: &str, message: &str);
+    fn reveal(&mut self, who_id: PlayerId, who: &str, message: &str);
 
     /// Ask a player to point at one of `options`; returns the chosen player.
     ///
     /// Implementations must return the id of one of the supplied candidates.
-    fn ask(&mut self, who: &str, prompt: &str, options: &[Candidate]) -> PlayerId;
+    fn ask(&mut self, who_id: PlayerId, who: &str, prompt: &str, options: &[Candidate])
+        -> PlayerId;
 
     /// A discretionary storyteller choice (which false number, which bluffs).
-    /// Returns the chosen index into `options`.
+    /// This is the storyteller's own call, not a player's; an automated
+    /// storyteller decides it by policy. Returns the chosen index into `options`.
     fn choose(&mut self, prompt: &str, options: &[String]) -> usize;
 
     /// A narrator-facing log line (not shown to any player).

@@ -25,6 +25,7 @@ pub mod interp;
 pub mod registry;
 pub mod role;
 pub mod script;
+pub mod setup;
 pub mod storyteller;
 pub mod token;
 pub mod voting;

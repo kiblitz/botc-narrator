@@ -17,19 +17,25 @@ impl ConsoleStoryteller {
 }
 
 impl Storyteller for ConsoleStoryteller {
-    fn wake(&mut self, who: &str) {
+    fn wake(&mut self, _who_id: PlayerId, who: &str) {
         println!("  {who}: (wake)");
     }
 
-    fn sleep(&mut self, who: &str) {
+    fn sleep(&mut self, _who_id: PlayerId, who: &str) {
         println!("  {who}: (sleep)");
     }
 
-    fn reveal(&mut self, who: &str, message: &str) {
+    fn reveal(&mut self, _who_id: PlayerId, who: &str, message: &str) {
         println!("  {who} <- {message}");
     }
 
-    fn ask(&mut self, who: &str, prompt: &str, options: &[Candidate]) -> PlayerId {
+    fn ask(
+        &mut self,
+        _who_id: PlayerId,
+        who: &str,
+        prompt: &str,
+        options: &[Candidate],
+    ) -> PlayerId {
         let chosen = &options[0];
         println!("  {who} ? {prompt} -> {}", chosen.label);
         chosen.id
