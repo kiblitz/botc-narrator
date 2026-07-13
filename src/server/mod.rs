@@ -53,6 +53,7 @@ pub async fn run(addr: SocketAddr) {
     let shared: Shared = Arc::new(Mutex::new(Room::default()));
     let app = Router::new()
         .route("/", get(index))
+        .route("/spectate", get(spectate))
         .route("/ws", get(ws_handler))
         .with_state(shared);
 
@@ -63,6 +64,12 @@ pub async fn run(addr: SocketAddr) {
 
 async fn index() -> Html<&'static str> {
     Html(include_str!("index.html"))
+}
+
+/// A spectator view: connects as every player and shows all their private POVs
+/// at once. Used for demo recordings.
+async fn spectate() -> Html<&'static str> {
+    Html(include_str!("spectate.html"))
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(shared): State<Shared>) -> impl IntoResponse {

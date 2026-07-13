@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BotC — Spectator (all POVs)</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: #0d1117; color: #c9d1d9; padding: 14px; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+  h1 { font-size: 18px; margin: 0; }
+  .phase { font-size: 13px; padding: 3px 12px; border-radius: 20px; background: #21262d; }
+  .phase.night { background: #1c2a4a; color: #a5c8ff; } .phase.day { background: #3a2f12; color: #ffd479; }
+  .timer { margin-left: auto; font: 600 14px system-ui; color: #fff; background: #da3633; padding: 5px 12px; border-radius: 20px; letter-spacing: .3px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .tile { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; min-height: 150px; transition: box-shadow .25s, border-color .25s; }
+  .tile.act { border-color: #d29922; box-shadow: 0 0 0 2px rgba(210,153,34,.5), 0 0 22px rgba(210,153,34,.35); }
+  .tile.dead { opacity: .5; }
+  .thead { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #3fb950; flex: none; }
+  .dead .dot { background: #6e7681; }
+  .pname { font-weight: 600; }
+  .pname.deadname { text-decoration: line-through; color: #8b949e; }
+  .role { font-size: 12px; margin-left: auto; color: #8b949e; }
+  .role .g { color: #58a6ff; } .role .e { color: #ff7b72; }
+  .wake { font-size: 11px; color: #d29922; height: 14px; margin: 4px 0 6px; font-weight: 600; }
+  .act-box { min-height: 26px; margin-bottom: 6px; }
+  .badge { display: inline-block; font-size: 11px; padding: 3px 8px; border-radius: 6px; background: #21262d; margin: 2px 3px 0 0; }
+  .badge.vote { background: #4d1f1f; color: #ffb3ab; }
+  .badge.prompt { background: #24304a; color: #a5c8ff; }
+  .log { font-size: 11px; color: #9da7b3; }
+  .log div { padding: 1px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #over { position: fixed; inset: 0; background: rgba(13,17,23,.92); display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 10; }
+  #over h1 { font-size: 40px; }
+  #over .roles { margin-top: 10px; color: #8b949e; font-size: 14px; text-align: center; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Blood on the Clocktower — <span style="color:#8b949e;font-weight:400">all player POVs</span></h1>
+  <span id="phase" class="phase">setup</span>
+  <span id="timer" class="timer">● REC 00:00</span>
+</header>
+<div id="grid" class="grid"></div>
+<div id="over"><h1 id="overWin"></h1><div id="overRoles" class="roles"></div></div>
+<script>
+const N = 6;
+const conns = [];
+const flashUntil = {};
+
+// REC timer
+const t0 = performance.now();
+setInterval(() => {
+  const s = Math.floor((performance.now() - t0) / 1000);
+  document.getElementById('timer').textContent =
+    '● REC ' + String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}, 100);
+
+function lowestAlive() {
+  const alive = conns.map((c, i) => ({ i, a: c.st.alive })).filter(x => x.a).map(x => x.i);
+  return alive.length ? Math.min(...alive) : -1;
+}
+function nominate(i) {
+  const c = conns[i]; const ps = window.__players || [];
+  const targets = ps.filter(p => p.alive && p.id !== c.st.id);
+  if (!targets.length) return;
+  const t = targets[Math.floor(Math.random() * targets.length)];
+  c.ws.send(JSON.stringify({ type: 'nominate', nominee: t.id }));
+}
+function flash(i) { flashUntil[i] = performance.now() + 1500; render(); }
+
+function handle(i, st, ws, m) {
+  switch (m.type) {
+    case 'joined': st.id = m.you; break;
+    case 'lobby': if (m.can_start && i === 0 && !st.started) { st.started = true; setTimeout(() => ws.send(JSON.stringify({ type: 'start' })), 1800); } break;
+    case 'role': st.role = m.role; st.team = m.team; break;
+    case 'public':
+      window.__players = m.players; document.getElementById('phase').textContent = m.phase;
+      document.getElementById('phase').className = 'phase ' + m.phase;
+      m.players.forEach(p => { if (p.id === st.id) st.alive = p.alive; });
+      break;
+    case 'wake': st.wake = true; flash(i); break;
+    case 'sleep': st.wake = false; break;
+    case 'info': st.log.unshift('ℹ ' + m.message); flash(i); break;
+    case 'prompt':
+      st.act = { kind: 'prompt', text: m.prompt }; flash(i);
+      setTimeout(() => { const o = m.options[Math.floor(Math.random() * m.options.length)]; ws.send(JSON.stringify({ type: 'answer', target: o.id })); st.act = null; render(); }, 1500);
+      break;
+    case 'vote_open':
+      st.act = { kind: 'vote', text: 'vote: ' + m.nominee_name }; flash(i);
+      setTimeout(() => { ws.send(JSON.stringify({ type: 'vote', yes: Math.random() < 0.5 })); st.act = null; render(); }, 1000);
+      break;
+    case 'day_started':
+      if (i === lowestAlive()) setTimeout(() => nominate(i), 1700);
+      setTimeout(() => ws.send(JSON.stringify({ type: 'pass' })), 2800);
+      break;
+    case 'vote_result':
+      st.log.unshift('▶ ' + m.nominee_name + ': ' + m.votes + (m.executed ? ' EXECUTED' : ' safe'));
+      setTimeout(() => ws.send(JSON.stringify({ type: 'pass' })), 300);
+      break;
+    case 'game_over':
+      document.getElementById('overWin').textContent = m.winner + ' wins';
+      document.getElementById('overWin').style.color = m.winner === 'Good' ? '#58a6ff' : '#ff7b72';
+      document.getElementById('overRoles').innerHTML = m.roles.map(r => r.name + ' — ' + r.role).join('<br>');
+      document.getElementById('over').style.display = 'flex';
+      break;
+  }
+  render();
+}
+
+function render() {
+  const now = performance.now();
+  document.getElementById('grid').innerHTML = conns.map((c, i) => {
+    const st = c.st;
+    const act = flashUntil[i] && flashUntil[i] > now ? ' act' : '';
+    const dead = st.alive ? '' : ' dead';
+    const teamCls = st.team === 'Evil' ? 'e' : 'g';
+    const wake = st.wake ? '● awake' : '';
+    let actHtml = '';
+    if (st.act) actHtml = `<span class="badge ${st.act.kind}">${st.act.text}</span>`;
+    const log = st.log.slice(0, 3).map(l => `<div>${l}</div>`).join('');
+    return `<div class="tile${act}${dead}">
+      <div class="thead"><span class="dot"></span>
+        <span class="pname${st.alive ? '' : ' deadname'}">P${i + 1}</span>
+        <span class="role">${st.role ? st.role + ' · <span class="' + teamCls + '">' + st.team + '</span>' : ''}</span></div>
+      <div class="wake">${wake}</div>
+      <div class="act-box">${actHtml}</div>
+      <div class="log">${log}</div>
+    </div>`;
+  }).join('');
+}
+
+for (let i = 0; i < N; i++) {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  const st = { id: null, role: '', team: '', alive: true, log: [], wake: false, act: null, started: false };
+  conns.push({ ws, st });
+  ws.addEventListener('open', () => ws.send(JSON.stringify({ type: 'join', name: 'P' + (i + 1) })));
+  ws.addEventListener('message', ev => handle(i, st, ws, JSON.parse(ev.data)));
+}
+render();
+setInterval(render, 500); // keep flashes/timer fresh
+</script>
+</body>
+</html>
