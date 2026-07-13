@@ -7,33 +7,53 @@
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui, sans-serif; background: #0d1117; color: #c9d1d9;
-         display: flex; justify-content: center; padding: 20px; }
-  #app { width: 100%; max-width: 640px; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  .sub { color: #8b949e; font-size: 13px; margin-bottom: 16px; }
-  .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
-  .role { font-size: 15px; }
-  .role b { color: #d29922; }
-  .team-good { color: #58a6ff; } .team-evil { color: #ff7b72; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: radial-gradient(circle at 50% 40%, #161d2b, #0d1117 70%); color: #c9d1d9;
+         display: flex; justify-content: center; padding: 16px; min-height: 100vh; }
+  #app { width: 100%; max-width: 620px; }
+  h1 { font-size: 19px; margin: 0 0 2px; text-align: center; }
+  .sub { color: #8b949e; font-size: 12px; margin-bottom: 12px; text-align: center; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
   input, button { font: inherit; }
-  input { background:#0d1117; border:1px solid #30363d; color:#c9d1d9; border-radius:6px; padding:8px 10px; width:100%; }
-  button { background:#21262d; color:#c9d1d9; border:1px solid #30363d; border-radius:6px;
-           padding:8px 12px; cursor:pointer; margin:4px 4px 0 0; }
+  input { background:#0d1117; border:1px solid #30363d; color:#c9d1d9; border-radius:6px; padding:9px 11px; width:100%; }
+  button { background:#21262d; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; padding:9px 13px; cursor:pointer; margin:4px 4px 0 0; }
   button:hover:not(:disabled) { background:#30363d; }
   button:disabled { opacity:.4; cursor:default; }
   button.primary { background:#238636; border-color:#238636; color:#fff; }
   button.evil { background:#da3633; border-color:#da3633; color:#fff; }
+  .hidden { display:none !important; }
   .seat { display:flex; align-items:center; gap:8px; padding:4px 0; }
-  .dot { width:9px; height:9px; border-radius:50%; background:#3fb950; flex:none; }
-  .dead .dot { background:#6e7681; } .dead .nm { color:#6e7681; text-decoration:line-through; }
-  .tag { font-size:11px; color:#8b949e; margin-left:auto; }
-  #log { max-height:220px; overflow:auto; font-size:13px; }
-  #log div { padding:2px 0; border-bottom:1px solid #21262d; }
-  .hidden { display:none; }
-  .phase { display:inline-block; font-size:12px; padding:2px 8px; border-radius:20px; background:#21262d; }
-  .night { background:#1c2a4a; color:#a5c8ff; } .day { background:#3a2f12; color:#ffd479; }
-  .wakebar { font-weight:600; color:#d29922; }
+  .dot { width:9px; height:9px; border-radius:50%; background:#3fb950; }
+
+  /* Circular grimoire */
+  #circle { position: relative; width: min(90vw, 540px); aspect-ratio: 1; margin: 0 auto 6px; }
+  #center { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); text-align:center; width:46%; }
+  #phaseIcon { font-size: 40px; line-height: 1; filter: drop-shadow(0 0 12px rgba(255,255,255,.15)); }
+  #centerRole { font-size: 13px; margin-top: 6px; color:#8b949e; }
+  #centerRole b { color:#d29922; } #centerRole .g { color:#58a6ff; } #centerRole .e { color:#ff7b72; }
+  #centerHint { font-size: 11px; margin-top: 4px; color:#6e7681; min-height: 14px; }
+  .token { position:absolute; transform:translate(-50%,-50%); width:84px; text-align:center; }
+  .disc { width:46px; height:46px; border-radius:50%; margin:0 auto; background:#1b2230; border:2px solid #30363d;
+          display:flex; align-items:center; justify-content:center; font-weight:700; color:#c9d1d9; position:relative; transition:.2s; }
+  .tname { font-size:11px; margin-top:5px; color:#adbac7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .token.me .disc { border-color:#d29922; box-shadow:0 0 0 3px rgba(210,153,34,.35); }
+  .token.me .tname { color:#d29922; font-weight:600; }
+  .youtag { position:absolute; top:-9px; left:50%; transform:translateX(-50%); font-size:9px; letter-spacing:.5px;
+            color:#0d1117; background:#d29922; border-radius:8px; padding:1px 6px; font-weight:700; }
+  .token.awake .disc { border-color:#3fb950; box-shadow:0 0 0 4px rgba(63,185,80,.3), 0 0 20px rgba(63,185,80,.55); animation:pulse 1.3s infinite; }
+  .token.selectable { cursor:pointer; }
+  .token.selectable .disc { border-color:#58a6ff; box-shadow:0 0 0 3px rgba(88,166,255,.45); animation:pulse 1.1s infinite; }
+  .token.nominee .disc { border-color:#f85149; box-shadow:0 0 0 3px rgba(248,81,73,.55); }
+  .token.dead .disc { opacity:.4; border-color:#6e7681; }
+  .token.dead .tname { color:#6e7681; text-decoration:line-through; }
+  .token.dead .disc::after { content:"☠"; position:absolute; font-size:20px; opacity:.85; }
+  @keyframes pulse { 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.4); } }
+
+  #controls { text-align:center; }
+  #vote b { color:#f0f6fc; }
+  #log { max-height:150px; overflow:auto; font-size:12px; }
+  #log div { padding:2px 0; border-bottom:1px solid #21262d; color:#9da7b3; }
+  #over { text-align:center; }
+  #over h1 { font-size:34px; margin:4px 0 8px; }
 </style>
 </head>
 <body>
@@ -53,18 +73,20 @@
   </div>
 
   <div id="game" class="hidden">
-    <div class="card">
-      <span id="phase" class="phase">—</span>
-      <span id="wake" class="wakebar"></span>
-      <div id="roleBox" class="role" style="margin-top:8px"></div>
+    <div id="circle">
+      <div id="center">
+        <div id="phaseIcon">🌙</div>
+        <div id="centerRole"></div>
+        <div id="centerHint"></div>
+      </div>
     </div>
-    <div id="seats" class="card"></div>
-    <div id="prompt" class="card hidden"><div id="promptText"></div><div id="promptOpts"></div></div>
-    <div id="vote" class="card hidden"></div>
-    <div id="day" class="card hidden">
-      <div><b>Day</b> — nominate a player or pass</div>
-      <div id="nomOpts"></div>
-      <button id="passBtn">Pass</button>
+    <div id="controls">
+      <div id="prompt" class="card hidden"></div>
+      <div id="vote" class="card hidden"></div>
+      <div id="day" class="card hidden">
+        <div id="dayHint">Tap a glowing player to nominate — or</div>
+        <button id="passBtn">Pass the day</button>
+      </div>
     </div>
     <div id="over" class="card hidden"></div>
     <div class="card"><b>Log</b><div id="log"></div></div>
@@ -72,98 +94,114 @@
 </div>
 <script>
 const $ = id => document.getElementById(id);
-let ws, me = null, players = [], alive = {};
+let ws, me = null, players = [], phase = 'night', awake = false;
+let mode = 'idle', selectable = new Set(), nomineeId = null;
 
-function connect() {
-  ws = new WebSocket(`ws://${location.host}/ws`);
-  ws.onmessage = e => handle(JSON.parse(e.data));
-  ws.onclose = () => log("(disconnected)");
-}
+function connect() { ws = new WebSocket(`ws://${location.host}/ws`); ws.onmessage = e => handle(JSON.parse(e.data)); ws.onclose = () => log('(disconnected)'); }
 function send(obj) { ws.send(JSON.stringify(obj)); }
 function log(msg) { const d = document.createElement('div'); d.textContent = msg; $('log').prepend(d); }
-function nameOf(id) { const p = players.find(p => p.id === id); return p ? p.name : `#${id}`; }
+function nameOf(id) { const p = players.find(p => p.id === id); return p ? p.name : '#' + id; }
 
-$('joinBtn').onclick = () => {
-  const name = $('name').value.trim(); if (!name) return;
-  if (!ws) connect();
-  const fire = () => send({type:'join', name});
-  if (ws.readyState === 1) fire(); else ws.onopen = fire;
-};
-$('startBtn').onclick = () => send({type:'start'});
-$('passBtn').onclick = () => send({type:'pass'});
+$('joinBtn').onclick = () => { const name = $('name').value.trim(); if (!name) return; if (!ws) connect(); const fire = () => send({ type:'join', name }); if (ws.readyState === 1) fire(); else ws.onopen = fire; };
+$('startBtn').onclick = () => send({ type:'start' });
+$('passBtn').onclick = () => { send({ type:'pass' }); };
 
 function handle(m) {
   switch (m.type) {
     case 'joined': me = m.you; $('join').classList.add('hidden'); $('lobby').classList.remove('hidden'); break;
     case 'lobby':
-      $('lobbyList').innerHTML = m.players.map(n => `<div class="seat"><span class="dot"></span><span class="nm">${n}</span></div>`).join('');
+      $('lobbyList').innerHTML = m.players.map(n => `<div class="seat"><span class="dot"></span>${n}</div>`).join('');
       $('count').textContent = `(${m.players.length})`;
       $('startBtn').disabled = !m.can_start;
       break;
     case 'started': $('lobby').classList.add('hidden'); $('game').classList.remove('hidden'); log('Game started'); break;
-    case 'role':
-      $('roleBox').innerHTML = `You are the <b>${m.role}</b> · <span class="team-${m.team.toLowerCase()}">${m.team}</span>`;
-      break;
-    case 'public':
-      players = m.players; players.forEach(p => alive[p.id] = p.alive);
-      renderSeats(m.phase);
-      break;
-    case 'night_started': $('day').classList.add('hidden'); setPhase('night'); break;
-    case 'day_started': setPhase('day'); showDay(); break;
-    case 'wake': $('wake').textContent = '● awake'; break;
-    case 'sleep': $('wake').textContent = ''; break;
+    case 'role': window.__role = m; renderCenter(); break;
+    case 'public': players = m.players; phase = m.phase; $('phaseIcon').textContent = phase === 'day' ? '☀️' : '🌙'; renderCenter(); renderCircle(); break;
+    case 'night_started': mode = 'idle'; selectable.clear(); nomineeId = null; hideControls(); break;
+    case 'day_started': startNominate(); break;
+    case 'wake': awake = true; renderCircle(); break;
+    case 'sleep': awake = false; renderCircle(); break;
     case 'info': log('ℹ ' + m.message); break;
     case 'prompt': showPrompt(m); break;
     case 'vote_open': showVote(m); break;
     case 'vote_result':
       log(`Vote on ${m.nominee_name}: ${m.votes} vote(s) — ${m.executed ? 'EXECUTED' : 'not enough'}`);
-      $('vote').classList.add('hidden');
+      $('vote').classList.add('hidden'); nomineeId = null;
+      if (phase === 'day') startNominate(); else renderCircle();
       break;
     case 'game_over': showOver(m); break;
     case 'error': log('⚠ ' + m.message); break;
   }
 }
 
-function setPhase(p) { const el = $('phase'); el.textContent = p; el.className = 'phase ' + p; }
-function renderSeats(phase) {
-  $('seats').innerHTML = players.map(p =>
-    `<div class="seat ${p.alive?'':'dead'}"><span class="dot"></span><span class="nm">${p.name}</span>` +
-    `${p.id===me?'<span class="tag">you</span>':''}</div>`).join('');
+function renderCenter() {
+  const r = window.__role;
+  $('centerRole').innerHTML = r ? `You are the <b>${r.role}</b><br><span class="${r.team === 'Evil' ? 'e' : 'g'}">${r.team}</span>` : '';
+  const alive = players.filter(p => p.alive).length;
+  $('centerHint').textContent = players.length ? `${phase} · ${alive} alive` : '';
 }
-function showPrompt(m) {
-  $('promptText').textContent = m.prompt;
-  $('promptOpts').innerHTML = '';
-  m.options.forEach(o => {
-    const b = document.createElement('button');
-    b.textContent = o.name; b.onclick = () => { send({type:'answer', target:o.id}); $('prompt').classList.add('hidden'); };
-    $('promptOpts').appendChild(b);
+
+function renderCircle() {
+  const c = $('circle');
+  [...c.querySelectorAll('.token')].forEach(t => t.remove());
+  const n = players.length; if (!n) return;
+  const meIdx = Math.max(0, players.findIndex(p => p.id === me));
+  players.forEach((p, i) => {
+    const pos = (i - meIdx + n) % n;           // rotate so "you" sits at the bottom
+    const a = (Math.PI / 2) + pos * (2 * Math.PI / n);
+    const x = 50 + 40 * Math.cos(a), y = 50 + 40 * Math.sin(a);
+    const t = document.createElement('div');
+    t.className = 'token' + (p.id === me ? ' me' : '') + (p.alive ? '' : ' dead')
+      + (p.id === me && awake ? ' awake' : '')
+      + (selectable.has(p.id) ? ' selectable' : '')
+      + (p.id === nomineeId ? ' nominee' : '');
+    t.style.left = x + '%'; t.style.top = y + '%';
+    t.dataset.pid = p.id;
+    t.innerHTML = `<div class="disc">${p.id === me ? '<span class="youtag">YOU</span>' : ''}${p.id + 1}</div><div class="tname">${p.name}</div>`;
+    if (selectable.has(p.id)) t.onclick = () => onPick(p.id);
+    c.appendChild(t);
   });
+}
+
+function onPick(id) {
+  if (mode === 'prompt') { send({ type:'answer', target:id }); mode = 'idle'; selectable.clear(); $('prompt').classList.add('hidden'); renderCircle(); }
+  else if (mode === 'nominate') { send({ type:'nominate', nominee:id }); mode = 'idle'; selectable.clear(); renderCircle(); }
+}
+
+function hideControls() { $('prompt').classList.add('hidden'); $('vote').classList.add('hidden'); $('day').classList.add('hidden'); }
+
+function showPrompt(m) {
+  mode = 'prompt'; selectable = new Set(m.options.map(o => o.id));
+  $('prompt').textContent = m.prompt + ' — tap a glowing player';
   $('prompt').classList.remove('hidden');
+  renderCircle();
 }
 function showVote(m) {
+  mode = 'idle'; selectable.clear(); nomineeId = m.nominee;
+  $('day').classList.add('hidden');
   $('vote').innerHTML = `<div>Execute <b>${m.nominee_name}</b>? (needs ${m.threshold})</div>`;
-  const yes = document.createElement('button'); yes.textContent = 'Yes'; yes.className='evil';
-  const no = document.createElement('button'); no.textContent = 'No';
-  yes.onclick = () => { send({type:'vote', yes:true}); $('vote').classList.add('hidden'); };
-  no.onclick = () => { send({type:'vote', yes:false}); $('vote').classList.add('hidden'); };
+  const yes = document.createElement('button'); yes.id = 'voteYes'; yes.textContent = 'Vote yes'; yes.className = 'evil';
+  const no = document.createElement('button'); no.id = 'voteNo'; no.textContent = 'Vote no';
+  yes.onclick = () => { send({ type:'vote', yes:true }); $('vote').classList.add('hidden'); };
+  no.onclick = () => { send({ type:'vote', yes:false }); $('vote').classList.add('hidden'); };
   $('vote').append(yes, no);
   $('vote').classList.remove('hidden');
+  renderCircle();
 }
-function showDay() {
+function startNominate() {
+  mode = 'nominate';
+  selectable = new Set(players.filter(p => p.alive).map(p => p.id));
+  $('prompt').classList.add('hidden'); $('vote').classList.add('hidden');
   $('day').classList.remove('hidden');
-  $('nomOpts').innerHTML = '';
-  players.filter(p => p.alive).forEach(p => {
-    const b = document.createElement('button');
-    b.textContent = 'Nominate ' + p.name;
-    b.onclick = () => send({type:'nominate', nominee:p.id});
-    $('nomOpts').appendChild(b);
-  });
+  renderCircle();
 }
 function showOver(m) {
-  setPhase(''); $('phase').textContent = 'game over'; $('day').classList.add('hidden'); $('prompt').classList.add('hidden');
+  mode = 'idle'; selectable.clear(); hideControls();
+  $('phaseIcon').textContent = m.winner === 'Good' ? '🕊️' : '☠️';
   const roles = m.roles.map(r => `${r.name} — ${r.role}`).join('<br>');
-  $('over').innerHTML = `<h1>${m.winner} wins</h1><div class="sub">${roles}</div>`;
+  $('over').innerHTML = `<h1 style="color:${m.winner === 'Good' ? '#58a6ff' : '#ff7b72'}">${m.winner} wins</h1><div class="sub">${roles}</div>`;
   $('over').classList.remove('hidden');
+  renderCircle();
 }
 </script>
 </body>
