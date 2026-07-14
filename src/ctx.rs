@@ -81,17 +81,17 @@ impl<'a> Ctx<'a> {
 
     pub fn wake(&mut self, me: PlayerId) {
         let who = self.label(me);
-        self.st.wake(&who);
+        self.st.wake(me, &who);
     }
 
     pub fn sleep(&mut self, me: PlayerId) {
         let who = self.label(me);
-        self.st.sleep(&who);
+        self.st.sleep(me, &who);
     }
 
     pub fn reveal(&mut self, me: PlayerId, message: &str) {
         let who = self.label(me);
-        self.st.reveal(&who, message);
+        self.st.reveal(me, &who, message);
     }
 
     /// Ask `me` to point at one of `candidates`; returns the chosen player.
@@ -101,7 +101,7 @@ impl<'a> Ctx<'a> {
             .iter()
             .map(|&id| Candidate::new(id, self.label(id)))
             .collect();
-        self.st.ask(&who, prompt, &cands)
+        self.st.ask(me, &who, prompt, &cands)
     }
 
     /// A discretionary storyteller choice among `options`; returns the index.
@@ -337,9 +337,12 @@ impl<'a> Ctx<'a> {
         }
 
         // With every reaction resolved (including a Scarlet Woman becoming the
-        // Demon), a board with no living Demon is a win for the good team.
+        // Demon), a board with no living Demon is a win for the good team; a
+        // living Demon among two or fewer players is a win for evil.
         if !self.living_demon_exists() {
             self.declare_winner(Alignment::Good, "the Demon is dead");
+        } else if self.grim.alive_count() <= 2 {
+            self.declare_winner(Alignment::Evil, "only two players remain");
         }
     }
 

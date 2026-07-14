@@ -7,8 +7,9 @@ players, giving them information, resolving abilities and deaths — for the
 character, a status, or a whole script is *append-only*.
 
 ```sh
-cargo test    # 20 scenario tests
-cargo run     # a scripted console game
+cargo test              # scenario + simulation suite
+cargo run               # a scripted console game
+cargo run --bin server  # multiplayer web server on http://localhost:3000
 ```
 
 ## The design in one breath
@@ -119,21 +120,24 @@ src/
   token.rs         the open reminder-token vocabulary
   grimoire.rs      seating, life status, tokens — mechanical state only, no rules
   storyteller.rs   the narrator I/O trait
-  interp/          scripted (test) and console storyteller backends
+  interp/          scripted (test), console, and automated storyteller backends
   event.rs         DeathSource, Registration (misregistration spans)
   ability.rs       the Ability trait: every hook a character can implement
   ctx.rs           the interaction pipeline: I/O, deaths, registration, info
   registry.rs      id -> behaviour map
   script.rs        roster + night orders (data)
+  setup.rs         random legal composition (Baron/Drunk aware)
   voting.rs        nomination tally: majority, ghost votes, master constraint
   engine.rs        night/day orchestration (incl. the day vote)
   characters/      one file per role (22 for Trouble Brewing, + Assassin demo)
   scripts/         one file per script (trouble_brewing, homebrew)
+  server/          multiplayer web server (automated storyteller)
 tests/
   slice.rs             pipeline interactions (immunity, poison, starpass, promotion)
   trouble_brewing.rs   full-script scenarios (Virgin, Slayer, Ravenkeeper, …)
   voting.rs            thresholds, Butler master, ghost votes, ties
   appendable.rs        a new character + a second script, with no engine changes
+  auto_game.rs         40 fully-automated games played to a winner
 ```
 
 ## Voting
@@ -145,6 +149,29 @@ votes too. `Engine::call_vote` / `resolve_day` track who is on the block across
 a day and resolve the execution (a tie executes no one, which then runs the
 Mayor's endgame hook). The voting layer never names the Butler — any
 master-constrained role works through the same token.
+
+## Multiplayer (automated storyteller)
+
+`cargo run --bin server` starts a web server where players join from their
+browsers and the **computer runs the storyteller** — no human narrator. It works
+because the storyteller's job splits cleanly across the `Storyteller` trait:
+
+- **`ask`** (who to poison / kill / read) and **votes** are *player* decisions,
+  routed to that seat's browser;
+- **`choose`** (false info under poison, demon bluffs, misregistration) is the
+  storyteller's *discretionary* call, made automatically by a `DiscretionPolicy`;
+- **`wake`/`sleep`/`reveal`** are private, per-player events.
+
+So the server's storyteller is literally `AutoStoryteller<NetworkAgent,
+RandomDiscretion>` — the engine and all 22 roles are used unchanged. The
+synchronous engine runs on its own thread and blocks on a channel while the async
+web layer (`axum`) shuttles a player's prompt to the browser and their answer
+back; a blocking `ask` simply parks the game thread until the network replies.
+`setup.rs` builds a random legal composition (5–15 players) and `interp::auto`
+provides a headless simulation used by `tests/auto_game.rs`. That simulation is
+how a real bug was caught: after an Imp starpass the new Imp stopped acting,
+because the night order dispatches by *believed* role and `transform` had left it
+stale — a transformed player must be woken as their new role.
 
 ## Status & fidelity
 
