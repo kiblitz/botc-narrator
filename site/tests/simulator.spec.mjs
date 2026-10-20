@@ -137,3 +137,18 @@ test("tokens show the official character icon", async ({ page }) => {
   await expect(page.locator('.seat[data-name="Dev"] .token img')).toHaveCount(0);
   await expect(page.locator('.seat[data-name="Dev"] .token')).toHaveAttribute("title", "Unknown character");
 });
+
+test("demon bluffs appear around the demon once told", async ({ page }) => {
+  await open(page);
+  // Seed 7 / 8 players: Dev is the Imp and learns the bluffs on step 8.
+  await expect(page.locator(".bluff")).toHaveCount(0);
+  for (let i = 0; i < 8; i++) await page.keyboard.press("ArrowRight");
+  await expect(page.locator('.seat[data-name="Dev"] .bluff')).toHaveCount(3);
+  await expect(page.locator('.seat[data-name="Dev"] .bluff').first()).toHaveAttribute("title", /^Bluff: /);
+  // The demon sees their own bluffs; nobody else does.
+  await page.locator("#pov").selectOption("Dev");
+  await expect(page.locator('.seat[data-name="Dev"] .bluff')).toHaveCount(3);
+  await page.locator("#pov").selectOption("Ada");
+  await page.keyboard.press("End");
+  await expect(page.locator(".bluff")).toHaveCount(0);
+});

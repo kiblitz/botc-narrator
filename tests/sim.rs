@@ -91,3 +91,17 @@ fn every_death_is_announced_publicly() {
         }
     }
 }
+
+#[test]
+fn demon_bluffs_are_recorded_with_the_step_they_were_told() {
+    // 7+ players always get demon info on night 1.
+    let trace = sim::simulate(7, 8);
+    let bluffs = trace.bluffs.expect("bluffs");
+    assert_eq!(bluffs.characters.len(), 3);
+    let step = &trace.steps[bluffs.step];
+    assert_eq!(step.kind, sim::Kind::Tell);
+    assert_eq!(step.player.as_deref(), Some(bluffs.demon.as_str()));
+    assert!(step.text.starts_with("Bluffs: "));
+    // Too few players: no demon info, so no bluffs.
+    assert!(sim::simulate(7, 5).bluffs.is_none());
+}

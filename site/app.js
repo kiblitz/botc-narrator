@@ -77,6 +77,7 @@ function buildBoard() {
     const angle = -Math.PI / 2 + (2 * Math.PI * i) / n;
     const div = el("div", "seat");
     div.dataset.name = seat.name;
+    div.dataset.angle = String(angle);
     div.style.left = `${50 + 39 * Math.cos(angle)}%`;
     div.style.top = `${50 + 39 * Math.sin(angle)}%`;
     div.append(el("div", "token"), el("div", "name", seat.name), el("div", "reminders"));
@@ -134,6 +135,7 @@ function render() {
     reminders.replaceChildren(
       ...(pov === "" ? seat.reminders : []).map((r) => el("span", `reminder ${r}`, r)),
     );
+    renderBluffs(div, index);
     div.querySelector(".bubble")?.remove();
     if (step.player === seat.name && (step.kind === "tell" || step.kind === "ask")) {
       div.append(el("div", "bubble", step.text));
@@ -147,6 +149,37 @@ function render() {
   scrub.value = cursor;
   $("counter").textContent = `${cursor + 1} / ${steps.length}`;
   $("play").textContent = timer ? "⏸" : "▶";
+}
+
+/**
+ * The demon's bluffs as small tokens fanned around the demon's seat, on the
+ * side facing the centre (where there is room) and clear of the name, once the
+ * demon has been told them.
+ */
+function renderBluffs(div, index) {
+  div.querySelector(".bluffs")?.remove();
+  const bluffs = game.trace.bluffs;
+  const visible = bluffs && div.dataset.name === bluffs.demon && index >= bluffs.step
+    && (pov === "" || pov === bluffs.demon);
+  if (!visible) return;
+  const ring = el("div", "bluffs");
+  const inward = Number(div.dataset.angle) + Math.PI;
+  const spread = 0.6;
+  const radius = 1.15; // in token widths: far enough to clear the name label
+  bluffs.characters.forEach((character, i) => {
+    const angle = inward + (i - (bluffs.characters.length - 1) / 2) * spread;
+    const token = el("div", "bluff");
+    token.title = `Bluff: ${character}`;
+    token.style.left = `calc(50% + ${Math.cos(angle) * radius} * var(--token, 84px))`;
+    token.style.top = `calc(var(--token, 84px) / 2 + ${Math.sin(angle) * radius} * var(--token, 84px))`;
+    const img = el("img");
+    img.alt = character;
+    img.src = iconUrl(character);
+    img.addEventListener("error", () => img.replaceWith(character.slice(0, 2)));
+    token.append(img);
+    ring.append(token);
+  });
+  div.append(ring);
 }
 
 /** The character's icon with its name underneath, or "?" when unknown. */

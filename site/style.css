@@ -198,3 +198,20 @@ li.future { opacity: 0.35; }
 @media (max-width: 600px) {
   aside { flex-direction: column; max-height: none; }
 }
+
+/* Demon bluffs: small tokens around the demon's seat. */
+.bluffs { position: absolute; inset: 0; pointer-events: none; }
+.bluff {
+  position: absolute;
+  width: calc(var(--token, 84px) * 0.4);
+  height: calc(var(--token, 84px) * 0.4);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #ece3cf;
+  border: 2px solid var(--townsfolk);
+  box-shadow: 0 0 0 2px var(--evil);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: #2a2233;
+  pointer-events: auto;
+}
+.bluff img { width: 100%; height: 100%; object-fit: contain; }

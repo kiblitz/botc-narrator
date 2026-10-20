@@ -107,6 +107,16 @@ pub struct Trace {
     pub snapshots: Vec<Vec<Seat>>,
     pub steps: Vec<Step>,
     pub winner: Option<character::Alignment>,
+    /// The bluffs shown to the demon, if any.
+    pub bluffs: Option<Bluffs>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct Bluffs {
+    pub demon: String,
+    pub characters: Vec<&'static str>,
+    /// The step at which the demon learned them.
+    pub step: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -180,6 +190,7 @@ struct Recorder {
     phase: game::Phase,
     /// Night deaths, announced publicly when the day begins.
     unannounced: Vec<player::Id>,
+    bluffs: Option<Bluffs>,
     snapshots: Vec<Vec<Seat>>,
     steps: Vec<Step>,
 }
@@ -264,6 +275,13 @@ impl table::Io for Recorder {
     }
 
     fn tell(&mut self, player: &player::Id, message: &info::Message) {
+        if let info::Message::Bluffs(characters) = message {
+            self.bluffs = Some(Bluffs {
+                demon: player.to_string(),
+                characters: characters.clone(),
+                step: self.steps.len(),
+            });
+        }
         self.push(
             Kind::Tell,
             Some(player),
@@ -356,6 +374,7 @@ pub fn simulate(seed: u64, players: usize) -> Trace {
         view: state.clone(),
         phase: game::Phase::Setup,
         unannounced: Vec::new(),
+        bluffs: None,
         snapshots: Vec::new(),
         steps: Vec::new(),
     };
@@ -379,6 +398,7 @@ pub fn simulate(seed: u64, players: usize) -> Trace {
         snapshots: table.snapshots,
         steps: table.steps,
         winner: state.winner(),
+        bluffs: table.bluffs,
     }
 }
 
