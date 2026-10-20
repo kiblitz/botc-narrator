@@ -1,0 +1,55 @@
+{
+  "id": "oracle",
+  "name": "Oracle",
+  "kind": "townsfolk",
+  "ability": "Each night*, you learn how many dead players are evil.",
+  "first_night": null,
+  "other_nights": 82,
+  "reminders": [],
+  "setup": null,
+  "wakes": "Each night except the first, after the Demon acts.",
+  "interaction": "Learns: The number of dead players who are (register as) evil.",
+  "drunk_or_poisoned": "Drunk or poisoned: may learn any number (misinformation offered centrally, storyteller picks).",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Counts every evil dead player, including evil Travellers and Townsfolk/Outsiders turned evil.",
+      "source": "https://wiki.bloodontheclocktower.com/Oracle"
+    },
+    {
+      "text": "The Oracle wakes after the Demon, so tonight's kills are included.",
+      "source": "https://wiki.bloodontheclocktower.com/Oracle"
+    }
+  ],
+  "building_blocks": [
+    "learn-number",
+    "alignment-check",
+    "registers-as"
+  ],
+  "test_scenarios": [
+    {
+      "name": "zero evil dead",
+      "setup": "Alice Oracle, Bob Flowergirl, Carol Juggler, Dave Fang Gu, Eve Witch.",
+      "actions": "Day 1: Bob executed. Night 2: Fang Gu kills Carol.",
+      "expected": "Alice learns 0."
+    },
+    {
+      "name": "counts tonight's minion kill and exiled evil traveller",
+      "setup": "Alice Oracle, Bob Witch, Carol Vigormortis, Dave Gangster (evil traveller), Eve Mutant, Fay Sage.",
+      "actions": "Day 2: Dave exiled. Night 3: Vigormortis kills Bob.",
+      "expected": "Alice learns 2."
+    },
+    {
+      "name": "poisoned oracle",
+      "setup": "Alice Oracle, Bob No Dashii (Alice's neighbour), Carol Cerenovus, Dave Witch (dead), Eve Sage.",
+      "actions": "Night 3: Alice is poisoned by the No Dashii; misinformation options offered centrally, storyteller picks 0.",
+      "expected": "Alice learns 0 (true answer 1)."
+    },
+    {
+      "name": "dead recluse registers evil",
+      "setup": "Alice Oracle, Bob Recluse (dead), Carol Imp, Dave Poisoner, Eve Chef.",
+      "actions": "Night 2: storyteller has Bob register as evil.",
+      "expected": "Alice learns 1."
+    }
+  ]
+}

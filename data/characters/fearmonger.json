@@ -1,0 +1,92 @@
+{
+  "id": "fearmonger",
+  "name": "Fearmonger",
+  "kind": "minion",
+  "ability": "Each night, choose a player: if you nominate & execute them, their team loses. All players know if you choose a new player.",
+  "first_night": 26,
+  "other_nights": 17,
+  "reminders": [
+    "Fear"
+  ],
+  "setup": null,
+  "wakes": "Every night, including the first.",
+  "interaction": "Chooses any player; told nothing. If the choice differs from the current Fear target, all players are told that the Fearmonger chose a new player (not who).",
+  "drunk_or_poisoned": "If drunk or poisoned when choosing, the choice has no effect (the Storyteller may still announce it); if drunk or poisoned at the execution, the target's team does not lose.",
+  "jinxes": [
+    {
+      "with": "plaguedoctor",
+      "text": "If the Storyteller would gain the Fearmonger ability, a Minion gains it, and learns this."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "On the first night all players learn a player was chosen; afterwards only a new choice is announced.",
+      "source": "https://wiki.bloodontheclocktower.com/Fearmonger"
+    },
+    {
+      "text": "Only the current Fear target counts; earlier targets no longer do.",
+      "source": "https://wiki.bloodontheclocktower.com/Fearmonger"
+    },
+    {
+      "text": "If the target is executed but does not die, their team still loses.",
+      "source": "https://wiki.bloodontheclocktower.com/Fearmonger"
+    },
+    {
+      "text": "Only applies if the Fearmonger nominated the target.",
+      "source": "https://wiki.bloodontheclocktower.com/Fearmonger"
+    },
+    {
+      "text": "If the target is evil (e.g. a Baron chosen via Poppy Grower confusion) and is executed, evil loses.",
+      "source": "https://wiki.bloodontheclocktower.com/Fearmonger"
+    }
+  ],
+  "test_scenarios": [
+    {
+      "name": "evil wins",
+      "setup": "Seats: Fen Fearmonger, Gil Imp, Hal Butler, Ivy Chef, Jo Empath.",
+      "actions": "Night 1: Fen chooses Hal. Day 1: Fen nominates Hal; Hal executed.",
+      "expected": "Good team loses; evil wins."
+    },
+    {
+      "name": "other player executed",
+      "setup": "Same seats.",
+      "actions": "Night 1: Fen chooses Ivy. Day 1: Fen nominates Hal; Hal executed.",
+      "expected": "Hal dies; game continues."
+    },
+    {
+      "name": "switch announced",
+      "setup": "Same seats.",
+      "actions": "Night 1 Hal; Night 2 Ivy; Night 3 Ivy.",
+      "expected": "Announcement after nights 1 and 2, not night 3; only Ivy has Fear."
+    },
+    {
+      "name": "evil target",
+      "setup": "Seats: Fen Fearmonger, Gil Imp, Kim Baron, Ivy Chef, Jo Empath.",
+      "actions": "Night 1: Fen chooses Kim. Day 1: Fen nominates Kim; Kim executed.",
+      "expected": "Evil loses; good wins."
+    },
+    {
+      "name": "poisoned Fearmonger",
+      "setup": "Seats: Fen Fearmonger, Gil Imp, Hal Butler, Lu Sailor, Ivy Chef.",
+      "actions": "Night 1: Lu chooses Fen and the Storyteller makes Fen drunk; Fen chooses Hal. Day 1: Fen nominates Hal; Hal executed.",
+      "expected": "Hal dies normally; game continues."
+    },
+    {
+      "name": "not nominated by Fearmonger",
+      "setup": "Same seats as 'evil wins'.",
+      "actions": "Night 1: Fen chooses Hal. Day 1: Ivy nominates Hal; Hal executed.",
+      "expected": "No team loss; game continues."
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "public-announcement",
+    "on-nominated",
+    "on-execution",
+    "game-end-check"
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Fearmonger",
+    "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+  ]
+}

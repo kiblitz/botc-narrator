@@ -1,0 +1,57 @@
+{
+  "id": "general",
+  "name": "General",
+  "kind": "townsfolk",
+  "ability": "Each night, you learn which alignment the Storyteller believes is winning: good, evil, or neither.",
+  "first_night": 75,
+  "other_nights": 94,
+  "reminders": [],
+  "setup": null,
+  "wakes": "Every night, including the first.",
+  "interaction": "Learns: Good (thumbs up), evil (thumbs down) or neither (thumbs sideways), by the Storyteller's judgement at the moment the General wakes.",
+  "drunk_or_poisoned": "If drunk or poisoned the Storyteller may give any of the three answers. The engine offers the other two answers as misinformation.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The judgement is made when the General wakes, so earlier events that night count.",
+      "source": "https://wiki.bloodontheclocktower.com/General"
+    },
+    {
+      "text": "Factors include living players on each side, the quality of good's information, how convincing evil's bluffs are, consensus on executions, and the Demon player's experience.",
+      "source": "https://wiki.bloodontheclocktower.com/General"
+    },
+    {
+      "text": "Thumbs sideways means the Storyteller does not know which team is winning.",
+      "source": "https://wiki.bloodontheclocktower.com/General"
+    }
+  ],
+  "building_blocks": [
+    "storyteller-judgement"
+  ],
+  "test_scenarios": [
+    {
+      "name": "evil is winning",
+      "setup": "Alice General, Bob Chef, Cara Empath, Dan Monk, Finn Saint (good), Gus Imp (suspected), Eve Scarlet Woman (trusted). All alive.",
+      "actions": "Night 2: the Storyteller judges evil ahead.",
+      "expected": "Good, evil and neither are all offered; Alice learns evil."
+    },
+    {
+      "name": "good is winning",
+      "setup": "Alice General, Bob Chef, Cara Empath, Gus Imp, Eve Poisoner (dead). Good has confirmed information.",
+      "actions": "Night 3: the Storyteller judges good ahead.",
+      "expected": "Alice learns good."
+    },
+    {
+      "name": "wakes on the first night",
+      "setup": "Alice General, Bob Chef, Cara Imp, Dan Monk, Eve Baron.",
+      "actions": "Night 1: the Storyteller does not know who is winning.",
+      "expected": "Alice wakes on night 1 and learns neither."
+    },
+    {
+      "name": "poisoned General",
+      "setup": "Alice General, Eve Poisoner, Cara Imp, Bob Chef, Dan Monk.",
+      "actions": "Night 2: Eve poisons Alice; the Storyteller believes good is winning.",
+      "expected": "Misinformation evil and neither are offered; the Storyteller picks evil and Alice learns evil."
+    }
+  ]
+}

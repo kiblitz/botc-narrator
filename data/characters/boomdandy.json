@@ -1,0 +1,88 @@
+{
+  "id": "boomdandy",
+  "name": "Boomdandy",
+  "kind": "minion",
+  "ability": "If you are executed, all but 3 players die. After a 10 to 1 countdown, the player with the most players pointing at them, dies.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": null,
+  "wakes": "Never.",
+  "interaction": "Nothing; on execution all players (alive and dead) point during a countdown.",
+  "drunk_or_poisoned": "If drunk or poisoned when executed, nothing happens; the Boomdandy just dies normally.",
+  "jinxes": [
+    {
+      "with": "plaguedoctor",
+      "text": "If the Storyteller would gain the Boomdandy ability, a player becomes the Boomdandy."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Only execution triggers it; other deaths (Golem, Psychopath) do not.",
+      "source": "https://wiki.bloodontheclocktower.com/Boomdandy"
+    },
+    {
+      "text": "If executed but surviving (e.g. Devil's Advocate) it still explodes.",
+      "source": "https://wiki.bloodontheclocktower.com/Boomdandy"
+    },
+    {
+      "text": "The Demon always survives the explosion; the Storyteller chooses the other two survivors.",
+      "source": "https://wiki.bloodontheclocktower.com/Boomdandy"
+    },
+    {
+      "text": "If a survivor cannot die (Fool, Sailor) the Storyteller may leave four players alive.",
+      "source": "https://wiki.bloodontheclocktower.com/Boomdandy"
+    },
+    {
+      "text": "All players, including dead ones without a vote token, may point; pointing may change until the countdown ends.",
+      "source": "https://wiki.bloodontheclocktower.com/Boomdandy"
+    },
+    {
+      "text": "A tie: nobody dies, the day ends and night falls.",
+      "source": "https://wiki.bloodontheclocktower.com/Boomdandy"
+    }
+  ],
+  "test_scenarios": [
+    {
+      "name": "explosion, evil wins",
+      "setup": "Seats: Amy Boomdandy, Ben Po, Cal Widow, Dee Fortune Teller, Eli Chef, Fay Empath, Gus Monk.",
+      "actions": "Day 1: Amy executed. Storyteller keeps Ben, Cal, Dee alive. Pointing: Cal gets most fingers.",
+      "expected": "Amy, Eli, Fay, Gus die; then Cal dies; two players remain with the Demon alive -> evil wins."
+    },
+    {
+      "name": "explosion, good wins",
+      "setup": "Same seats.",
+      "actions": "After the explosion, most fingers point at Ben (Po).",
+      "expected": "The Demon dies; good wins."
+    },
+    {
+      "name": "tie",
+      "setup": "Same seats.",
+      "actions": "Pointing is tied between Cal and Dee.",
+      "expected": "Nobody dies from pointing; night falls immediately."
+    },
+    {
+      "name": "poisoned Boomdandy",
+      "setup": "Seats: Amy Boomdandy, Hal Poisoner, Ben Imp, Eli Chef, Fay Empath.",
+      "actions": "Night 1: Hal poisons Amy. Day 1: Amy executed.",
+      "expected": "Only Amy dies; no explosion."
+    },
+    {
+      "name": "not triggered by night death",
+      "setup": "Seats: Amy Boomdandy, Ben Imp, Eli Chef.",
+      "actions": "Night 2: Imp kills Amy.",
+      "expected": "Amy dies; no explosion."
+    }
+  ],
+  "building_blocks": [
+    "on-death",
+    "on-execution",
+    "mass-kill",
+    "group-vote-kill",
+    "game-end-check"
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Boomdandy",
+    "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+  ]
+}

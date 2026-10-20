@@ -1,0 +1,59 @@
+{
+  "id": "clockmaker",
+  "name": "Clockmaker",
+  "kind": "townsfolk",
+  "ability": "You start knowing how many steps from the Demon to its nearest Minion.",
+  "first_night": 60,
+  "other_nights": null,
+  "reminders": [],
+  "setup": null,
+  "wakes": "First night only.",
+  "interaction": "Learns: A number: seats from the Demon to its nearest Minion, counting the shorter way around the circle (adjacent = 1).",
+  "drunk_or_poisoned": "Storyteller may give a false number (misinformation offered centrally).",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Count from the Demon toward the nearest Minion in whichever direction is shorter; adjacent is 1.",
+      "source": "https://wiki.bloodontheclocktower.com/Clockmaker"
+    },
+    {
+      "text": "Evil Travellers are not Minions and are not counted.",
+      "source": "https://wiki.bloodontheclocktower.com/Clockmaker"
+    },
+    {
+      "text": "The Recluse may register as the Demon or a Minion and the Spy may register as not a Minion, changing the count at the Storyteller's choice. Derived from the general registration rules; the Clockmaker page does not mention them.",
+      "source": "https://wiki.bloodontheclocktower.com/Recluse"
+    }
+  ],
+  "building_blocks": [
+    "learn-number",
+    "seating",
+    "registers-as"
+  ],
+  "test_scenarios": [
+    {
+      "name": "adjacent minion",
+      "setup": "Circle: Alice Clockmaker, Bob Imp, Cara Poisoner, Dan Chef, Eve Empath.",
+      "actions": "Night 1.",
+      "expected": "Alice learns 1."
+    },
+    {
+      "name": "shorter direction",
+      "setup": "Circle of 7: Alice Clockmaker, Bob Imp, Cara Chef, Dan Empath, Eve Monk, Fay Baron, Gus Butler.",
+      "actions": "Night 1.",
+      "expected": "Bob to Fay is 4 steps one way, 3 the other (Alice, Gus, Fay): Alice learns 3."
+    },
+    {
+      "name": "poisoned",
+      "setup": "Circle: Alice Clockmaker, Bob Imp, Cara Poisoner, Dan Chef, Eve Empath.",
+      "actions": "Night 1 Cara poisons Alice; storyteller picks misinformation 2.",
+      "expected": "True answer 1; Alice learns 2."
+    },
+    {
+      "name": "traveller not a minion",
+      "setup": "Circle: Alice Clockmaker, Bob Imp, Cara evil Thief (Traveller), Dan Chef, Eve Poisoner.",
+      "actions": "Night 1.",
+      "expected": "Cara is ignored; Eve is 2 steps the other way (Alice, Eve): Alice learns 2."
+    }
+  ]
+}

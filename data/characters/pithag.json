@@ -1,0 +1,97 @@
+{
+  "id": "pithag",
+  "name": "Pit-Hag",
+  "kind": "minion",
+  "ability": "Each night*, choose a player & a character they become (if not-in-play). If a Demon is made, deaths tonight are arbitrary.",
+  "first_night": null,
+  "other_nights": 16,
+  "reminders": [],
+  "setup": null,
+  "wakes": "Every night except the first.",
+  "interaction": "Chooses a player and a character. If the character is not in play, the chosen player wakes and is shown YOU ARE + their new character; the Pit-Hag is told nothing.",
+  "drunk_or_poisoned": "No transformation happens (the Pit-Hag is still woken to choose, but nothing changes).",
+  "jinxes": [
+    {
+      "with": "damsel",
+      "text": "If a Pit-Hag creates a Damsel, the Storyteller chooses which player it is."
+    },
+    {
+      "with": "goon",
+      "text": "If the Pit-Hag turns an evil player into the Goon, they can't turn good due to their own ability."
+    },
+    {
+      "with": "leviathan",
+      "text": "The Leviathan cannot enter play after day 5."
+    },
+    {
+      "with": "politician",
+      "text": "If the Pit-Hag turns an evil player into the Politician, they can't turn good due to their own ability."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "If the chosen character is already in play, nothing happens.",
+      "source": "https://wiki.bloodontheclocktower.com/Pit-Hag"
+    },
+    {
+      "text": "Alignment does not change: an evil player made a Townsfolk stays evil, a good player made a Minion or Demon stays good.",
+      "source": "https://wiki.bloodontheclocktower.com/Pit-Hag"
+    },
+    {
+      "text": "If a Demon is created, the Storyteller chooses that night's deaths (counted as Pit-Hag attacks).",
+      "source": "https://wiki.bloodontheclocktower.com/Pit-Hag"
+    },
+    {
+      "text": "The Pit-Hag may transform itself.",
+      "source": "https://wiki.bloodontheclocktower.com/Pit-Hag"
+    },
+    {
+      "text": "Turning a Demon into another Demon usually means no deaths, or the old Demon dies alongside another player.",
+      "source": "https://wiki.bloodontheclocktower.com/Pit-Hag"
+    }
+  ],
+  "test_scenarios": [
+    {
+      "name": "basic transform",
+      "setup": "Alice Pit-Hag, Bob Clockmaker, Carol Imp; Mutant not in play.",
+      "actions": "Night 2: Alice chooses Bob as Mutant.",
+      "expected": "Bob wakes, shown YOU ARE Mutant; Bob is Mutant, still good."
+    },
+    {
+      "name": "character in play",
+      "setup": "Alice Pit-Hag, Bob Savant, Dave Sage.",
+      "actions": "Night 2: Alice chooses Bob as Sage.",
+      "expected": "Nothing changes; Bob is not woken."
+    },
+    {
+      "name": "demon made",
+      "setup": "Alice Pit-Hag, Bob Oracle (good), Carol Imp; No Dashii not in play.",
+      "actions": "Night 3: Alice chooses Bob as No Dashii.",
+      "expected": "Bob becomes a good No Dashii; the Storyteller decides tonight's deaths arbitrarily."
+    },
+    {
+      "name": "poisoned",
+      "setup": "Alice Pit-Hag poisoned by Erin Poisoner, Bob Chef.",
+      "actions": "Night 2: Alice chooses Bob as Drunk.",
+      "expected": "Bob remains Chef; nothing happens."
+    },
+    {
+      "name": "damsel jinx",
+      "setup": "Alice Pit-Hag, Bob Chef; Damsel not in play.",
+      "actions": "Night 2: Alice chooses Bob as Damsel.",
+      "expected": "The Storyteller chooses which player becomes the Damsel (may be someone other than Bob)."
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "choose-character",
+    "character-change",
+    "not-in-play-check",
+    "arbitrary-deaths",
+    "storyteller-discretion"
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Pit-Hag",
+    "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+  ]
+}
