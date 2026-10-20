@@ -197,6 +197,7 @@ li.future { opacity: 0.35; }
 /* Phones: panels stack too. */
 @media (max-width: 600px) {
   aside { flex-direction: column; max-height: none; }
+  #log-area { max-height: 50vh; }
 }
 
 /* Demon bluffs: small tokens around the demon's seat. */
@@ -215,3 +216,9 @@ li.future { opacity: 0.35; }
   pointer-events: auto;
 }
 .bluff img { width: 100%; height: 100%; object-fit: contain; }
+
+#stepper button { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2rem; padding: 0; }
+#stepper svg { width: 18px; height: 18px; fill: currentColor; }
+#play .pause, #play.playing .play { display: none; }
+#play.playing .pause { display: inline; }
+#log-area { position: relative; }

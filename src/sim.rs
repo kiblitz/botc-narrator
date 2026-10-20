@@ -276,6 +276,7 @@ impl table::Io for Recorder {
 
     fn tell(&mut self, player: &player::Id, message: &info::Message) {
         if let info::Message::Bluffs(characters) = message {
+            debug_assert!(self.bluffs.is_none(), "the demon is told bluffs once");
             self.bluffs = Some(Bluffs {
                 demon: player.to_string(),
                 characters: characters.clone(),

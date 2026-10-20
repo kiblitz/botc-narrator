@@ -152,3 +152,25 @@ test("demon bluffs appear around the demon once told", async ({ page }) => {
   await page.keyboard.press("End");
   await expect(page.locator(".bluff")).toHaveCount(0);
 });
+
+for (const [width, height] of [[1080, 1920], [1400, 900], [375, 667]]) {
+  test(`stepping scrolls the log, not the page, at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await open(page);
+    await page.locator("#next").click();
+    await page.keyboard.press("End");
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    const area = page.locator("#log-area");
+    expect(await area.evaluate((e) => e.scrollTop)).toBeGreaterThan(0);
+  });
+}
+
+test("play toggles to pause and back", async ({ page }) => {
+  await open(page);
+  await expect(page.locator("#play")).toHaveAttribute("aria-label", "Play");
+  await page.locator("#play").click();
+  await expect(page.locator("#play")).toHaveAttribute("aria-label", "Pause");
+  await expect(page.locator("#play .pause")).toBeVisible();
+  await page.locator("#play").click();
+  await expect(page.locator("#play .play")).toBeVisible();
+});

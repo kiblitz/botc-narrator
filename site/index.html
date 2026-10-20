@@ -33,13 +33,13 @@
         </div>
       </div>
       <div id="stepper">
-        <button id="first" title="First step (Home)">⏮</button>
-        <button id="prev-phase" title="Previous phase (Shift+←)">⏪</button>
-        <button id="prev" title="Previous step (←)">◀</button>
-        <button id="play" title="Play / pause (Space)">▶</button>
-        <button id="next" title="Next step (→)">▶|</button>
-        <button id="next-phase" title="Next phase (Shift+→)">⏩</button>
-        <button id="last" title="Last step (End)">⏭</button>
+        <button id="first" title="First step (Home)" aria-label="First step"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="2.5" height="14"/><path d="M14 5 7 12l7 7z"/><path d="M21 5l-7 7 7 7z"/></svg></button>
+        <button id="prev-phase" title="Previous phase (Shift+←)" aria-label="Previous phase"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5 4 12l8 7z"/><path d="M20 5l-8 7 8 7z"/></svg></button>
+        <button id="prev" title="Previous step (←)" aria-label="Previous step"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="2.5" height="14"/><path d="M18 5 9 12l9 7z"/></svg></button>
+        <button id="play" title="Play / pause (Space)" aria-label="Play"><svg class="play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5l12 7-12 7z"/></svg><svg class="pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg></button>
+        <button id="next" title="Next step (→)" aria-label="Next step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5l9 7-9 7z"/><rect x="16.5" y="5" width="2.5" height="14"/></svg></button>
+        <button id="next-phase" title="Next phase (Shift+→)" aria-label="Next phase"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5l8 7-8 7z"/><path d="M12 5l8 7-8 7z"/></svg></button>
+        <button id="last" title="Last step (End)" aria-label="Last step"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5l7 7-7 7z"/><path d="M10 5l7 7-7 7z"/><rect x="17.5" y="5" width="2.5" height="14"/></svg></button>
         <input id="scrub" type="range" min="0" value="0" aria-label="Step">
         <span id="counter"></span>
       </div>

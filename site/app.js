@@ -148,7 +148,8 @@ function render() {
   scrub.max = steps.length - 1;
   scrub.value = cursor;
   $("counter").textContent = `${cursor + 1} / ${steps.length}`;
-  $("play").textContent = timer ? "⏸" : "▶";
+  $("play").classList.toggle("playing", timer !== null);
+  $("play").setAttribute("aria-label", timer ? "Pause" : "Play");
 }
 
 /**
@@ -162,12 +163,15 @@ function renderBluffs(div, index) {
   const visible = bluffs && div.dataset.name === bluffs.demon && index >= bluffs.step
     && (pov === "" || pov === bluffs.demon);
   if (!visible) return;
+  // Bluffs stay with the demon who was told them, even after a starpass.
   const ring = el("div", "bluffs");
   const inward = Number(div.dataset.angle) + Math.PI;
   const spread = 0.6;
-  const radius = 1.15; // in token widths: far enough to clear the name label
+  // In token widths: far enough to clear the name, and the reminders row
+  // when the fan points down (seats at the top of the circle).
   bluffs.characters.forEach((character, i) => {
     const angle = inward + (i - (bluffs.characters.length - 1) / 2) * spread;
+    const radius = Math.sin(angle) > 0.3 ? 1.75 : 1.15;
     const token = el("div", "bluff");
     token.title = `Bluff: ${character}`;
     token.style.left = `calc(50% + ${Math.cos(angle) * radius} * var(--token, 84px))`;
@@ -224,7 +228,10 @@ function renderLog(steps) {
     const end = game.trace.winner ? `Game over: ${game.trace.winner} wins.` : "Game over: no winner within the day limit.";
     log.append(el("li", "winner", end));
   }
-  log.querySelector(".current")?.scrollIntoView({ block: "nearest" });
+  // Scroll only the log panel, never the page.
+  const current = log.querySelector(".current");
+  const area = $("log-area");
+  if (current) area.scrollTop = current.offsetTop - area.offsetTop - area.clientHeight / 2;
 }
 
 /** What the selected player has been told and asked so far. */
