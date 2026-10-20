@@ -1133,7 +1133,7 @@ fn every_demon_learns_the_team_and_the_same_bluffs() {
         ("Empath", &characters::empath::Def),
         ("Slayer", &characters::slayer::Def),
     ]);
-    g.run(|ctx| narrator::demon_info(ctx, &common::trouble_brewing()));
+    g.run(|ctx| narrator::demon_info(ctx, &common::trouble_brewing(), true));
     let log = g.transcript();
     assert_eq!(
         log.matches("-> Imp2: Bluffs: Washerwoman, Librarian, Investigator")

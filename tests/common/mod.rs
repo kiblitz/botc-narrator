@@ -31,6 +31,8 @@ pub fn state(seats: &[(&str, character::Ref)]) -> game::State {
 #[derive(Default)]
 pub struct Recorder {
     answers: VecDeque<Vec<player::Id>>,
+    /// Characters players pick when asked, by name, in order.
+    characters: VecDeque<&'static str>,
     /// Players who break their madness whenever asked.
     pub breaks_madness: Vec<player::Id>,
     /// Answers to yes/no questions, in order; then "no".
@@ -101,6 +103,21 @@ impl table::Io for Recorder {
         yes
     }
 
+    fn ask_character(
+        &mut self,
+        player: &player::Id,
+        prompt: &str,
+        options: &[character::Ref],
+    ) -> usize {
+        let wanted = self.characters.pop_front();
+        let answer = wanted
+            .and_then(|name| options.iter().position(|c| c.name() == name))
+            .unwrap_or(0);
+        let name = options.get(answer).map_or("-", |c| c.name());
+        self.line(format!("  {player}? {prompt} => {name}"));
+        answer
+    }
+
     fn broke_madness(&mut self, player: &player::Id, about: &'static str) -> bool {
         let broke = self.breaks_madness.contains(player);
         self.line(format!("  {player} mad about {about}: broke = {broke}"));
@@ -153,6 +170,12 @@ impl Game {
             .iter()
             .map(|names| names.iter().map(|n| p(n)).collect())
             .collect();
+        self
+    }
+
+    /// Queue the characters players pick when asked to choose one, by name.
+    pub fn characters(&mut self, names: &[&'static str]) -> &mut Self {
+        self.table.characters = names.iter().copied().collect();
         self
     }
 

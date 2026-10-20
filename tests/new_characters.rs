@@ -166,6 +166,7 @@ fn cerenovus_makes_a_player_mad_and_may_execute_them() {
     expect![[r#"
         wake Ceren
           Ceren? Who do you want to make mad? => Chef
+          Ceren? Mad about being which character? => Washerwoman
         sleep Ceren
         * Ceren (cerenovus) marks Chef: Mad (Washerwoman)
         wake Chef
@@ -207,7 +208,7 @@ fn poisoned_cerenovus_makes_nobody_mad() {
         .answers(&[&["Chef"]])
         .run(|ctx| narrator::run_order(ctx, &[&characters::cerenovus::Def], 1));
     let log = g.transcript();
-    assert!(!log.contains("Mad"), "{log}");
+    assert!(!log.contains(": Mad ("), "{log}");
 }
 
 fn godfather_game() -> common::Game {

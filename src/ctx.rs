@@ -469,11 +469,19 @@ impl<'a> Write<'a> {
     }
 
     pub fn place_reminder(&mut self, target: &player::Id, reminder: game::Reminder) {
-        self.state.place_reminder(target, reminder.clone());
-        self.record(event::Event::ReminderPlaced {
-            player: target.clone(),
-            reminder,
-        });
+        self.place_reminders(std::slice::from_ref(target), reminder);
+    }
+
+    /// Puts the same token on each of `targets` (the Minstrel makes everyone
+    /// drunk), moving that ability's earlier tokens of the kind.
+    pub fn place_reminders(&mut self, targets: &[player::Id], reminder: game::Reminder) {
+        self.state.place_reminders(targets, reminder.clone());
+        for target in targets {
+            self.record(event::Event::ReminderPlaced {
+                player: target.clone(),
+                reminder: reminder.clone(),
+            });
+        }
     }
 
     /// Adds a token without moving its copies on other players (at most one
@@ -622,7 +630,13 @@ impl<'a> Write<'a> {
             });
             return false;
         }
-        for (id, ability) in self.active_abilities() {
+        // The dying player's own abilities (the Fool) come last, so another
+        // player's protection (the Tea Lady) is used first.
+        let (own, others): (Vec<_>, Vec<_>) = self
+            .active_abilities()
+            .into_iter()
+            .partition(|(id, _)| id == target);
+        for (id, ability) in others.into_iter().chain(own) {
             if self.state.is_malfunctioning(&id) {
                 continue;
             }
@@ -651,8 +665,8 @@ impl<'a> Write<'a> {
 
     fn die(&mut self, target: &player::Id, cause: event::Cause) {
         self.state.mark_dead(target);
-        // A dead player's ability stops: tokens it placed until dusk are removed.
-        self.state.remove_reminders(target, game::Expiry::Dusk);
+        // A dead player's ability stops: its lingering tokens are removed.
+        self.state.remove_lingering(target);
         self.record(event::Event::Died {
             player: target.clone(),
             cause: cause.clone(),
@@ -682,7 +696,7 @@ impl<'a> Write<'a> {
     /// `target` becomes `into`; their old ability's lingering tokens are
     /// removed, and they now know their character.
     pub fn transform(&mut self, target: &player::Id, into: character::Ref) {
-        self.state.remove_reminders(target, game::Expiry::Dusk);
+        self.state.remove_lingering(target);
         self.state.set_character(target, into);
         self.state.set_believed(target, None);
         self.record(event::Event::Transformed {
@@ -698,9 +712,11 @@ impl<'a> Write<'a> {
         }
     }
 
-    /// Good wins when no demon lives; evil wins when two players remain.
+    /// Good wins when no demon lives (unless the game has none, see
+    /// `character::Def::demonless`); evil wins when two players remain.
     pub fn check_win(&mut self) {
-        if !self.state.demon_alive() {
+        let demonless = self.state.players().iter().any(|p| p.character.demonless());
+        if !demonless && !self.state.demon_alive() {
             self.win(character::Alignment::Good);
         } else if self.state.alive_ids().len() <= 2 {
             self.win(character::Alignment::Evil);

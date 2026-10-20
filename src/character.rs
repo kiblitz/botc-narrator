@@ -303,6 +303,26 @@ pub trait Def: Sync {
         self.kind() == Kind::Demon
     }
 
+    /// Whether a functioning holder appears in the evil team the Minions and
+    /// Demon learn (the Magician: the Demon thinks they are a Minion, the
+    /// Minions think they are a Demon).
+    fn joins_evil_info(&self) -> bool {
+        false
+    }
+
+    /// Whether, while a living holder's ability works, the Minions and Demon
+    /// do not learn each other (the Poppy Grower; see `narrator::evil_info`).
+    fn hides_evil_info(&self) -> bool {
+        false
+    }
+
+    /// Whether this character in play (as a real character, not a believed
+    /// one) means the game has no Demon, so good does not win by the Demon
+    /// dying (the Atheist).
+    fn demonless(&self) -> bool {
+        false
+    }
+
     /// Whether `receiver`'s information must be false while `me` (living and
     /// functioning) has this ability (the Vortox: Townsfolk get false info).
     fn forces_false_info(

@@ -67,7 +67,7 @@ Override only the hooks the ability uses (the full list is in the README,
 | "woke tonight due to their ability" | `wakes_for_ability(state, p, night)` |
 | how many are evil | `count_evil`, `alive_neighbours`, `groups` |
 | choose players / a character | `ctx.ask`, `ctx.ask_one`, `ctx.ask_character` |
-| protect / poison / any token | `mark(ctx, me, &Def, target, effect, expiry)`, `has_mark` |
+| protect / poison / any token | `mark(ctx, me, &Def, target, effect, expiry)`, `mark_all` (several players), `has_mark`, `marked` |
 | once per game | `use_once(ctx, me, &Def)`, `used`, `used_tonight` |
 | take a token off | `ctx.remove_reminder(target, &reminder)` |
 | kill | `kill(ctx, me, target)`; the demon's attack: `demon_attack`; a demon kill of a given player: `demon_kill` |
@@ -78,6 +78,8 @@ Override only the hooks the ability uses (the full list is in the README,
 | tell everyone something | `ctx.announce` |
 | a dead player keeps their ability | a `game::Effect::KeepsAbility` token (lasts while its placer lives and functions) |
 | "today" | `today` (the day's events), `died_today` |
+| longer-lasting tokens | `game::Expiry::Night(n)` (until night `n`), `Expiry::Death` (while the placer's ability lasts) |
+| keep a player asleep tonight | `game::Effect::DoesNotWake` (Exorcist) |
 | storyteller choices | `storyteller_agrees`, `storyteller_picks_player`, `storyteller_picks_character` |
 | setup modifier | `setup_counts` with `setup::Counts::shift_outsiders` / `with` |
 | not-in-play characters, the script | `not_in_play`, `ctx.state().script()` |
@@ -86,6 +88,8 @@ Override only the hooks the ability uses (the full list is in the README,
 | becomes another character / alignment | `ctx.transform`, `ctx.set_alignment`, `ctx.set_believed` |
 | gains or loses an ability | `ctx.gain_ability`, `ctx.lose_ability` (acts the same night if its turn is still to come) |
 | alternate demon / forced false info | hooks `counts_as_demon`, `forces_false_info` |
+| evil info / no Demon in the game | hooks `joins_evil_info` (Magician), `hides_evil_info` + `narrator::evil_info` (Poppy Grower), `demonless` (Atheist) |
+| survive a death | hook `intercept_death` returning `Prevent` (Fool, Sailor, Tea Lady, Pacifist, Innkeeper); the dying player's own abilities are asked last |
 | day ability | hook `day_action`; the simulator offers every unused one each day |
 | ask a player yes/no | `ctx.ask_yes_no` (the Harlot's visit) |
 | sober / acts twice / restored / execution-only | `game::Effect::Sober`, `ActsTwice`, `AbilityRestored`, `ExecutionOnly` with `mark`; hook `always_sober` |

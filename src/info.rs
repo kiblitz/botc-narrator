@@ -49,6 +49,8 @@ pub enum Message {
     Direction(Direction),
     /// Which alignment is winning; `None` for neither.
     Winning(Option<character::Alignment>),
+    /// How close a guess was (the Amnesiac's guess at their ability).
+    Accuracy(Accuracy),
 }
 
 /// Around the circle: clockwise is increasing seat order.
@@ -56,6 +58,15 @@ pub enum Message {
 pub enum Direction {
     Clockwise,
     Anticlockwise,
+}
+
+/// How close a guess is, from far off to exact.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Accuracy {
+    Cold,
+    Warm,
+    Hot,
+    Bingo,
 }
 
 impl Message {
@@ -75,7 +86,8 @@ impl Message {
             | Message::Bluffs(_)
             | Message::Alignment(_)
             | Message::NotInPlay(_)
-            | Message::Selected { .. } => Vec::new(),
+            | Message::Selected { .. }
+            | Message::Accuracy(_) => Vec::new(),
         }
     }
 
@@ -96,6 +108,7 @@ impl Message {
             | Message::Direction(_)
             | Message::Alignment(_)
             | Message::Winning(_) => Vec::new(),
+            Message::Accuracy(_) => Vec::new(),
         }
     }
 }
@@ -135,6 +148,7 @@ impl fmt::Display for Message {
             Message::Direction(Direction::Anticlockwise) => f.write_str("Anticlockwise"),
             Message::Winning(Some(alignment)) => write!(f, "{alignment} is winning"),
             Message::Winning(None) => f.write_str("Neither team is winning"),
+            Message::Accuracy(accuracy) => fmt::Debug::fmt(accuracy, f),
         }
     }
 }

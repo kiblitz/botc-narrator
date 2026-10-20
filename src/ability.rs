@@ -379,6 +379,23 @@ pub fn sync_marks(
     }
 }
 
+/// Like [`mark`], with the same token on each of `targets` (moving the
+/// ability's earlier ones): the Innkeeper's two safe players, the Minstrel's
+/// drunk table.
+pub fn mark_all(
+    ctx: &mut ctx::Write<'_>,
+    me: &player::Id,
+    source: character::Ref,
+    targets: &[player::Id],
+    effect: game::Effect,
+    expiry: game::Expiry,
+) {
+    if !ctx.state().is_malfunctioning(me) {
+        let reminder = game::Reminder::new(source, me, effect, expiry);
+        ctx.place_reminders(targets, reminder);
+    }
+}
+
 /// Players carrying `source`'s `effect` token placed by `me`, in seat order.
 pub fn marked(
     state: &game::State,

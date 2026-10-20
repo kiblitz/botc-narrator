@@ -39,6 +39,8 @@ pub enum Effect {
     AbilityRestored,
     /// The player can only die by execution (the Storm Catcher).
     ExecutionOnly,
+    /// Does not wake for their abilities tonight (the Demon the Exorcist chose).
+    DoesNotWake,
     /// Mad about being this character (by name): the player should try to
     /// convince the group of it, or the ability that placed the token may
     /// punish them (see `narrator::check_madness`).
@@ -65,7 +67,28 @@ impl fmt::Display for Effect {
 pub enum Expiry {
     /// Removed when the next night begins.
     Dusk,
+    /// Removed when night `n` begins ("drunk for 3 nights & 3 days").
+    Night(u32),
+    /// Kept until the player whose ability placed it dies.
+    Death,
     Never,
+}
+
+impl Expiry {
+    /// Whether the token lasts only while the ability that placed it does:
+    /// it is removed when that player dies or changes character.
+    pub fn lingers(self) -> bool {
+        self != Expiry::Never
+    }
+
+    /// Whether the token is removed when night `night` begins.
+    fn ends_at_night(self, night: u32) -> bool {
+        match self {
+            Expiry::Dusk => true,
+            Expiry::Night(n) => n <= night,
+            Expiry::Death | Expiry::Never => false,
+        }
+    }
 }
 
 /// A grimoire reminder token. Each player's `effect` token exists once:
@@ -104,6 +127,15 @@ impl Effect {
             (Effect::Mad(_), Effect::Mad(_)) => true,
             _ => self == other,
         }
+    }
+}
+
+impl Reminder {
+    /// Whether `other` is a token of the same ability and kind.
+    fn same_token(&self, other: &Reminder) -> bool {
+        self.placed_by == other.placed_by
+            && self.source == other.source
+            && self.effect.same_token(other.effect)
     }
 }
 
@@ -379,12 +411,39 @@ impl State {
     /// Poisoned or drunk: the player's ability has no effect and any
     /// information they receive may be false. A player who believes they are
     /// a character they are not (the Drunk) counts as drunk.
-    /// Sobriety cancels poison and drunkenness tokens, but a player who
-    /// believes they are a character they are not stays malfunctioning.
+    ///
+    /// A Poisoned or Drunk token placed by another player only works while
+    /// that player's ability does: if they are drunk or poisoned themselves,
+    /// the target sobers (the Courtier's, Philosopher's or Sailor's target).
+    /// Sobriety (`is_sober`) cancels poison and drunkenness tokens, but a
+    /// player who believes they are a character they are not stays
+    /// malfunctioning.
     pub fn is_malfunctioning(&self, id: &player::Id) -> bool {
-        self.player(id).believes.is_some()
-            || (!self.is_sober(id)
-                && (self.has_effect(id, Effect::Poisoned) || self.has_effect(id, Effect::Drunk)))
+        self.malfunctioning(id, &mut Vec::new())
+    }
+
+    /// [`State::is_malfunctioning`], with the players whose tokens are being
+    /// checked further up (a cycle counts its tokens as working).
+    fn malfunctioning(&self, id: &player::Id, checking: &mut Vec<player::Id>) -> bool {
+        let p = self.player(id);
+        if p.believes.is_some() {
+            return true;
+        }
+        if self.is_sober(id) {
+            return false;
+        }
+        if checking.contains(id) {
+            return false;
+        }
+        checking.push(id.clone());
+        let impaired = p.reminders.iter().any(|r| {
+            matches!(r.effect, Effect::Poisoned | Effect::Drunk)
+                && (&r.placed_by == id
+                    || !self.seats.iter().any(|s| s.id == r.placed_by)
+                    || !self.malfunctioning(&r.placed_by, checking))
+        });
+        checking.pop();
+        impaired
     }
 
     /// Sober and healthy: a `Sober` token (the Barista) or an ability that is
@@ -478,9 +537,9 @@ impl State {
             Phase::Day(n) => Phase::Night(n + 1),
         };
         match self.phase {
-            Phase::Night(_) => {
+            Phase::Night(night) => {
                 for p in &mut self.seats {
-                    p.reminders.retain(|r| r.expiry != Expiry::Dusk);
+                    p.reminders.retain(|r| !r.expiry.ends_at_night(night));
                 }
                 self.deaths_tonight.clear();
             }
@@ -490,15 +549,15 @@ impl State {
         self.phase
     }
 
-    pub(crate) fn place_reminder(&mut self, target: &player::Id, reminder: Reminder) {
+    /// Puts `reminder` on each of `targets`, removing that ability's earlier
+    /// tokens of the same kind (placing a token moves it).
+    pub(crate) fn place_reminders(&mut self, targets: &[player::Id], reminder: Reminder) {
         for p in &mut self.seats {
-            p.reminders.retain(|r| {
-                r.placed_by != reminder.placed_by
-                    || r.source != reminder.source
-                    || !r.effect.same_token(reminder.effect)
-            });
+            p.reminders.retain(|r| !r.same_token(&reminder));
         }
-        self.player_mut(target).reminders.push(reminder);
+        for target in targets {
+            self.player_mut(target).reminders.push(reminder.clone());
+        }
     }
 
     /// Adds a token without moving its copies on other players (at most one
@@ -515,11 +574,11 @@ impl State {
         self.fabled_tokens.push((fabled.id(), effect));
     }
 
-    /// Returns whether the token was there.
+    /// Removes `reminder`'s token from `target`; returns whether it was there.
     pub(crate) fn remove_reminder(&mut self, target: &player::Id, reminder: &Reminder) -> bool {
         let reminders = &mut self.player_mut(target).reminders;
         let before = reminders.len();
-        reminders.retain(|r| r != reminder);
+        reminders.retain(|r| !r.same_token(reminder));
         reminders.len() != before
     }
 
@@ -540,10 +599,12 @@ impl State {
         self.player_mut(id).ghost_vote = false;
     }
 
-    pub(crate) fn remove_reminders(&mut self, placed_by: &player::Id, expiry: Expiry) {
+    /// Removes the tokens that last only while `placed_by`'s ability does
+    /// (see [`Expiry::lingers`]).
+    pub(crate) fn remove_lingering(&mut self, placed_by: &player::Id) {
         for p in &mut self.seats {
             p.reminders
-                .retain(|r| &r.placed_by != placed_by || r.expiry != expiry);
+                .retain(|r| &r.placed_by != placed_by || !r.expiry.lingers());
         }
     }
 

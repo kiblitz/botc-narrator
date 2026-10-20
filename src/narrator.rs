@@ -71,12 +71,13 @@ pub fn run_night(ctx: &mut ctx::Write<'_>, script: &script::Script) {
                 rest.iter().partition(|c| position(c) < DEMON_INFO_ORDER);
             let evil_info = ctx.state().resident_count() >= EVIL_INFO_MIN_PLAYERS;
             run_order(ctx, &before_minions, 1);
-            if evil_info {
+            let team_shown = evil_info && !evil_info_hidden(ctx.state());
+            if team_shown {
                 minion_info(ctx);
             }
             run_order(ctx, &before_demon, 1);
             if evil_info {
-                demon_info(ctx, script);
+                demon_info(ctx, script, team_shown);
             }
             run_order(ctx, &after_demon, 1);
         }
@@ -85,18 +86,44 @@ pub fn run_night(ctx: &mut ctx::Write<'_>, script: &script::Script) {
     }
 }
 
-/// The evil team as the minions and demon learn it: Travellers are not in it.
+/// The evil team as the minions and demon learn it: Travellers are not in
+/// it, and players whose ability joins it (the Magician) are.
 fn evil_team(state: &game::State) -> info::Message {
     info::Message::Team {
         evil: state
             .players()
             .iter()
             .filter(|p| {
-                p.alignment == character::Alignment::Evil
-                    && p.character.kind() != character::Kind::Traveller
+                let evil = p.alignment == character::Alignment::Evil
+                    && p.character.kind() != character::Kind::Traveller;
+                let joins = !state.is_malfunctioning(&p.id)
+                    && state.abilities(&p.id).iter().any(|c| c.joins_evil_info());
+                evil || joins
             })
             .map(|p| p.id.clone())
             .collect(),
+    }
+}
+
+/// Whether a living, functioning player's ability keeps the Minions and
+/// Demon from learning each other (`character::Def::hides_evil_info`).
+fn evil_info_hidden(state: &game::State) -> bool {
+    state.alive_ids().iter().any(|id| {
+        !state.is_malfunctioning(id) && state.abilities(id).iter().any(|c| c.hides_evil_info())
+    })
+}
+
+/// The Minions and Demon learn each other now, as on the first night (after
+/// the Poppy Grower dies).
+pub fn evil_info(ctx: &mut ctx::Write<'_>) {
+    minion_info(ctx);
+    let demons = ctx.state().demons();
+    let team = evil_team(ctx.state());
+    let mut read = ctx.read();
+    for demon in &demons {
+        read.wake(demon);
+        read.tell(demon, &team);
+        read.sleep(demon);
     }
 }
 
@@ -112,8 +139,9 @@ pub fn minion_info(ctx: &mut ctx::Write<'_>) {
     }
 }
 
-/// The demon learns who is evil and three not-in-play good characters to bluff.
-pub fn demon_info(ctx: &mut ctx::Write<'_>, script: &script::Script) {
+/// The demon learns who is evil (if `team_shown`) and three not-in-play good
+/// characters to bluff.
+pub fn demon_info(ctx: &mut ctx::Write<'_>, script: &script::Script, team_shown: bool) {
     let demons = ctx.state().demons();
     if demons.is_empty() {
         return;
@@ -135,7 +163,9 @@ pub fn demon_info(ctx: &mut ctx::Write<'_>, script: &script::Script) {
     let mut bluffs: Option<Vec<&'static str>> = None;
     for demon in &demons {
         read.wake(demon);
-        read.tell(demon, &team);
+        if team_shown {
+            read.tell(demon, &team);
+        }
         let shown = bluffs.get_or_insert_with(|| {
             read.choose(
                 storyteller::Reason::DemonBluffs,
@@ -169,10 +199,7 @@ pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32)
                 for id in acting(ctx.state(), c) {
                     for _ in 0..times(ctx.state(), &id) {
                         let state = ctx.state();
-                        if state.winner().is_none()
-                            && state.has_ability(&id, c.id())
-                            && c.wakes_tonight(state, &id)
-                        {
+                        if state.winner().is_none() && wakes(state, c, &id) {
                             f(ctx, &id, night);
                         }
                     }
@@ -240,8 +267,16 @@ fn acting(state: &game::State, c: character::Ref) -> Vec<player::Id> {
     state
         .seat_order()
         .into_iter()
-        .filter(|id| state.has_ability(id, c.id()) && c.wakes_tonight(state, id))
+        .filter(|id| wakes(state, c, id))
         .collect()
+}
+
+/// Whether `id` has `c`'s ability now and wakes for it tonight (not if a
+/// `DoesNotWake` token is on them, as on the Demon the Exorcist chose).
+fn wakes(state: &game::State, c: character::Ref, id: &player::Id) -> bool {
+    state.has_ability(id, c.id())
+        && c.wakes_tonight(state, id)
+        && !state.has_effect(id, game::Effect::DoesNotWake)
 }
 
 /// The player uses `ability`'s day action (the Slayer's shot), if it has one
