@@ -1,0 +1,78 @@
+{
+  "id": "vortox",
+  "name": "Vortox",
+  "kind": "demon",
+  "ability": "Each night*, choose a player: they die. Townsfolk abilities yield false info. Each day, if no-one is executed, evil wins.",
+  "first_night": null,
+  "other_nights": 47,
+  "reminders": [
+    "Dead"
+  ],
+  "setup": null,
+  "wakes": "Each night except the first.",
+  "interaction": "Points at a player, who dies. Passively, all Townsfolk ability information is false. At dusk, if no execution happened that day, evil wins.",
+  "drunk_or_poisoned": "The kill fails, Townsfolk information may be true, and a day without execution does not make evil win.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Townsfolk information is false even if that Townsfolk is drunk or poisoned.",
+      "source": "https://wiki.bloodontheclocktower.com/Vortox"
+    },
+    {
+      "text": "Only Townsfolk ability information is affected; Storyteller rules explanations, character or alignment changes, and non-Townsfolk information (e.g. a Snake Charmer swap) are true.",
+      "source": "https://wiki.bloodontheclocktower.com/Vortox"
+    },
+    {
+      "text": "Exiling a Traveller is not an execution.",
+      "source": "https://wiki.bloodontheclocktower.com/Vortox"
+    },
+    {
+      "text": "A Savant learns two false statements each day.",
+      "source": "https://wiki.bloodontheclocktower.com/Vortox"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "false-info",
+    "kill",
+    "win-condition"
+  ],
+  "test_scenarios": [
+    {
+      "name": "night kill",
+      "setup": "Alice Vortox, Bob Clockmaker",
+      "actions": "Night 2: Vortox chooses Bob.",
+      "expected": "Bob dies."
+    },
+    {
+      "name": "forced false info",
+      "setup": "Alice Vortox, Carol Seamstress, Bob Chef",
+      "actions": "Night 1: Seamstress chooses Alice and Bob (different alignments).",
+      "expected": "Seamstress learns they are the same alignment."
+    },
+    {
+      "name": "drunk townsfolk still false",
+      "setup": "Carol Clockmaker is drunk; Vortox and nearest Minion are 1 step apart",
+      "actions": "Night 1: Clockmaker learns.",
+      "expected": "A number other than 1."
+    },
+    {
+      "name": "no execution",
+      "setup": "Alice Vortox alive and sober",
+      "actions": "Day 2: no nomination reaches the threshold.",
+      "expected": "At dusk evil wins."
+    },
+    {
+      "name": "exile not execution",
+      "setup": "Alice Vortox alive",
+      "actions": "Day 2: a Traveller is exiled, nobody executed.",
+      "expected": "At dusk evil wins."
+    },
+    {
+      "name": "poisoned vortox",
+      "setup": "Alice Vortox poisoned",
+      "actions": "Day 2: no execution.",
+      "expected": "The game continues."
+    }
+  ]
+}

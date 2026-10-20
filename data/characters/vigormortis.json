@@ -1,0 +1,86 @@
+{
+  "id": "vigormortis",
+  "name": "Vigormortis",
+  "kind": "demon",
+  "ability": "Each night*, choose a player: they die. Minions you kill keep their ability & poison 1 Townsfolk neighbor. [-1 Outsider]",
+  "first_night": null,
+  "other_nights": 49,
+  "reminders": [
+    "Dead",
+    "Has ability",
+    "Poisoned"
+  ],
+  "setup": "-1 Outsider: replace one Outsider token with a Townsfolk token (no change if no Outsiders would be in play).",
+  "wakes": "Each night except the first.",
+  "interaction": "Points at a player, who dies. If that player is a Minion, they get HAS ABILITY and the Storyteller poisons the nearest Townsfolk neighbour clockwise or anticlockwise (Storyteller picks).",
+  "drunk_or_poisoned": "The kill fails; killed Minions lose their kept ability and their Townsfolk neighbours are healthy while the Vigormortis is drunk or poisoned.",
+  "jinxes": [
+    {
+      "with": "mastermind",
+      "text": "A Mastermind that has their ability keeps it if the Vigormortis dies."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "A killed Minion keeps its ability only while the Vigormortis is alive and has its ability; afterwards the poisoned Townsfolk recover.",
+      "source": "https://wiki.bloodontheclocktower.com/Vigormortis"
+    },
+    {
+      "text": "The poisoned neighbour skips Outsiders, Minions and Travellers; it is always a Townsfolk and may be dead.",
+      "source": "https://wiki.bloodontheclocktower.com/Vigormortis"
+    },
+    {
+      "text": "Only Minions the Vigormortis kills keep their ability; Minions executed by day do not.",
+      "source": "https://wiki.bloodontheclocktower.com/Vigormortis"
+    },
+    {
+      "text": "A dead Minion that becomes a non-Minion, or is drunk or poisoned, has no ability (and poisons no one) for that time.",
+      "source": "https://wiki.bloodontheclocktower.com/Vigormortis"
+    }
+  ],
+  "building_blocks": [
+    "ability-gain",
+    "choose-players",
+    "kill",
+    "poison",
+    "setup-modifier"
+  ],
+  "test_scenarios": [
+    {
+      "name": "setup removes outsider",
+      "setup": "8 players (base 5 Townsfolk, 1 Outsider, 1 Minion, 1 Demon) with Vigormortis",
+      "actions": "Build the bag.",
+      "expected": "6 Townsfolk, 0 Outsiders, 1 Minion, 1 Demon."
+    },
+    {
+      "name": "kill townsfolk",
+      "setup": "Alice Vigormortis, Bob Chef",
+      "actions": "Night 2: Vigormortis chooses Bob.",
+      "expected": "Bob dies; no other effect."
+    },
+    {
+      "name": "killed minion keeps ability",
+      "setup": "Seats: Bob Chef, Eve Poisoner, Carol Empath; Alice Vigormortis",
+      "actions": "Night 2: Vigormortis chooses Eve.",
+      "expected": "Eve dies with HAS ABILITY and still poisons each night; Storyteller also poisons Bob or Carol."
+    },
+    {
+      "name": "neighbour skips outsider",
+      "setup": "Seats: Gus Mayor, Dave Saint, Eve Witch, Fay Monk",
+      "actions": "Night 2: Vigormortis kills Eve.",
+      "expected": "The poisoned Townsfolk is Fay or Gus, never Dave."
+    },
+    {
+      "name": "vigormortis dies",
+      "setup": "Eve dead Witch with HAS ABILITY, Carol poisoned by it",
+      "actions": "Day 3: Alice Vigormortis executed, no Scarlet Woman.",
+      "expected": "Good wins; Eve's ability and Carol's poisoning end."
+    },
+    {
+      "name": "mastermind jinx",
+      "setup": "Eve Mastermind killed by the Vigormortis night 2",
+      "actions": "Day 3: Vigormortis executed.",
+      "expected": "Eve keeps the Mastermind ability: the game continues for one more day."
+    }
+  ]
+}

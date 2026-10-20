@@ -1,0 +1,73 @@
+{
+  "id": "pukka",
+  "name": "Pukka",
+  "kind": "demon",
+  "ability": "Each night, choose a player: they are poisoned. The previously poisoned player dies then becomes healthy.",
+  "first_night": 47,
+  "other_nights": 42,
+  "reminders": [
+    "Poisoned",
+    "Dead"
+  ],
+  "setup": null,
+  "wakes": "Every night, including the first.",
+  "interaction": "Points at a player, who becomes poisoned. On later nights the previously poisoned player dies and becomes healthy.",
+  "drunk_or_poisoned": "A choice made while drunk or poisoned does not poison. If the Pukka is drunk or poisoned when the kill would happen, the previous target does not die then; it dies once the Pukka is sober and healthy again.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The Pukka acts on the first night (poison only).",
+      "source": "https://wiki.bloodontheclocktower.com/Pukka"
+    },
+    {
+      "text": "Exorcist on the Pukka: the Pukka does not wake, so no new player is poisoned, but the previously poisoned player still dies.",
+      "source": "https://wiki.bloodontheclocktower.com/Pukka"
+    },
+    {
+      "text": "Innkeeper protection on the previously poisoned player prevents the death and they become healthy.",
+      "source": "https://wiki.bloodontheclocktower.com/Pukka"
+    },
+    {
+      "text": "If the poisoned player dies another way, the poison remains until their death ability has resolved.",
+      "source": "https://wiki.bloodontheclocktower.com/Pukka"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "delayed-effect",
+    "kill",
+    "poison"
+  ],
+  "test_scenarios": [
+    {
+      "name": "poison then kill",
+      "setup": "Alice Pukka, Bob Chambermaid, Carol Gossip, Dave Godfather, Eve Innkeeper",
+      "actions": "Night 1: Alice chooses Bob. Night 2: Alice chooses Carol.",
+      "expected": "Night 1 Bob is poisoned (may get false info). Night 2 Bob dies and Carol is poisoned."
+    },
+    {
+      "name": "executed target",
+      "setup": "Alice Pukka, Bob Fool, Carol Gossip, Dave Godfather, Eve Innkeeper",
+      "actions": "Night 1: Alice chooses Bob. Day 1: Bob is executed. Night 2: Alice chooses Carol.",
+      "expected": "Bob dies on execution (poisoned Fool has no ability); Night 2 nobody dies and Carol is poisoned."
+    },
+    {
+      "name": "Exorcist blocks",
+      "setup": "Alice Pukka, Bob Pacifist, Carol Exorcist, Dave Godfather, Eve Chef",
+      "actions": "Night 1: Alice chooses Bob. Night 2: Carol exorcises Alice.",
+      "expected": "Night 2 Alice does not wake: no new poisoning occurs, but Bob (poisoned, so the Pacifist ability does not apply) still dies."
+    },
+    {
+      "name": "Innkeeper saves",
+      "setup": "Alice Pukka, Bob Chef, Carol Innkeeper, Dave Godfather, Eve Empath",
+      "actions": "Night 1: Alice chooses Bob. Night 2: Carol protects Bob; Alice chooses Eve.",
+      "expected": "Bob survives and becomes healthy; Eve is poisoned."
+    },
+    {
+      "name": "drunk choice does nothing",
+      "setup": "Alice Pukka, Bob Chef, Carol Sailor, Dave Godfather, Eve Empath",
+      "actions": "Night 1: Alice is drunk (Sailor) and chooses Bob. Night 2: Alice chooses Eve.",
+      "expected": "Bob is never poisoned and does not die on Night 2; Eve is poisoned."
+    }
+  ]
+}

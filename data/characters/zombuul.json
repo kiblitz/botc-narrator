@@ -1,0 +1,84 @@
+{
+  "id": "zombuul",
+  "name": "Zombuul",
+  "kind": "demon",
+  "ability": "Each night*, if no-one died today, choose a player: they die. The 1st time you die, you live but register as dead.",
+  "first_night": null,
+  "other_nights": 41,
+  "reminders": [
+    "Died today",
+    "Dead"
+  ],
+  "setup": null,
+  "wakes": "Each night except the first, only if no player died that day (no DIED TODAY reminder).",
+  "interaction": "Points at a player, who dies. The first time it dies it is announced dead and its life token is flipped (no shroud), but it stays alive and registers as dead.",
+  "drunk_or_poisoned": "The kill fails; if it dies while drunk or poisoned it truly dies and good wins.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "After its first death the Zombuul is treated as dead in nearly every respect (one ghost vote, cannot nominate), but it is truly alive: the game continues when only two other players are alive.",
+      "source": "https://wiki.bloodontheclocktower.com/Zombuul"
+    },
+    {
+      "text": "The second death is real; good wins.",
+      "source": "https://wiki.bloodontheclocktower.com/Zombuul"
+    },
+    {
+      "text": "Executing an already-dead player is not a death, so the Zombuul can still wake that night.",
+      "source": "https://wiki.bloodontheclocktower.com/Zombuul"
+    },
+    {
+      "text": "If an apparently dead Zombuul becomes drunk or poisoned, do not announce that it is alive.",
+      "source": "https://wiki.bloodontheclocktower.com/Zombuul"
+    },
+    {
+      "text": "If the Zombuul is executed (first death), it is marked DIED TODAY and does not wake that night.",
+      "source": "https://wiki.bloodontheclocktower.com/Zombuul"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "delayed-effect",
+    "demon-death-survival",
+    "kill",
+    "registers-as"
+  ],
+  "test_scenarios": [
+    {
+      "name": "wakes when no deaths",
+      "setup": "Alice Zombuul, Bob Chef",
+      "actions": "Day 1: no execution. Night 2: Zombuul chooses Bob.",
+      "expected": "Bob dies."
+    },
+    {
+      "name": "sleeps after a death",
+      "setup": "Alice Zombuul, Carol Empath",
+      "actions": "Day 2: Carol executed.",
+      "expected": "The Zombuul does not wake night 3; no night death."
+    },
+    {
+      "name": "first death survived",
+      "setup": "Alice Zombuul",
+      "actions": "Day 2: Alice executed.",
+      "expected": "Alice is announced dead but stays alive, registering dead; the game continues; she does not wake night 3."
+    },
+    {
+      "name": "second death real",
+      "setup": "Alice Zombuul has already died once",
+      "actions": "Day 4: Alice executed again.",
+      "expected": "Alice dies; good wins."
+    },
+    {
+      "name": "executing a dead player",
+      "setup": "Alice Zombuul, Dave dead",
+      "actions": "Day 3: Dave executed; nobody else dies.",
+      "expected": "The Zombuul wakes night 4 and kills."
+    },
+    {
+      "name": "poisoned zombuul dies",
+      "setup": "Alice Zombuul poisoned",
+      "actions": "Day 2: Alice executed.",
+      "expected": "Alice truly dies; good wins."
+    }
+  ]
+}

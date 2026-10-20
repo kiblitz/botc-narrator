@@ -1,0 +1,77 @@
+{
+  "id": "fanggu",
+  "name": "Fang Gu",
+  "kind": "demon",
+  "ability": "Each night*, choose a player: they die. The 1st Outsider this kills becomes an evil Fang Gu & you die instead. [+1 Outsider]",
+  "first_night": null,
+  "other_nights": 45,
+  "reminders": [
+    "Dead",
+    "Once"
+  ],
+  "setup": "+1 Outsider (remove one Townsfolk).",
+  "wakes": "Each night except the first; an Outsider it jumps to wakes to learn they are the evil Fang Gu.",
+  "interaction": "The Fang Gu points at a player. A non-Outsider dies. If the target is an Outsider (by registration) and Once is not placed, the Fang Gu dies instead and the Outsider becomes an evil Fang Gu (shown YOU ARE Fang Gu and a thumbs-down); place Once. After that, Outsiders die normally.",
+  "drunk_or_poisoned": "Nobody dies and no jump happens; Once is not used.",
+  "jinxes": [
+    {
+      "with": "scarletwoman",
+      "text": "If there would be two Demons, one of which was the Scarlet Woman, the Scarlet Woman remains the Scarlet Woman."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "The jump happens only once per game; the Once reminder stays even if the Fang Gu dies or changes.",
+      "source": "https://wiki.bloodontheclocktower.com/Fang_Gu"
+    },
+    {
+      "text": "If the targeted Outsider would not die (e.g. protected), there is no jump and the Fang Gu does not die.",
+      "source": "https://wiki.bloodontheclocktower.com/Fang_Gu"
+    },
+    {
+      "text": "The new Fang Gu is the Demon but does not learn the Minions; the Outsider does not die, so death triggers (e.g. Sweetheart) do not fire.",
+      "source": "https://wiki.bloodontheclocktower.com/Fang_Gu"
+    }
+  ],
+  "building_blocks": [
+    "alignment-change",
+    "character-change",
+    "choose-players",
+    "kill",
+    "once-per-game",
+    "registers-as",
+    "setup-modifier"
+  ],
+  "test_scenarios": [
+    {
+      "name": "ordinary kill",
+      "setup": "Alice Fang Gu, Bob Chef, Carol Saint, Dan Poisoner, Eve Recluse, Frank Empath",
+      "actions": "Night 2: Alice chooses Bob.",
+      "expected": "Bob dies."
+    },
+    {
+      "name": "jump to outsider",
+      "setup": "Alice Fang Gu, Bob Chef, Carol Saint, Dan Poisoner, Eve Recluse, Frank Empath",
+      "actions": "Night 2: Alice chooses Carol.",
+      "expected": "Alice dies; Carol becomes an evil Fang Gu and lives; Once is placed; the game continues."
+    },
+    {
+      "name": "second outsider dies",
+      "setup": "As in 'jump to outsider', after the jump; Carol is the Fang Gu",
+      "actions": "Night 3: Carol chooses Eve (Recluse).",
+      "expected": "Eve dies; no further jump."
+    },
+    {
+      "name": "protected outsider",
+      "setup": "Alice Fang Gu, Bob Monk, Carol Saint, Dan Poisoner, Eve Chef, Frank Empath",
+      "actions": "Night 2: Bob protects Carol; Alice chooses Carol.",
+      "expected": "Nobody dies, no jump, Once is not placed."
+    },
+    {
+      "name": "setup",
+      "setup": "7 players with the Fang Gu",
+      "actions": "Setup.",
+      "expected": "The Outsider count is the base count plus 1."
+    }
+  ]
+}

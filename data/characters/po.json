@@ -1,0 +1,76 @@
+{
+  "id": "po",
+  "name": "Po",
+  "kind": "demon",
+  "ability": "Each night*, you may choose a player: they die. If your last choice was no-one, choose 3 players tonight.",
+  "first_night": null,
+  "other_nights": 44,
+  "reminders": [
+    "Dead",
+    "3 attacks"
+  ],
+  "setup": null,
+  "wakes": "Each night except the first.",
+  "interaction": "Chooses a player or no-one. After a no-one choice, the next time it acts it must choose 3 players in order, each of whom dies.",
+  "drunk_or_poisoned": "Kills fail. Choosing no-one while drunk or poisoned still grants 3 choices next time.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The first night does not count as choosing no-one.",
+      "source": "https://wiki.bloodontheclocktower.com/Po"
+    },
+    {
+      "text": "An attack that fails (target survives) does not grant 3 attacks; only a no-one choice does.",
+      "source": "https://wiki.bloodontheclocktower.com/Po"
+    },
+    {
+      "text": "When charged, the Po must pick 3 players and may not pick no-one.",
+      "source": "https://wiki.bloodontheclocktower.com/Po"
+    },
+    {
+      "text": "An Exorcist block is not a no-one choice; a pending 3-attack carries over to the next night the Po acts.",
+      "source": "https://wiki.bloodontheclocktower.com/Po"
+    },
+    {
+      "text": "The 3 attacks resolve in the chosen order (e.g. attacking a Goon makes the Po drunk for later attacks).",
+      "source": "https://wiki.bloodontheclocktower.com/Po"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "delayed-effect",
+    "kill"
+  ],
+  "test_scenarios": [
+    {
+      "name": "single kill",
+      "setup": "Alice Po, Bob Chef, Carol Empath, Dave Mastermind, Eve Monk",
+      "actions": "Night 2: Alice chooses Bob.",
+      "expected": "Bob dies."
+    },
+    {
+      "name": "charge then triple",
+      "setup": "Alice Po, Bob Chef, Carol Empath, Dave Mastermind, Eve Monk, Frank Sailor, Gina Tea Lady",
+      "actions": "Night 2: Alice chooses no-one. Night 3: Alice chooses Bob, Carol, Eve.",
+      "expected": "Night 2 nobody dies; Night 3 Bob, Carol and Eve die."
+    },
+    {
+      "name": "drunk charge still counts",
+      "setup": "Alice Po, Bob Chef, Carol Empath, Dave Poisoner, Eve Monk, Frank Sailor",
+      "actions": "Night 2: Alice is drunk (Sailor) and chooses no-one. Night 3: Alice is poisoned and picks Bob, Carol, Eve. Night 4: Alice is healthy.",
+      "expected": "Night 3 nobody dies; Night 4 Alice gets only one choice."
+    },
+    {
+      "name": "failed attack is not a charge",
+      "setup": "Alice Po, Bob Soldier, Carol Chef, Dave Baron, Eve Empath",
+      "actions": "Night 2: Alice chooses Bob. Night 3: Alice acts.",
+      "expected": "Bob survives; on Night 3 Alice may choose only one player."
+    },
+    {
+      "name": "Exorcist does not charge",
+      "setup": "Alice Po, Bob Exorcist, Carol Chef, Dave Baron, Eve Empath, Frank Monk",
+      "actions": "Night 2: Alice chooses no-one. Night 3: Bob exorcises Alice. Night 4: Alice acts.",
+      "expected": "Night 3 Alice does not act; Night 4 Alice chooses 3 players."
+    }
+  ]
+}

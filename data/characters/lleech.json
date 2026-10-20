@@ -1,0 +1,90 @@
+{
+  "id": "lleech",
+  "name": "Lleech",
+  "kind": "demon",
+  "ability": "Each night*, choose a player: they die. You start by choosing a player: they are poisoned. You die if & only if they are dead.",
+  "first_night": 31,
+  "other_nights": 52,
+  "reminders": [
+    "Dead",
+    "Poisoned"
+  ],
+  "setup": null,
+  "wakes": "Every night. On the first night (or the night it becomes the Lleech) it chooses its host; on later nights it chooses a player to kill.",
+  "interaction": "First night: points at an alive player, who becomes the host and is poisoned for the rest of the game. Other nights: points at a player, who dies.",
+  "drunk_or_poisoned": "The kill fails and the host is healthy while the Lleech is drunk or poisoned. If the host dies while the Lleech is drunk or poisoned, the Lleech does not die then; it can later die normally (e.g. executed) and good wins.",
+  "jinxes": [
+    {
+      "with": "mastermind",
+      "text": "If the Mastermind is alive and the Lleech host dies by execution, the Lleech lives but loses their ability."
+    },
+    {
+      "with": "slayer",
+      "text": "If the Slayer slays the Lleech host, the host dies."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "The Lleech cannot die while its host is alive; if executed, the Storyteller announces it does not die without saying why.",
+      "source": "https://wiki.bloodontheclocktower.com/Lleech"
+    },
+    {
+      "text": "When the host dies the Lleech dies too and (with no other Demon) good wins, even with few players left.",
+      "source": "https://wiki.bloodontheclocktower.com/Lleech"
+    },
+    {
+      "text": "The host never changes. A Lleech created mid-game chooses an alive host that night.",
+      "source": "https://wiki.bloodontheclocktower.com/Lleech"
+    },
+    {
+      "text": "A drunk Lleech whose host dies survives; when later executed it dies and good wins.",
+      "source": "https://wiki.bloodontheclocktower.com/Lleech"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "demon-death-survival",
+    "kill",
+    "on-death",
+    "poison",
+    "win-condition"
+  ],
+  "test_scenarios": [
+    {
+      "name": "host poisoned",
+      "setup": "Alice Lleech, Bob Noble, Carol Chef, Dave Baron, Eve Empath",
+      "actions": "Night 1: Alice chooses Bob as host.",
+      "expected": "Bob is poisoned for the whole game; his Noble info may be false."
+    },
+    {
+      "name": "executing Lleech with live host",
+      "setup": "Alice Lleech (host Bob Noble), Carol Chef, Dave Baron, Eve Empath",
+      "actions": "Day 2: Alice is executed.",
+      "expected": "Alice does not die; the Storyteller announces she survives; game continues."
+    },
+    {
+      "name": "host executed kills Lleech",
+      "setup": "Alice Lleech (host Bob Noble), Carol Chef, Dave Baron, Eve Empath",
+      "actions": "Day 2: Bob is executed.",
+      "expected": "Bob dies and Alice dies with him; good wins."
+    },
+    {
+      "name": "night kill",
+      "setup": "Alice Lleech (host Bob Noble), Carol Chef, Dave Baron, Eve Empath",
+      "actions": "Night 2: Alice chooses Carol.",
+      "expected": "Carol dies."
+    },
+    {
+      "name": "Slayer on host",
+      "setup": "Alice Lleech (host Bob Farmer), Carol Slayer, Dave Baron, Eve Empath",
+      "actions": "Day 1: Carol slays Bob.",
+      "expected": "Bob dies (jinx), so Alice dies; good wins."
+    },
+    {
+      "name": "Mastermind and host execution",
+      "setup": "Alice Lleech (host Bob Farmer), Carol Mastermind (alive), Dave Chef, Eve Empath",
+      "actions": "Day 2: Bob is executed. Night 3: Alice wakes.",
+      "expected": "Alice lives but has lost her ability: she makes no kill on Night 3."
+    }
+  ]
+}

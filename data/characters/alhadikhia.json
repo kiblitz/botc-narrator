@@ -1,0 +1,90 @@
+{
+  "id": "alhadikhia",
+  "name": "Al-Hadikhia",
+  "kind": "demon",
+  "ability": "Each night*, you may choose 3 players (all players learn who): each silently chooses to live or die, but if all live, all die.",
+  "first_night": null,
+  "other_nights": 51,
+  "reminders": [
+    "1",
+    "2",
+    "3",
+    "Chose death",
+    "Chose life"
+  ],
+  "setup": null,
+  "wakes": "Each night except the first; then each of the up to 3 chosen players wakes in order (1, 2, 3).",
+  "interaction": "The Al-Hadikhia may choose 3 players (marked 1, 2, 3). Each chosen player is woken in turn, told they were chosen, and silently chooses to live or die; their state is set accordingly (a dead player choosing life is resurrected). If all 3 are then alive, all 3 die. At dawn all players learn who was chosen and which are alive or dead.",
+  "drunk_or_poisoned": "The ability has no effect: nobody dies or returns to life from it (the Storyteller may still wake the chosen players).",
+  "jinxes": [
+    {
+      "with": "scarletwoman",
+      "text": "If there would be two Demons, one of which was the Scarlet Woman, the Scarlet Woman becomes the Scarlet Woman again."
+    },
+    {
+      "with": "mastermind",
+      "text": "If the Al-Hadikhia dies by execution, and the Mastermind is alive, the Al-Hadikhia chooses 3 good players tonight: if all 3 choose to live, evil wins. Otherwise, good wins."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "If the Al-Hadikhia chooses no one, nothing is announced and nobody dies to them.",
+      "source": "https://wiki.bloodontheclocktower.com/Al-Hadikhia"
+    },
+    {
+      "text": "A chosen dead player who chooses to live is resurrected and then counts toward the all-live check.",
+      "source": "https://wiki.bloodontheclocktower.com/Al-Hadikhia"
+    },
+    {
+      "text": "A player who chose death but survived (e.g. protected) still counts as alive for the all-live check.",
+      "source": "https://wiki.bloodontheclocktower.com/Al-Hadikhia"
+    },
+    {
+      "text": "The Al-Hadikhia may choose evil players, dead players or themself.",
+      "source": "https://wiki.bloodontheclocktower.com/Al-Hadikhia"
+    },
+    {
+      "text": "At dawn the Storyteller announces which chosen players are alive or dead, even if nothing changed.",
+      "source": "https://wiki.bloodontheclocktower.com/Al-Hadikhia"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "kill",
+    "player-choice",
+    "public-announcement",
+    "resurrect"
+  ],
+  "test_scenarios": [
+    {
+      "name": "one chooses death",
+      "setup": "Alice Al-Hadikhia, Bob Chef, Carol Empath, Dan Poisoner, Eve Monk",
+      "actions": "Night 2: Alice chooses Bob, Carol, Dan. Bob chooses life, Carol chooses death, Dan chooses life.",
+      "expected": "Carol dies; Bob and Dan live. Dawn announces Bob, Carol, Dan were chosen and Carol is dead."
+    },
+    {
+      "name": "all choose life",
+      "setup": "Alice Al-Hadikhia, Bob Chef, Carol Empath, Dan Poisoner, Eve Monk",
+      "actions": "Night 2: Alice chooses Bob, Carol, Eve; all three choose life.",
+      "expected": "Bob, Carol and Eve all die."
+    },
+    {
+      "name": "dead player returns",
+      "setup": "Alice Al-Hadikhia, Bob Chef (dead), Carol Empath, Dan Poisoner, Eve Monk",
+      "actions": "Night 3: Alice chooses Bob, Carol, Dan. Bob chooses life, Carol death, Dan life.",
+      "expected": "Bob returns to life; Carol dies; Dan lives."
+    },
+    {
+      "name": "no choice",
+      "setup": "Alice Al-Hadikhia, Bob Chef, Carol Empath, Dan Poisoner, Eve Monk",
+      "actions": "Night 2: Alice chooses nobody.",
+      "expected": "No announcement, no deaths."
+    },
+    {
+      "name": "poisoned",
+      "setup": "Alice Al-Hadikhia (poisoned), Bob Chef, Carol Empath, Dan Poisoner, Eve Monk",
+      "actions": "Night 2: Alice chooses Bob, Carol, Eve; all choose life.",
+      "expected": "Nobody dies."
+    }
+  ]
+}

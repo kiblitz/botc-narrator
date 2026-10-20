@@ -1,0 +1,73 @@
+{
+  "id": "shabaloth",
+  "name": "Shabaloth",
+  "kind": "demon",
+  "ability": "Each night*, choose 2 players: they die. A dead player you chose last night might be regurgitated.",
+  "first_night": null,
+  "other_nights": 43,
+  "reminders": [
+    "Dead",
+    "Alive"
+  ],
+  "setup": null,
+  "wakes": "Each night except the first.",
+  "interaction": "Points at two players, one at a time; both die. Before waking it, the Storyteller may return one player it chose last night to life (ALIVE reminder); that player is announced alive at dawn with no reason given.",
+  "drunk_or_poisoned": "Chosen players do not die and no one can be regurgitated.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Two separate attacks: a protected target (e.g. Monk/Innkeeper) survives while the other dies.",
+      "source": "https://wiki.bloodontheclocktower.com/Shabaloth"
+    },
+    {
+      "text": "Regurgitation is the Storyteller's choice of one dead player the Shabaloth chose last night (whether it killed them or they were already dead), just before the Shabaloth wakes; a regurgitated player regains their ability, including used once-per-game and first-night abilities (a first-night ability is used immediately).",
+      "source": "https://wiki.bloodontheclocktower.com/Shabaloth"
+    },
+    {
+      "text": "The Shabaloth cannot regurgitate itself; dead, it has no ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Shabaloth"
+    },
+    {
+      "text": "Regurgitate rarely (about once or twice a game), usually a good player.",
+      "source": "https://wiki.bloodontheclocktower.com/Shabaloth"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "delayed-effect",
+    "kill",
+    "resurrect"
+  ],
+  "test_scenarios": [
+    {
+      "name": "double kill",
+      "setup": "Alice Shabaloth, Bob Chef, Carol Empath, Dave Monk, Eve Poisoner, Fay Mayor, Gus Slayer",
+      "actions": "Night 2: Shabaloth chooses Bob and Carol.",
+      "expected": "Bob and Carol die; both announced dead at dawn."
+    },
+    {
+      "name": "one target protected",
+      "setup": "Alice Shabaloth, Dave Monk, Bob Chef, Carol Empath",
+      "actions": "Night 2: Monk protects Bob; Shabaloth chooses Bob and Carol.",
+      "expected": "Only Carol dies."
+    },
+    {
+      "name": "regurgitation",
+      "setup": "Alice Shabaloth; Carol Empath killed by her night 2",
+      "actions": "Night 3: Storyteller regurgitates Carol before the Shabaloth wakes.",
+      "expected": "Carol is alive with ALIVE reminder and wakes as Empath that night; dawn announces Carol is alive again, without a reason."
+    },
+    {
+      "name": "regurgitation restores once-per-game",
+      "setup": "Gus Slayer used his shot on day 1, then was killed by the Shabaloth night 2",
+      "actions": "Night 3: Gus regurgitated.",
+      "expected": "Gus may use the Slayer ability again."
+    },
+    {
+      "name": "poisoned shabaloth",
+      "setup": "Alice Shabaloth poisoned by Eve Poisoner",
+      "actions": "Night 2: chooses Bob and Carol.",
+      "expected": "No one dies."
+    }
+  ]
+}

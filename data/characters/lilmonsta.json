@@ -1,0 +1,89 @@
+{
+  "id": "lilmonsta",
+  "name": "Lil' Monsta",
+  "kind": "demon",
+  "ability": "Each night, Minions choose who babysits Lil' Monsta & \"is the Demon\". Each night*, a player might die. [+1 Minion]",
+  "first_night": 30,
+  "other_nights": 53,
+  "reminders": [
+    "Is the Demon",
+    "Dead"
+  ],
+  "setup": "+1 Minion; no player has the Lil' Monsta character (remove it from the bag and add a Minion). Skip Minion and Demon info.",
+  "wakes": "All Minions wake together every night, including the first, to choose a babysitter.",
+  "interaction": "Minions point to a player to babysit Lil' Monsta (the Storyteller decides if they disagree); that player gets Is the Demon and registers as the Demon. Each night except the first the Storyteller may choose a player to die. If the babysitter dies, good wins.",
+  "drunk_or_poisoned": "Lil' Monsta is not a player and cannot be drunk or poisoned; a drunk or poisoned babysitter is still the Demon.",
+  "jinxes": [
+    {
+      "with": "poppygrower",
+      "text": "If Lil' Monsta & the Poppy Grower are alive, Minions wake one by one, until one of them chooses to take the Lil' Monsta token."
+    },
+    {
+      "with": "magician",
+      "text": "If the Magician is alive, the Storyteller chooses which Minion babysits Lil' Monsta."
+    },
+    {
+      "with": "scarletwoman",
+      "text": "If Lil' Monsta dies with 5 or more players alive, the Scarlet Woman babysits Lil' Monsta for the rest of the game."
+    },
+    {
+      "with": "psychopath",
+      "text": "If the Psychopath is babysitting Lil' Monsta, they die when executed."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Minions keep their own abilities while babysitting.",
+      "source": "https://wiki.bloodontheclocktower.com/Lil'_Monsta"
+    },
+    {
+      "text": "A good player can babysit and stays good; if a dead player babysits, the Demon is dead and good wins.",
+      "source": "https://wiki.bloodontheclocktower.com/Lil'_Monsta"
+    },
+    {
+      "text": "The Storyteller decides night deaths and never kills the babysitter.",
+      "source": "https://wiki.bloodontheclocktower.com/Lil'_Monsta"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "kill",
+    "registers-as",
+    "setup-modifier",
+    "storyteller-kill",
+    "token-holder",
+    "win-condition"
+  ],
+  "test_scenarios": [
+    {
+      "name": "babysitter executed",
+      "setup": "Alice Poisoner, Bob Spy, Carol Chef, Dan Empath, Eve Monk, Frank Saint",
+      "actions": "Night 1: Minions choose Alice. Day 1: Alice executed.",
+      "expected": "Good wins."
+    },
+    {
+      "name": "other minion executed",
+      "setup": "Same as 'babysitter executed'",
+      "actions": "Night 1: Minions choose Bob. Day 1: Alice executed.",
+      "expected": "The game continues."
+    },
+    {
+      "name": "night kill",
+      "setup": "Same as 'babysitter executed'",
+      "actions": "Night 2: Minions choose Alice; the Storyteller kills Carol.",
+      "expected": "Carol dies; Alice is the Demon."
+    },
+    {
+      "name": "babysitter registers as demon",
+      "setup": "Alice Poisoner, Bob Spy, Carol Fortune Teller, Dan Empath, Eve Chef",
+      "actions": "Night 2: Minions choose Bob; Carol checks Bob and Dan.",
+      "expected": "Carol learns yes."
+    },
+    {
+      "name": "setup",
+      "setup": "7 players with Lil' Monsta",
+      "actions": "Setup.",
+      "expected": "Two Minions in play; no player holds the Lil' Monsta character."
+    }
+  ]
+}

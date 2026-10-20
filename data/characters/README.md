@@ -37,4 +37,8 @@ Building-block vocabulary (add new names when none fits, and keep them kebab-cas
 `storyteller-judgement` (the Storyteller decides from the game state, e.g. who
 is winning), `track-history` (needs a record of past nights or days),
 `wake-count` (needs who woke tonight due to their ability),
-`ability-malfunction-count` (needs which abilities worked abnormally since dawn).
+`ability-malfunction-count` (needs which abilities worked abnormally since dawn).,
+`storyteller-kill` (the Storyteller picks who dies), `resurrect`,
+`day-counter`, `public-announcement`, `player-choice` (other players make a
+choice, e.g. Al-Hadikhia's live-or-die), `alignment-change`, `token-holder`
+(an ability held by whoever has a token, e.g. Lil' Monsta).

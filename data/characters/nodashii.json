@@ -1,0 +1,69 @@
+{
+  "id": "nodashii",
+  "name": "No Dashii",
+  "kind": "demon",
+  "ability": "Each night*, choose a player: they die. Your 2 Townsfolk neighbors are poisoned.",
+  "first_night": null,
+  "other_nights": 46,
+  "reminders": [
+    "Dead",
+    "Poisoned"
+  ],
+  "setup": null,
+  "wakes": "Each night except the first.",
+  "interaction": "Points at a player, who dies. Its nearest Townsfolk in each direction are poisoned passively (no wake needed).",
+  "drunk_or_poisoned": "The kill fails and the Townsfolk neighbours are healthy while the No Dashii is drunk or poisoned.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The poisoned players are the nearest Townsfolk clockwise and anticlockwise, alive or dead; Outsiders, Minions and Travellers are skipped.",
+      "source": "https://wiki.bloodontheclocktower.com/No_Dashii"
+    },
+    {
+      "text": "If a neighbour stops being a Townsfolk or characters change, the poison moves immediately to the new nearest Townsfolk.",
+      "source": "https://wiki.bloodontheclocktower.com/No_Dashii"
+    },
+    {
+      "text": "If the No Dashii dies or loses its ability, both neighbours become healthy.",
+      "source": "https://wiki.bloodontheclocktower.com/No_Dashii"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "kill",
+    "poison",
+    "seating"
+  ],
+  "test_scenarios": [
+    {
+      "name": "adjacent neighbours poisoned",
+      "setup": "Clockwise seats: Alice No Dashii, Bob Town Crier, Carol Clockmaker, Dave Witch, Eve Snake Charmer",
+      "actions": "Night 1 setup.",
+      "expected": "Bob and Eve are poisoned; Carol is not."
+    },
+    {
+      "name": "skips non-Townsfolk",
+      "setup": "Clockwise: Alice No Dashii, Bob Witch, Carol Mutant, Dave Seamstress, Eve Philosopher",
+      "actions": "Night 1 setup.",
+      "expected": "Dave and Eve are poisoned; Bob and Carol are skipped."
+    },
+    {
+      "name": "dead neighbour stays poisoned",
+      "setup": "Clockwise: Alice No Dashii, Bob Town Crier, Carol Clockmaker, Dave Sage, Eve Snake Charmer",
+      "actions": "Night 2: Alice kills Bob.",
+      "expected": "Bob dies but remains the poisoned neighbour; Carol stays healthy."
+    },
+    {
+      "name": "night kill",
+      "setup": "Alice No Dashii, Bob Chef, Carol Empath, Dave Poisoner, Eve Monk",
+      "actions": "Night 2: Alice chooses Dave.",
+      "expected": "Dave dies."
+    },
+    {
+      "name": "death clears poison",
+      "setup": "Clockwise: Alice No Dashii, Bob Empath, Carol Chef, Dave Witch, Eve Savant, Frank Mutant",
+      "actions": "Day 2: Alice is executed.",
+      "expected": "Alice dies, good wins; Bob and Eve are no longer poisoned."
+    }
+  ]
+}

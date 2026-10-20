@@ -1,0 +1,88 @@
+{
+  "id": "legion",
+  "name": "Legion",
+  "kind": "demon",
+  "ability": "Each night*, a player might die. Executions fail if only evil voted. You register as a Minion too. [Most players are Legion]",
+  "first_night": null,
+  "other_nights": 39,
+  "reminders": [
+    "Dead",
+    "About to die"
+  ],
+  "setup": "Most players are Legion (all evil players are Legion; usually no Minions).",
+  "wakes": "Legion players wake together on the first night (Demon info) to see each other; Legion does not wake to kill.",
+  "interaction": "First night: Legion players learn each other (and may be shown who is not Legion). Each other night the Storyteller may choose one player to die. During the day, an execution with enough votes fails (tally declared 0) if only evil players voted.",
+  "drunk_or_poisoned": "A drunk or poisoned Legion player has no ability; the Storyteller may still kill at night and apply the vote rule through sober Legion players.",
+  "jinxes": [
+    {
+      "with": "engineer",
+      "text": "If Legion is created, all evil players become Legion. If Legion is in play, the Engineer starts knowing this but has no ability."
+    },
+    {
+      "with": "minstrel",
+      "text": "If Legion died by execution today, Legion keeps their ability, but the Minstrel might learn they are Legion."
+    },
+    {
+      "with": "politician",
+      "text": "The Politician might register as evil to Legion."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "If only evil players voted, the Storyteller declares the tally zero; one good vote makes it count.",
+      "source": "https://wiki.bloodontheclocktower.com/Legion"
+    },
+    {
+      "text": "Legion registers as both a Demon and a Minion.",
+      "source": "https://wiki.bloodontheclocktower.com/Legion"
+    },
+    {
+      "text": "The Storyteller chooses who (if anyone) dies at night, usually a Legion player.",
+      "source": "https://wiki.bloodontheclocktower.com/Legion"
+    },
+    {
+      "text": "If only one good player remains, the Storyteller may declare evil the winner.",
+      "source": "https://wiki.bloodontheclocktower.com/Legion"
+    }
+  ],
+  "building_blocks": [
+    "kill",
+    "registers-as",
+    "setup-modifier",
+    "storyteller-kill",
+    "vote-modifier",
+    "win-condition"
+  ],
+  "test_scenarios": [
+    {
+      "name": "evil-only vote fails",
+      "setup": "Alice Legion, Bob Legion, Carol Legion, Dan Legion, Eve Chef, Frank Empath, Gina Monk",
+      "actions": "Day 1: Alice nominates Eve; Alice, Bob, Carol and Dan vote.",
+      "expected": "The tally counts as 0; Eve is not executed."
+    },
+    {
+      "name": "one good vote counts",
+      "setup": "Same as 'evil-only vote fails'",
+      "actions": "Day 1: Alice nominates Eve; Alice, Bob, Carol, Dan and Frank vote.",
+      "expected": "Eve is executed."
+    },
+    {
+      "name": "storyteller night kill",
+      "setup": "Same as 'evil-only vote fails'",
+      "actions": "Night 2: the Storyteller chooses Bob.",
+      "expected": "Bob (Legion) dies."
+    },
+    {
+      "name": "registers as minion",
+      "setup": "Alice Legion, Bob Legion, Carol Legion, Eve Investigator, Frank Chef",
+      "actions": "Night 1: Investigator info.",
+      "expected": "The Investigator may be shown a Legion player as a Minion."
+    },
+    {
+      "name": "last Legion executed",
+      "setup": "Alice Legion (the only Legion alive), Eve Chef, Frank Empath",
+      "actions": "Day: Eve nominates Alice; Eve and Frank vote; Alice is executed.",
+      "expected": "Good wins."
+    }
+  ]
+}
