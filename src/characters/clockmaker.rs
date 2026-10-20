@@ -51,8 +51,9 @@ fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
     };
     let nearest = demons
         .iter()
-        .flat_map(|d| minions.iter().map(|m| steps(*d, *m)))
+        .flat_map(|d| minions.iter().filter(move |m| *m != d).map(|m| steps(*d, *m)))
         .min()
+        // No Demon and Minion register: nothing true to count, so 0.
         .unwrap_or(0);
     ctx.wake(me);
     ability::tell_count(ctx, me, nearest, n / 2, "steps");

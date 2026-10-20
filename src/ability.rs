@@ -80,7 +80,7 @@ pub fn not_in_play(state: &game::State, kind: character::Kind) -> Vec<character:
 
 /// Characters of these kinds that information may name: the script's, or
 /// the in-play ones when no script is recorded.
-pub fn characters_of(state: &game::State, kinds: &[character::Kind]) -> Vec<character::Ref> {
+pub fn nameable(state: &game::State, kinds: &[character::Kind]) -> Vec<character::Ref> {
     let pool: Vec<character::Ref> = if state.script().is_empty() {
         state.players().iter().map(|p| p.character).collect()
     } else {
@@ -95,9 +95,10 @@ pub fn characters_of(state: &game::State, kinds: &[character::Kind]) -> Vec<char
     out
 }
 
-/// Whether `player` wakes tonight (night `night`) for one of their own
-/// abilities: one with a night action and a turn tonight that it wakes for.
-/// Judged now, so a turn still to come counts.
+/// Whether `player` wakes tonight (night `night`) for one of their abilities
+/// (own, believed or gained): one with a night action and a turn tonight
+/// that it wakes for. Judged now, so a turn still to come counts and a player
+/// who died after their turn does not (see README, "Not yet modelled").
 pub fn wakes_for_ability(state: &game::State, player: &player::Id, night: u32) -> bool {
     state.abilities(player).iter().any(|c| {
         let order = c.night_order();

@@ -264,6 +264,21 @@ fn clockmaker_sees_a_recluse_registering_as_a_minion() {
     let log = g.transcript();
     assert!(log.contains("-> Clock: 1 steps"), "{log}");
 
+    // Registering as both the Demon and a Minion, the Recluse is not 0 steps
+    // from itself.
+    let mut g = game(&[
+        ("Imp", &characters::imp::Def),
+        ("Clock", &characters::clockmaker::Def),
+        ("Chef", &characters::chef::Def),
+        ("Baron", &characters::baron::Def),
+        ("Monk", &characters::monk::Def),
+        ("Recluse", &characters::recluse::Def),
+    ]);
+    g.picks(&[&[1], &[1]])
+        .run(act(&characters::clockmaker::Def, 1));
+    let log = g.transcript();
+    assert!(log.contains("-> Clock: 1 steps"), "{log}");
+
     let mut g = game(&[
         ("Imp", &characters::imp::Def),
         ("Clock", &characters::clockmaker::Def),

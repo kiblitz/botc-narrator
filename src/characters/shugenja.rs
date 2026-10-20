@@ -35,7 +35,9 @@ impl character::Def for Def {
 fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
     let seats = ctx.state().seat_order();
     let n = seats.len();
-    let i = seats.iter().position(|p| p == me).unwrap_or(0);
+    let Some(i) = seats.iter().position(|p| p == me) else {
+        return;
+    };
     let mut truthful = Vec::new();
     for k in 1..=n / 2 {
         let clockwise = &seats[(i + k) % n];

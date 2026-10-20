@@ -63,7 +63,7 @@ Override only the hooks the ability uses (the full list is in the README,
 | learn a number / yes-no / a character | `tell_count`, `tell_yes_no`, `tell_character` |
 | "one of these two is the X" | `tell_one_of(ctx, me, kind)` |
 | learn a player / a player's character / a direction / who is winning | `info::Message::Player`, `Is`, `Direction`, `Winning` with `ctx.inform` (it returns what was told) |
-| good or evil characters information may name | `characters_of(state, kinds)` (the script's, or in play) |
+| good or evil characters information may name | `nameable(state, kinds)` (the script's, or in play) |
 | "woke tonight due to their ability" | `wakes_for_ability(state, p, night)` |
 | how many are evil | `count_evil`, `alive_neighbours`, `groups` |
 | choose players / a character | `ctx.ask`, `ctx.ask_one`, `ctx.ask_character` |

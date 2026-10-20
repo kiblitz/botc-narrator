@@ -48,8 +48,17 @@ fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
         return;
     };
     let registered = ctx.registered_character(me, &target);
-    let good = ability::characters_of(ctx.state(), &GOOD);
-    let evil = ability::characters_of(ctx.state(), &EVIL);
+    let mut good = ability::nameable(ctx.state(), &GOOD);
+    let mut evil = ability::nameable(ctx.state(), &EVIL);
+    // The registered character is always shown, even if it is off the script.
+    let pool = if GOOD.contains(&registered.kind()) {
+        &mut good
+    } else {
+        &mut evil
+    };
+    if !pool.iter().any(|c| character::same(*c, registered)) {
+        pool.push(registered);
+    }
     let pair = |g: character::Ref, e: character::Ref| info::Message::Characters(vec![g.name(), e.name()]);
     let (mut truthful, mut misinformation) = (Vec::new(), Vec::new());
     for g in &good {

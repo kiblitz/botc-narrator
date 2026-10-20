@@ -51,15 +51,6 @@ fn know(kind: character::Kind) -> game::Effect {
     })
 }
 
-const KINDS: [character::Kind; 6] = [
-    character::Kind::Townsfolk,
-    character::Kind::Outsider,
-    character::Kind::Minion,
-    character::Kind::Demon,
-    character::Kind::Traveller,
-    character::Kind::Fabled,
-];
-
 /// Each night, learns a player of a different character type (as they
 /// register) than last night's. Malfunctioning, the type may repeat; either
 /// way the next night differs from the player actually shown.
@@ -73,7 +64,7 @@ fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
         });
     let last_kind = previous
         .as_ref()
-        .and_then(|(_, r)| KINDS.into_iter().find(|k| know(*k) == r.effect));
+        .and_then(|(_, r)| character::Kind::ALL.into_iter().find(|k| know(*k) == r.effect));
     let others = ability::others(ctx.state(), me);
     let mut read = ctx.read();
     let registered: Vec<(player::Id, character::Kind)> = others

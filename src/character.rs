@@ -20,6 +20,15 @@ pub enum Kind {
 }
 
 impl Kind {
+    pub const ALL: [Kind; 6] = [
+        Kind::Townsfolk,
+        Kind::Outsider,
+        Kind::Minion,
+        Kind::Demon,
+        Kind::Traveller,
+        Kind::Fabled,
+    ];
+
     /// The alignment a character of this kind starts with. Travellers have
     /// their alignment chosen at seating, and Fabled have none.
     pub fn alignment(self) -> Option<Alignment> {
