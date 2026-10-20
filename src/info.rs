@@ -23,6 +23,31 @@ pub enum Message {
     Grimoire(Vec<(player::Id, &'static str)>),
 }
 
+impl Message {
+    /// Players the message names, in order.
+    pub fn players(&self) -> Vec<&player::Id> {
+        match self {
+            Message::OneOf { players, .. } => players.iter().collect(),
+            Message::Team { evil } => evil.iter().collect(),
+            Message::Grimoire(seats) => seats.iter().map(|(p, _)| p).collect(),
+            Message::Count { .. }
+            | Message::YesNo(_)
+            | Message::Character(_)
+            | Message::Bluffs(_) => Vec::new(),
+        }
+    }
+
+    /// Character names the message names, in order.
+    pub fn characters(&self) -> Vec<&'static str> {
+        match self {
+            Message::OneOf { character, .. } | Message::Character(character) => vec![*character],
+            Message::Bluffs(names) => names.clone(),
+            Message::Grimoire(seats) => seats.iter().map(|(_, c)| *c).collect(),
+            Message::Count { .. } | Message::YesNo(_) | Message::Team { .. } => Vec::new(),
+        }
+    }
+}
+
 impl fmt::Display for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

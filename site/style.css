@@ -233,3 +233,15 @@ li.future { opacity: 0.35; }
 .seat.voted .token { box-shadow: 0 0 0 4px #e8a04a, 0 0 16px #e8a04a; }
 .seat.voted .name::before { content: "✋ "; }
 #log-area h2 { position: sticky; top: -0.75rem; background: var(--panel); padding: 0.75rem 0 0.25rem; margin-top: -0.75rem; z-index: 1; }
+
+/* Information that names players or characters. */
+.seat.mentioned .token { box-shadow: 0 0 0 4px #4fd1c5, 0 0 18px #4fd1c5; }
+.seat.mentioned .name { color: #4fd1c5; }
+.player-ref { color: #4fd1c5; font-weight: 600; }
+.char-ref {
+  display: inline; white-space: nowrap;
+  padding: 0 4px 0 1px; border-radius: 9px;
+  background: rgba(236, 227, 207, 0.15);
+  font-weight: 600;
+}
+.char-ref img { width: 1.35em; height: 1.35em; object-fit: contain; vertical-align: middle; margin-right: 2px; }

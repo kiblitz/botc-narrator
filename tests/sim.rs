@@ -128,3 +128,26 @@ fn vote_steps_name_the_nominee_and_voters() {
         }
     }
 }
+
+#[test]
+fn information_steps_carry_the_players_and_characters_they_name() {
+    let trace = sim::simulate(7, 8);
+    // Ada (Washerwoman) learns "Bram and Gus: one is the Investigator".
+    let step = trace
+        .steps
+        .iter()
+        .find(|s| s.kind == sim::Kind::Tell && s.text.contains("one is the Investigator"))
+        .expect("washerwoman info");
+    assert_eq!(step.players, ["Bram", "Gus"]);
+    assert_eq!(step.characters, ["Investigator"]);
+    // A choice names the chosen players.
+    let ask = trace
+        .steps
+        .iter()
+        .find(|s| s.kind == sim::Kind::Ask)
+        .expect("an ask");
+    assert!(!ask.players.is_empty());
+    for name in &ask.players {
+        assert!(ask.text.contains(name.as_str()));
+    }
+}

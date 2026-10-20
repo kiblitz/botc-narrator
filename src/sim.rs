@@ -168,6 +168,12 @@ pub struct Step {
     /// Who raised a hand, on vote steps.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub voters: Vec<String>,
+    /// Players named by the step's information or chosen in its answer.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub players: Vec<String>,
+    /// Characters named by the step's information.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub characters: Vec<&'static str>,
 }
 
 fn seats(view: &game::State) -> Vec<Seat> {
@@ -216,6 +222,8 @@ impl Recorder {
             audience,
             snapshot: self.snapshots.len() - 1,
             voters: Vec::new(),
+            players: Vec::new(),
+            characters: Vec::new(),
         });
         self.steps.last_mut().expect("just pushed")
     }
@@ -296,12 +304,14 @@ impl table::Io for Recorder {
                 step: self.steps.len(),
             });
         }
-        self.push(
+        let step = self.push(
             Kind::Tell,
             Some(player),
             message.to_string(),
             Audience::Player,
         );
+        step.players = message.players().iter().map(ToString::to_string).collect();
+        step.characters = message.characters();
     }
 
     fn ask(
@@ -319,7 +329,8 @@ impl table::Io for Recorder {
             game::Phase::Day(_) => Audience::Public,
             _ => Audience::Player,
         };
-        self.push(Kind::Ask, Some(player), text, audience);
+        self.push(Kind::Ask, Some(player), text, audience).players =
+            answer.iter().map(ToString::to_string).collect();
         answer
     }
 

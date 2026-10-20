@@ -115,7 +115,7 @@ function render() {
   caption.className = step.audience === "storyteller" ? "storyteller" : "";
   caption.replaceChildren();
   if (step.player && hasSpeaker(step)) caption.append(el("span", "who", `${step.player}: `));
-  caption.append(describe(step));
+  caption.append(annotate(step, describe(step)));
 
   for (const div of board.querySelectorAll(".seat")) {
     const seat = snapshot.find((s) => s.name === div.dataset.name);
@@ -133,6 +133,8 @@ function render() {
     const isVote = step.kind === "vote";
     div.classList.toggle("nominee", isVote && step.player === seat.name);
     div.classList.toggle("voted", isVote && (step.voters ?? []).includes(seat.name));
+    // Players named in the information (or chosen) are marked on the board.
+    div.classList.toggle("mentioned", (step.players ?? []).includes(seat.name));
     div.classList.toggle("selected", selected === seat.name);
     renderToken(div.querySelector(".token"), known ? seat.character : null);
     const reminders = div.querySelector(".reminders");
@@ -210,6 +212,39 @@ function describe(step) {
   return `${step.text}: ${voters.length ? voters.join(", ") : "no hands"}`;
 }
 
+/**
+ * `text` with the step's named players and characters marked up: players as
+ * highlighted names, characters with their icon.
+ */
+function annotate(step, text) {
+  const players = step.players ?? [];
+  const characters = step.characters ?? [];
+  const names = [...new Set([...players, ...characters])].sort((a, b) => b.length - a.length);
+  if (names.length === 0) return text;
+  const escaped = names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp(`\\b(${escaped.join("|")})\\b`, "g");
+  const out = document.createDocumentFragment();
+  let last = 0;
+  for (const match of text.matchAll(pattern)) {
+    out.append(text.slice(last, match.index));
+    const name = match[0];
+    if (characters.includes(name)) {
+      const ref = el("span", "char-ref");
+      const img = el("img");
+      img.alt = "";
+      img.src = iconUrl(name);
+      img.addEventListener("error", () => img.remove());
+      ref.append(img, name);
+      out.append(ref);
+    } else {
+      out.append(el("span", "player-ref", name));
+    }
+    last = match.index + name.length;
+  }
+  out.append(text.slice(last));
+  return out;
+}
+
 /** Steps said to or by a player, shown with their name. */
 function hasSpeaker(step) {
   return ["wake", "sleep", "tell", "ask"].includes(step.kind);
@@ -220,7 +255,7 @@ function logItem(step, current) {
   if (isPhase(step)) li.classList.add("phase");
   if (current) li.classList.add("current");
   if (step.player && hasSpeaker(step)) li.append(el("span", "who", `${step.player}: `));
-  li.append(describe(step));
+  li.append(annotate(step, describe(step)));
   return li;
 }
 

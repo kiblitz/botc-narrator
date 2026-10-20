@@ -193,3 +193,19 @@ test("votes highlight the nominee and everyone who voted", async ({ page }) => {
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".seat.voted")).toHaveCount(0);
 });
+
+test("information highlights the players and characters it names", async ({ page }) => {
+  await open(page);
+  // Seed 7 / 8 players: step 12 tells Ada "Bram and Gus: one is the Investigator".
+  for (let i = 0; i < 11; i++) await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#caption")).toContainText("one is the Investigator");
+  await expect(page.locator(".seat.mentioned")).toHaveCount(2);
+  await expect(page.locator('.seat[data-name="Bram"]')).toHaveClass(/mentioned/);
+  await expect(page.locator('.seat[data-name="Gus"]')).toHaveClass(/mentioned/);
+  await expect(page.locator("#caption .player-ref")).toHaveText(["Bram", "Gus"]);
+  await expect(page.locator("#caption .char-ref")).toHaveText("Investigator");
+  await expect(page.locator("#caption .char-ref img")).toHaveAttribute("src", /investigator\.png$/);
+  await expect(page.locator("#log .current .char-ref")).toHaveText("Investigator");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".seat.mentioned")).toHaveCount(0);
+});
