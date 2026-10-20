@@ -1,0 +1,76 @@
+{
+  "id": "barista",
+  "name": "Barista",
+  "kind": "traveller",
+  "ability": "Each night, until dusk, 1) a player becomes sober, healthy & gets true info, or 2) their ability works twice. They learn which.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Sober & Healthy",
+    "Ability twice"
+  ],
+  "setup": "Traveller: joins with an alignment chosen by the Storyteller; does not change the base character counts.",
+  "wakes": "The Barista never wakes; the player the Storyteller picks is woken each night (including the first) to learn the effect. Night order: no number on the townsquare scale used by these specs (townsquare gives every Traveller a placeholder 1, and Fabled none); the official app nightsheet places it very early, before the Townsfolk (first night 10 of 80, other nights 6 of 99).",
+  "interaction": "Each night the Storyteller chooses a player and an effect. That player is shown THIS CHARACTER SELECTED YOU and the Barista token, then one finger (sober, healthy and true info) or two fingers (ability works twice).",
+  "drunk_or_poisoned": "If the Barista is drunk or poisoned, the chosen effect does not apply.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "A sober-and-healthy player loses drunkenness and poisoning, cannot be made drunk or poisoned until dusk, and gets true info even with a Vortox in play.",
+      "source": "https://wiki.bloodontheclocktower.com/Barista"
+    },
+    {
+      "text": "A player whose ability works twice acts at its normal time twice (wake, sleep, wake again); mandatory abilities must be used twice, optional ones may be.",
+      "source": "https://wiki.bloodontheclocktower.com/Barista"
+    },
+    {
+      "text": "A used once-per-game ability may be used again; an unused one may be used twice before dusk.",
+      "source": "https://wiki.bloodontheclocktower.com/Barista"
+    },
+    {
+      "text": "The Barista does not learn the choice; the affected player does.",
+      "source": "https://wiki.bloodontheclocktower.com/Barista"
+    },
+    {
+      "text": "Previous reminders are removed each night; effects last until dusk.",
+      "source": "https://wiki.bloodontheclocktower.com/Barista"
+    }
+  ],
+  "building_blocks": [
+    "false-info",
+    "ability-gain",
+    "delayed-effect"
+  ],
+  "test_scenarios": [
+    {
+      "name": "sober and healthy through poison",
+      "setup": "Alice Barista, Bob Empath, Carol Poisoner, Dave Imp.",
+      "actions": "Night 2: Carol poisons Bob; the Storyteller gives Bob SOBER & HEALTHY.",
+      "expected": "Bob is shown the Barista and one finger, is not poisoned, and gets a true Empath number."
+    },
+    {
+      "name": "true info under Vortox",
+      "setup": "Alice Barista, Bob Seamstress, Dave Vortox.",
+      "actions": "Night 2: the Storyteller makes Bob sober and healthy; Bob uses his ability.",
+      "expected": "Bob gets true info despite the Vortox."
+    },
+    {
+      "name": "Witch acts twice",
+      "setup": "Alice Barista, Bob Witch, Carol Monk, Dave Imp.",
+      "actions": "Night 2: the Storyteller gives Bob ABILITY TWICE.",
+      "expected": "Bob wakes, curses a player, sleeps, wakes again and curses a second player; both are cursed tomorrow."
+    },
+    {
+      "name": "once-per-game reused",
+      "setup": "Alice Barista, Bob Slayer (ability used), Dave Imp.",
+      "actions": "Night 2: the Storyteller gives Bob ABILITY TWICE.",
+      "expected": "Day 2 (before dusk): Bob may use his Slayer shot again."
+    },
+    {
+      "name": "expires at dusk",
+      "setup": "Alice Barista, Bob Empath, Carol Poisoner.",
+      "actions": "Night 2: Bob made sober and healthy. Night 3: Carol poisons Bob, Barista picks someone else.",
+      "expected": "Bob is poisoned on night 3."
+    }
+  ]
+}

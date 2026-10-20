@@ -21,13 +21,14 @@ const FIELDS: [&str; 15] = [
     "test_scenarios",
 ];
 
-const KINDS: [&str; 6] = [
+const KINDS: [&str; 7] = [
     "townsfolk",
     "outsider",
     "minion",
     "demon",
     "traveller",
     "fabled",
+    "loric",
 ];
 
 #[test]

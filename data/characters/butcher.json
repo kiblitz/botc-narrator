@@ -1,0 +1,63 @@
+{
+  "id": "butcher",
+  "name": "Butcher",
+  "kind": "traveller",
+  "ability": "Each day, after the 1st execution, you may nominate again.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": "Traveller: joins with an alignment chosen by the Storyteller; does not change the base character counts.",
+  "wakes": "never",
+  "interaction": "After the day's first execution, the Storyteller prompts the Butcher to nominate again; normal voting rules apply.",
+  "drunk_or_poisoned": "The Butcher cannot nominate again.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The extra nomination needs the normal majority, not more votes than the first execution.",
+      "source": "https://wiki.bloodontheclocktower.com/Butcher"
+    },
+    {
+      "text": "An execution counts even if the executed player does not die.",
+      "source": "https://wiki.bloodontheclocktower.com/Butcher"
+    },
+    {
+      "text": "Exiles are not executions and do not trigger the ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Butcher"
+    },
+    {
+      "text": "The Butcher may nominate an already-nominated player and may retry after failed nominations; a successful second execution does not allow a third.",
+      "source": "https://wiki.bloodontheclocktower.com/Butcher"
+    }
+  ],
+  "building_blocks": [
+    "extra-execution",
+    "day-ability",
+    "on-execution"
+  ],
+  "test_scenarios": [
+    {
+      "name": "second execution",
+      "setup": "Alice Butcher, Bob Witch, Carol Sage; 7 alive.",
+      "actions": "Day 2: Bob is executed; Alice nominates Carol; 4 vote.",
+      "expected": "Carol is also executed."
+    },
+    {
+      "name": "no execution, no ability",
+      "setup": "Alice Butcher.",
+      "actions": "Day 2: two exiles, no execution.",
+      "expected": "Alice may not nominate again."
+    },
+    {
+      "name": "retry after failure",
+      "setup": "Alice Butcher, Bob Town Crier, Carol Mathematician.",
+      "actions": "Day 2: after an execution Alice nominates Bob (fails), then Bob again (passes).",
+      "expected": "Bob is executed; Alice cannot nominate further."
+    },
+    {
+      "name": "execution without death",
+      "setup": "Alice Butcher, Bob Fool (unused).",
+      "actions": "Day 2: Bob is executed but survives.",
+      "expected": "Alice may nominate again."
+    }
+  ]
+}

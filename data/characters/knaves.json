@@ -1,0 +1,58 @@
+{
+  "id": "knaves",
+  "name": "Knaves",
+  "kind": "loric",
+  "ability": "There are 2 Storytellers: one lies & one tells the truth. Once per game, at dusk, they might switch.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": "The two Storytellers decide before the first night which tells the truth and which lies.",
+  "wakes": "never",
+  "interaction": "Whenever a player receives ability information (at night or visiting during the day) they choose which Storyteller gives it. Once per game at dusk, if both agree, the roles swap.",
+  "drunk_or_poisoned": "If the receiving player is drunk or poisoned, either Storyteller may tell the truth or lie.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Rules and non-ability information (nominations, Demon bluffs, Minion info) are always truthful.",
+      "source": "https://wiki.bloodontheclocktower.com/Knaves"
+    },
+    {
+      "text": "The swap happens at dusk and requires both Storytellers to agree.",
+      "source": "https://wiki.bloodontheclocktower.com/Knaves"
+    },
+    {
+      "text": "The wiki classifies it as Loric rather than Fabled.",
+      "source": "https://wiki.bloodontheclocktower.com/Knaves"
+    }
+  ],
+  "building_blocks": [
+    "false-info",
+    "once-per-game"
+  ],
+  "test_scenarios": [
+    {
+      "name": "lying Storyteller",
+      "setup": "Knaves; Alice Chef; 2 evil pairs.",
+      "actions": "Night 1: Alice picks the lying Storyteller.",
+      "expected": "Alice learns a false number (e.g. 3)."
+    },
+    {
+      "name": "truthful Storyteller",
+      "setup": "Knaves; Alice Empath with one evil neighbour.",
+      "actions": "Night 2: Alice picks the truthful Storyteller.",
+      "expected": "Alice learns 1."
+    },
+    {
+      "name": "after swap",
+      "setup": "Knaves; Alice Savant.",
+      "actions": "Dusk of day 2: the Storytellers swap. Day 3: Alice visits the now-lying one.",
+      "expected": "Alice receives two true statements."
+    },
+    {
+      "name": "Demon bluffs always true",
+      "setup": "Knaves; Bob Imp.",
+      "actions": "Night 1: Bob is shown bluffs.",
+      "expected": "The bluffs are characters genuinely not in play."
+    }
+  ]
+}

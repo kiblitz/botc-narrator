@@ -1,0 +1,53 @@
+{
+  "id": "sentinel",
+  "name": "Sentinel",
+  "kind": "fabled",
+  "ability": "There might be 1 extra or 1 fewer Outsider in play.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": "Before tokens go in the bag, the Storyteller may add an Outsider and remove a Townsfolk, remove an Outsider and add a Townsfolk, or do neither.",
+  "wakes": "never",
+  "interaction": "Declared publicly at the start; no player interaction.",
+  "drunk_or_poisoned": "Fabled cannot be drunk or poisoned.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Used when a script's Outsider count would otherwise be known, so evil can bluff Outsiders.",
+      "source": "https://wiki.bloodontheclocktower.com/Sentinel"
+    },
+    {
+      "text": "Combines with other setup modifiers such as the Baron.",
+      "source": "https://wiki.bloodontheclocktower.com/Sentinel"
+    }
+  ],
+  "building_blocks": [
+    "setup-modifier"
+  ],
+  "test_scenarios": [
+    {
+      "name": "extra Outsider",
+      "setup": "7 players, Sentinel, no other modifiers.",
+      "actions": "Setup: the Storyteller chooses +1.",
+      "expected": "4 Townsfolk, 1 Outsider, 1 Minion, 1 Demon."
+    },
+    {
+      "name": "fewer Outsiders",
+      "setup": "8 players, Sentinel.",
+      "actions": "Setup: the Storyteller chooses -1.",
+      "expected": "6 Townsfolk, 0 Outsiders, 1 Minion, 1 Demon."
+    },
+    {
+      "name": "unchanged",
+      "setup": "7 players, Sentinel.",
+      "actions": "Setup: the Storyteller chooses neither.",
+      "expected": "5 Townsfolk, 0 Outsiders, 1 Minion, 1 Demon."
+    },
+    {
+      "name": "with Baron",
+      "setup": "9 players, Sentinel, Baron.",
+      "actions": "Setup: the Storyteller chooses -1.",
+      "expected": "Baron +2 and Sentinel -1: 4 Townsfolk, 3 Outsiders, 1 Minion, 1 Demon."
+    }
+  ]
+}

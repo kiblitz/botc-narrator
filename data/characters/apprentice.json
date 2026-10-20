@@ -1,0 +1,74 @@
+{
+  "id": "apprentice",
+  "name": "Apprentice",
+  "kind": "traveller",
+  "ability": "On your 1st night, you gain a Townsfolk ability (if good) or a Minion ability (if evil).",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Is the Apprentice"
+  ],
+  "setup": "Traveller: joins with an alignment chosen by the Storyteller; does not change the base character counts.",
+  "wakes": "Only on their first night in play (night 1, or the night after joining mid-game). Night order: no number on the townsquare scale used by these specs (townsquare gives every Traveller a placeholder 1, and Fabled none); the official app nightsheet places it very early, before the Townsfolk (first night 9 of 80).",
+  "interaction": "Shown YOU ARE then a Townsfolk token (if good) or Minion token (if evil) from the character sheet, usually one not in play. The Storyteller replaces the Apprentice token with that character token and adds IS THE APPRENTICE. They act that night if the gained ability acts then.",
+  "drunk_or_poisoned": "The gained ability malfunctions as the original character's would while drunk or poisoned.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Only abilities of characters on the character sheet can be gained.",
+      "source": "https://wiki.bloodontheclocktower.com/Apprentice"
+    },
+    {
+      "text": "A first-night-only ability (e.g. Grandmother) works on the Apprentice's first night.",
+      "source": "https://wiki.bloodontheclocktower.com/Apprentice"
+    },
+    {
+      "text": "The Apprentice stays a Traveller: they can be exiled but not executed, and do not count toward the evil two-players-alive win.",
+      "source": "https://wiki.bloodontheclocktower.com/Apprentice"
+    },
+    {
+      "text": "Character-detecting abilities see the Apprentice as the Apprentice, not as the gained character.",
+      "source": "https://wiki.bloodontheclocktower.com/Apprentice"
+    },
+    {
+      "text": "The gained ability is kept until the Apprentice dies.",
+      "source": "https://wiki.bloodontheclocktower.com/Apprentice"
+    }
+  ],
+  "building_blocks": [
+    "ability-gain",
+    "choose-character"
+  ],
+  "test_scenarios": [
+    {
+      "name": "good Apprentice gains Chambermaid",
+      "setup": "Alice good Apprentice, Bob Imp, Carol Empath, Dave Poisoner.",
+      "actions": "Night 1: Storyteller gives Alice the Chambermaid ability; Alice chooses Carol and Dave.",
+      "expected": "Alice is shown YOU ARE Chambermaid, marked IS THE APPRENTICE, and learns how many of Carol and Dave woke tonight."
+    },
+    {
+      "name": "evil Apprentice gains Assassin",
+      "setup": "Alice evil Apprentice, Bob Imp, Carol Fool.",
+      "actions": "Night 1: Alice gains the Assassin ability and chooses Carol.",
+      "expected": "Carol dies (the Assassin bypasses the Fool); Alice's Assassin ability is used."
+    },
+    {
+      "name": "detected as Apprentice",
+      "setup": "Alice good Apprentice with the Tea Lady ability, Bob Gambler.",
+      "actions": "Night 2: Bob guesses Alice is the Tea Lady.",
+      "expected": "Bob dies: Alice is the Apprentice, not the Tea Lady."
+    },
+    {
+      "name": "exiled not executed",
+      "setup": "Alice evil Apprentice with the Poisoner ability, Bob Imp.",
+      "actions": "Day 2: the group exiles Alice.",
+      "expected": "Alice dies by exile, which is not an execution."
+    },
+    {
+      "name": "loses ability on death",
+      "setup": "Alice good Apprentice with the Monk ability, Bob Imp.",
+      "actions": "Night 2: Alice is killed. Night 3.",
+      "expected": "Alice does not wake to protect."
+    }
+  ]
+}

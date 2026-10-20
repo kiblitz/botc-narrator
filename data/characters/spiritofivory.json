@@ -1,0 +1,49 @@
+{
+  "id": "spiritofivory",
+  "name": "Spirit of Ivory",
+  "kind": "fabled",
+  "ability": "There can't be more than 1 extra evil player.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "No extra evil"
+  ],
+  "setup": null,
+  "wakes": "never",
+  "interaction": "Declared publicly at the start. The Storyteller marks it NO MORE EVIL whenever an extra evil player exists; a player who would become evil then stays good.",
+  "drunk_or_poisoned": "Fabled cannot be drunk or poisoned.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The normal evil count is the one on the setup sheet; only one more is allowed at a time.",
+      "source": "https://wiki.bloodontheclocktower.com/Spirit_of_Ivory"
+    },
+    {
+      "text": "The reminder is removed if an extra evil player becomes good, allowing the next conversion.",
+      "source": "https://wiki.bloodontheclocktower.com/Spirit_of_Ivory"
+    }
+  ],
+  "building_blocks": [
+    "setup-modifier"
+  ],
+  "test_scenarios": [
+    {
+      "name": "first conversion allowed",
+      "setup": "Spirit of Ivory; Bob Fang Gu, Eve Saint.",
+      "actions": "Night 2: Bob attacks Eve.",
+      "expected": "Eve becomes the evil Fang Gu; the Spirit is marked NO MORE EVIL."
+    },
+    {
+      "name": "second conversion blocked",
+      "setup": "Spirit of Ivory; Bob Fang Gu jumped to Eve (extra evil); Carol Goon; Dave Devil's Advocate.",
+      "actions": "Night 3: Dave chooses Carol.",
+      "expected": "Carol stays good."
+    },
+    {
+      "name": "reminder cleared",
+      "setup": "Spirit of Ivory marked NO MORE EVIL; the extra evil player is turned good.",
+      "actions": "Later another player would turn evil.",
+      "expected": "They turn evil."
+    }
+  ]
+}

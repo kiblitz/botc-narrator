@@ -11,9 +11,9 @@ every file parses and has every field below.
 |---|---|---|
 | `id` | string | official id; equals the file name |
 | `name` | string | display name |
-| `kind` | string | `townsfolk`, `outsider`, `minion`, `demon`, `traveller` or `fabled` |
+| `kind` | string | `townsfolk`, `outsider`, `minion`, `demon`, `traveller`, `fabled` or `loric` |
 | `ability` | string | the exact official ability text |
-| `first_night` | number or null | official first-night order number (null: does not act) |
+| `first_night` | number or null | official first-night order number (null: does not act, or has no position on this numbering; see `wakes`) |
 | `other_nights` | number or null | official other-nights order number |
 | `reminders` | string[] | reminder token names |
 | `setup` | string or null | setup effects (e.g. outsider count changes); null if none |

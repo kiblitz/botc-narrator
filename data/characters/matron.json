@@ -1,0 +1,62 @@
+{
+  "id": "matron",
+  "name": "Matron",
+  "kind": "traveller",
+  "ability": "Each day, you may choose up to 3 sets of 2 players to swap seats. Players may not leave their seats to talk in private.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": "Traveller: joins with an alignment chosen by the Storyteller; does not change the base character counts.",
+  "wakes": "never",
+  "interaction": "During the day the Matron declares up to three pairs to swap seats, one after another; the Storyteller swaps their tokens and reminders in the Grimoire.",
+  "drunk_or_poisoned": "Swaps do not happen.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The new seating persists; a player can be moved more than once.",
+      "source": "https://wiki.bloodontheclocktower.com/Matron"
+    },
+    {
+      "text": "Players who cannot easily move are immune.",
+      "source": "https://wiki.bloodontheclocktower.com/Matron"
+    },
+    {
+      "text": "Private conversation is only allowed between neighbours.",
+      "source": "https://wiki.bloodontheclocktower.com/Matron"
+    },
+    {
+      "text": "Swaps happen one after the other; after stopping at one or two, no more that day.",
+      "source": "https://wiki.bloodontheclocktower.com/Matron"
+    }
+  ],
+  "building_blocks": [
+    "day-ability",
+    "choose-players"
+  ],
+  "test_scenarios": [
+    {
+      "name": "swap changes neighbours",
+      "setup": "Seats: Alice Matron, Bob Tea Lady, Carol Chef, Dave Imp.",
+      "actions": "Day 1: Alice swaps Carol and Dave.",
+      "expected": "Dave now neighbours Bob; Tea Lady neighbour checks use the new seating."
+    },
+    {
+      "name": "three swaps max",
+      "setup": "Alice Matron.",
+      "actions": "Day 1: Alice makes three swaps then asks for a fourth.",
+      "expected": "The fourth is refused."
+    },
+    {
+      "name": "no resuming",
+      "setup": "Alice Matron.",
+      "actions": "Day 1: one swap, then discussion, then another swap request.",
+      "expected": "Refused."
+    },
+    {
+      "name": "affects Empath",
+      "setup": "Seats: Bob Empath between Carol Chef and Eve Chef; Dave Imp elsewhere.",
+      "actions": "Day 1: Matron swaps Carol and Dave. Night 2: Bob wakes.",
+      "expected": "Bob's number counts Dave as a neighbour."
+    }
+  ]
+}

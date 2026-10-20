@@ -1,0 +1,71 @@
+{
+  "id": "bishop",
+  "name": "Bishop",
+  "kind": "traveller",
+  "ability": "Only the Storyteller can nominate. At least 1 opposing player must be nominated each day.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Nominate good",
+    "Nominate evil"
+  ],
+  "setup": "Traveller: joins with an alignment chosen by the Storyteller; does not change the base character counts.",
+  "wakes": "never",
+  "interaction": "Each dawn the Bishop is marked NOMINATE EVIL (if good) or NOMINATE GOOD (if evil). Players cannot nominate for execution; the Storyteller nominates, removes the reminder once an opposing player is nominated, and cannot end nominations while it remains.",
+  "drunk_or_poisoned": "Players nominate normally while the Bishop is drunk or poisoned.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Voting happens as normal.",
+      "source": "https://wiki.bloodontheclocktower.com/Bishop"
+    },
+    {
+      "text": "Exiles are not nominations: anyone may call for a Traveller's exile.",
+      "source": "https://wiki.bloodontheclocktower.com/Bishop"
+    },
+    {
+      "text": "The Storyteller should nominate all alive players on the final day.",
+      "source": "https://wiki.bloodontheclocktower.com/Bishop"
+    },
+    {
+      "text": "If the Bishop is exiled, nominations proceed normally afterward.",
+      "source": "https://wiki.bloodontheclocktower.com/Bishop"
+    }
+  ],
+  "building_blocks": [
+    "on-nominated",
+    "day-ability"
+  ],
+  "test_scenarios": [
+    {
+      "name": "player cannot nominate",
+      "setup": "Alice good Bishop, Bob Imp, Carol Chef.",
+      "actions": "Day 1: Carol tries to nominate Bob.",
+      "expected": "The nomination is refused."
+    },
+    {
+      "name": "must nominate evil",
+      "setup": "Alice good Bishop, Bob Imp, Carol Chef, Dave Poisoner.",
+      "actions": "Day 1: the Storyteller nominates Carol and tries to end nominations.",
+      "expected": "Not allowed while NOMINATE EVIL remains; Bob or Dave must be nominated."
+    },
+    {
+      "name": "evil Bishop",
+      "setup": "Alice evil Bishop, Bob Imp, Carol Chef.",
+      "actions": "Day 1: the Storyteller nominates Carol.",
+      "expected": "NOMINATE GOOD is removed; nominations may close."
+    },
+    {
+      "name": "exile still allowed",
+      "setup": "Alice good Bishop, Bob Chef.",
+      "actions": "Day 2: Bob calls for Alice's exile; a majority agrees.",
+      "expected": "Alice is exiled; players then nominate normally."
+    },
+    {
+      "name": "poisoned Bishop",
+      "setup": "Alice good Bishop poisoned by Dave Poisoner, Carol Chef.",
+      "actions": "Day 2: Carol nominates Dave.",
+      "expected": "The nomination is allowed."
+    }
+  ]
+}

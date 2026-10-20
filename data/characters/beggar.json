@@ -1,0 +1,73 @@
+{
+  "id": "beggar",
+  "name": "Beggar",
+  "kind": "traveller",
+  "ability": "You must use a vote token to vote. If a dead player gives you theirs, you learn their alignment. You are sober & healthy.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": "Traveller: joins with an alignment chosen by the Storyteller; does not change the base character counts.",
+  "wakes": "never",
+  "interaction": "During the day a dead player may announce they give their vote token to the Beggar; the Storyteller moves the token and privately tells the Beggar the donor's alignment.",
+  "drunk_or_poisoned": "The Beggar cannot be drunk or poisoned.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Without a vote token the Beggar cannot vote; each vote spends one token.",
+      "source": "https://wiki.bloodontheclocktower.com/Beggar"
+    },
+    {
+      "text": "Only dead players can give their token, only to the Beggar, and only themselves; the donor loses their vote.",
+      "source": "https://wiki.bloodontheclocktower.com/Beggar"
+    },
+    {
+      "text": "The Beggar can still nominate and vote for exiles, which abilities do not affect.",
+      "source": "https://wiki.bloodontheclocktower.com/Beggar"
+    },
+    {
+      "text": "If the Beggar dies they get one dead vote token and lose all collected tokens.",
+      "source": "https://wiki.bloodontheclocktower.com/Beggar"
+    },
+    {
+      "text": "A donating Recluse may register as evil (wiki example).",
+      "source": "https://wiki.bloodontheclocktower.com/Beggar"
+    }
+  ],
+  "building_blocks": [
+    "vote-modifier",
+    "day-ability",
+    "registers-as"
+  ],
+  "test_scenarios": [
+    {
+      "name": "cannot vote without token",
+      "setup": "Alice Beggar (no tokens), Bob Imp nominated.",
+      "actions": "Day 1: vote on Bob; Alice raises her hand.",
+      "expected": "Alice's vote is not counted."
+    },
+    {
+      "name": "donation reveals alignment",
+      "setup": "Alice Beggar, Bob dead Monk.",
+      "actions": "Day 4: Bob gives Alice his token; Alice votes on a nomination.",
+      "expected": "Alice learns Bob is good; her vote counts and spends the token; Bob has no vote token."
+    },
+    {
+      "name": "Recluse donor",
+      "setup": "Alice Beggar, Bob dead Recluse.",
+      "actions": "Bob gives Alice his token.",
+      "expected": "The Storyteller may tell Alice that Bob is evil."
+    },
+    {
+      "name": "dies losing tokens",
+      "setup": "Alice Beggar holding 3 tokens.",
+      "actions": "Alice is killed at night.",
+      "expected": "Alice has exactly one dead vote token."
+    },
+    {
+      "name": "immune to poison",
+      "setup": "Alice Beggar, Carol Poisoner, Dave dead Chef.",
+      "actions": "Night 2: Carol targets Alice. Day 3: Dave donates.",
+      "expected": "Alice is not poisoned and learns Dave is good."
+    }
+  ]
+}

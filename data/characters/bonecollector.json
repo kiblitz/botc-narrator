@@ -1,0 +1,73 @@
+{
+  "id": "bonecollector",
+  "name": "Bone Collector",
+  "kind": "traveller",
+  "ability": "Once per game, at night*, choose a dead player: they regain their ability until dusk.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "No ability",
+    "Has ability"
+  ],
+  "setup": "Traveller: joins with an alignment chosen by the Storyteller; does not change the base character counts.",
+  "wakes": "Each night except the first, until the ability is used. Night order: no number on the townsquare scale used by these specs (townsquare gives every Traveller a placeholder 1, and Fabled none); the official app nightsheet places it very early, before the Townsfolk (other nights 10 of 99).",
+  "interaction": "Shakes head or points to a dead player. If chosen, that player gets HAS ABILITY and the Bone Collector NO ABILITY; the chosen player is not told but may be woken to use the ability that night.",
+  "drunk_or_poisoned": "The chosen player does not regain their ability, but the once-per-game use is spent.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The chosen player stays dead.",
+      "source": "https://wiki.bloodontheclocktower.com/Bone_Collector"
+    },
+    {
+      "text": "'You start knowing' and already-used once-per-game abilities work again until dusk.",
+      "source": "https://wiki.bloodontheclocktower.com/Bone_Collector"
+    },
+    {
+      "text": "If the Bone Collector dies, the regained ability ends.",
+      "source": "https://wiki.bloodontheclocktower.com/Bone_Collector"
+    },
+    {
+      "text": "The chosen player loses the ability at the next dusk.",
+      "source": "https://wiki.bloodontheclocktower.com/Bone_Collector"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "once-per-game",
+    "ability-gain",
+    "delayed-effect"
+  ],
+  "test_scenarios": [
+    {
+      "name": "revive Empath",
+      "setup": "Alice Bone Collector, Bob dead Empath, Carol Imp.",
+      "actions": "Night 3: Alice chooses Bob.",
+      "expected": "Bob is marked HAS ABILITY, wakes and learns an Empath number; Alice is marked NO ABILITY."
+    },
+    {
+      "name": "decline",
+      "setup": "Alice Bone Collector, Bob dead Empath.",
+      "actions": "Night 2: Alice shakes her head.",
+      "expected": "Nothing happens; Alice may use it on a later night."
+    },
+    {
+      "name": "revived Witch",
+      "setup": "Alice Bone Collector, Bob dead Witch, Carol Clockmaker.",
+      "actions": "Night 3: Alice chooses Bob; Bob curses Carol. Day 3: Carol nominates.",
+      "expected": "Carol dies."
+    },
+    {
+      "name": "ends at dusk",
+      "setup": "Alice Bone Collector, Bob dead Butcher.",
+      "actions": "Night 3: Alice chooses Bob. Executions on day 3 and day 4.",
+      "expected": "Bob may nominate again on day 3 only."
+    },
+    {
+      "name": "not first night",
+      "setup": "Alice Bone Collector.",
+      "actions": "Night 1.",
+      "expected": "Alice does not wake."
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "id": "harlot",
+  "name": "Harlot",
+  "kind": "traveller",
+  "ability": "Each night*, choose a living player: if they agree, you learn their character, but you both might die.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Dead"
+  ],
+  "setup": "Traveller: joins with an alignment chosen by the Storyteller; does not change the base character counts.",
+  "wakes": "Each night except the first. Night order: no number on the townsquare scale used by these specs (townsquare gives every Traveller a placeholder 1, and Fabled none); the official app nightsheet places it very early, before the Townsfolk (other nights 9 of 99).",
+  "interaction": "The Harlot points to a living player, who is shown THIS CHARACTER SELECTED YOU and the Harlot token and nods or shakes. If they nod, the Harlot is shown their character token, and the Storyteller may then kill both.",
+  "drunk_or_poisoned": "The Harlot may be shown a false character; no deaths occur from the ability.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Only the character is learned, not the alignment.",
+      "source": "https://wiki.bloodontheclocktower.com/Harlot"
+    },
+    {
+      "text": "If the chosen player declines, nothing happens.",
+      "source": "https://wiki.bloodontheclocktower.com/Harlot"
+    },
+    {
+      "text": "Whether both die is Storyteller choice; don't end the game by killing a Demon who revealed.",
+      "source": "https://wiki.bloodontheclocktower.com/Harlot"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "learn-character",
+    "kill"
+  ],
+  "test_scenarios": [
+    {
+      "name": "agree, no deaths",
+      "setup": "Alice Harlot, Bob Philosopher, Carol No Dashii.",
+      "actions": "Night 2: Alice chooses Bob; Bob nods; the Storyteller chooses no deaths.",
+      "expected": "Alice is shown the Philosopher token; nobody dies."
+    },
+    {
+      "name": "decline",
+      "setup": "Alice Harlot, Carol No Dashii.",
+      "actions": "Night 2: Alice chooses Carol; Carol shakes.",
+      "expected": "Alice learns nothing; nobody dies."
+    },
+    {
+      "name": "both die",
+      "setup": "Alice Harlot, Bob Mutant.",
+      "actions": "Night 3: Alice chooses Bob; Bob nods; the Storyteller kills both.",
+      "expected": "Alice sees Mutant; Alice and Bob die."
+    },
+    {
+      "name": "revealing Demon survives",
+      "setup": "Alice Harlot, Carol Imp.",
+      "actions": "Night 3: Alice chooses Carol; Carol nods.",
+      "expected": "Alice sees Imp; the Storyteller should not end the game by killing Carol through the Harlot."
+    },
+    {
+      "name": "not first night",
+      "setup": "Alice Harlot.",
+      "actions": "Night 1.",
+      "expected": "Alice does not wake."
+    }
+  ]
+}

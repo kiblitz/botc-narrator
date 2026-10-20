@@ -1,0 +1,64 @@
+{
+  "id": "stormcatcher",
+  "name": "Storm Catcher",
+  "kind": "loric",
+  "ability": "Name a good character. If in play, they can only die by execution, but evil players learn which player it is.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Safe"
+  ],
+  "setup": "The Storyteller names a good character at the start; if in play, that player is marked SAFE.",
+  "wakes": "Each evil player is woken on the first night to learn the result. Night order: no number on the townsquare scale used by these specs (townsquare gives every Traveller a placeholder 1, and Fabled none); the official app nightsheet places it very early, before the Townsfolk (first night 5 of 80).",
+  "interaction": "First night: each evil player is shown whether the named character is in play and, if so, which player it is.",
+  "drunk_or_poisoned": "Fabled cannot be drunk or poisoned.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The named character need not be in play; evil then learns it is not in play and can bluff it.",
+      "source": "https://wiki.bloodontheclocktower.com/Storm_Catcher"
+    },
+    {
+      "text": "Protection applies to every death except execution.",
+      "source": "https://wiki.bloodontheclocktower.com/Storm_Catcher"
+    },
+    {
+      "text": "Only good characters can be named.",
+      "source": "https://wiki.bloodontheclocktower.com/Storm_Catcher"
+    },
+    {
+      "text": "The wiki classifies it as Loric rather than Fabled.",
+      "source": "https://wiki.bloodontheclocktower.com/Storm_Catcher"
+    }
+  ],
+  "building_blocks": [
+    "protect",
+    "learn-player"
+  ],
+  "test_scenarios": [
+    {
+      "name": "survives night kills",
+      "setup": "Storm Catcher names General; Alice General, Bob Imp, Carol Godfather.",
+      "actions": "Night 2: Bob attacks Alice. Night 3: Carol's Godfather kill targets Alice.",
+      "expected": "Alice survives both."
+    },
+    {
+      "name": "dies by execution",
+      "setup": "Storm Catcher names General; Alice General.",
+      "actions": "Day 3: Alice is executed.",
+      "expected": "Alice dies."
+    },
+    {
+      "name": "evil learns",
+      "setup": "Storm Catcher names Empath; Alice Empath, Bob Imp, Carol Poisoner.",
+      "actions": "Night 1.",
+      "expected": "Bob and Carol each learn that Alice is the Empath."
+    },
+    {
+      "name": "not in play",
+      "setup": "Storm Catcher names Empath; no Empath in play.",
+      "actions": "Night 1.",
+      "expected": "Evil players learn the Empath is not in play."
+    }
+  ]
+}

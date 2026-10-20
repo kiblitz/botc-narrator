@@ -1,0 +1,75 @@
+{
+  "id": "bureaucrat",
+  "name": "Bureaucrat",
+  "kind": "traveller",
+  "ability": "Each night, choose a player (not yourself): their vote counts as 3 votes tomorrow.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "3 votes"
+  ],
+  "setup": "Traveller: joins with an alignment chosen by the Storyteller; does not change the base character counts.",
+  "wakes": "Every night, including the first. Night order: no number on the townsquare scale used by these specs (townsquare gives every Traveller a placeholder 1, and Fabled none); the official app nightsheet places it very early, before the Townsfolk (first night 11 of 80, other nights 7 of 99).",
+  "interaction": "Points to any player other than themselves; that player is marked 3 VOTES and their votes the next day are counted aloud as three.",
+  "drunk_or_poisoned": "The chosen player's vote counts as 1.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Applies to every vote the chosen player casts that day.",
+      "source": "https://wiki.bloodontheclocktower.com/Bureaucrat"
+    },
+    {
+      "text": "If the Bureaucrat dies (including by exile), the chosen player immediately loses the triple vote.",
+      "source": "https://wiki.bloodontheclocktower.com/Bureaucrat"
+    },
+    {
+      "text": "Exiles are not affected by abilities: the chosen player counts once for an exile.",
+      "source": "https://wiki.bloodontheclocktower.com/Bureaucrat"
+    },
+    {
+      "text": "A dead chosen player's single vote token counts as three.",
+      "source": "https://wiki.bloodontheclocktower.com/Bureaucrat"
+    },
+    {
+      "text": "Combined with the Thief on the same player, the vote counts as -3.",
+      "source": "https://wiki.bloodontheclocktower.com/Bureaucrat"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "vote-modifier",
+    "delayed-effect"
+  ],
+  "test_scenarios": [
+    {
+      "name": "triple vote",
+      "setup": "Alice Bureaucrat, Bob Chef, Carol Imp; 7 alive.",
+      "actions": "Night 1: Alice chooses Bob. Day 1: Carol is nominated; Bob and one other vote.",
+      "expected": "Carol has 4 votes, meeting the threshold of 4."
+    },
+    {
+      "name": "cannot choose self",
+      "setup": "Alice Bureaucrat.",
+      "actions": "Night 1: Alice points to herself.",
+      "expected": "Not allowed; Alice must choose another player."
+    },
+    {
+      "name": "Bureaucrat exiled",
+      "setup": "Alice Bureaucrat chose Bob.",
+      "actions": "Day 1: Alice is exiled; Bob then votes on a nomination.",
+      "expected": "Bob's vote counts as 1."
+    },
+    {
+      "name": "dead chosen player",
+      "setup": "Alice Bureaucrat, Bob dead with his vote token.",
+      "actions": "Night 2: Alice chooses Bob. Day 2: Bob votes.",
+      "expected": "Bob's vote counts as 3 and his token is spent."
+    },
+    {
+      "name": "poisoned Bureaucrat",
+      "setup": "Alice Bureaucrat, Dave Poisoner, Bob Chef.",
+      "actions": "Night 2: Dave poisons Alice; Alice chooses Bob. Day 2: Bob votes.",
+      "expected": "Bob's vote counts as 1."
+    }
+  ]
+}
