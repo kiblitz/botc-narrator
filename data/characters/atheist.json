@@ -1,0 +1,64 @@
+{
+  "id": "atheist",
+  "name": "Atheist",
+  "kind": "townsfolk",
+  "ability": "The Storyteller can break the game rules, and if executed, good wins, even if you are dead. [No evil characters]",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": "No evil characters: remove all Minions and Demons and replace them with Townsfolk or Outsiders to match the player count.",
+  "wakes": "Never.",
+  "interaction": "None. Any living player may nominate the Storyteller; if the Storyteller is executed, good wins.",
+  "drunk_or_poisoned": "Only the setup effect matters. If the 'Atheist' is actually the Drunk, there is no Atheist and evil is in play; executing the Storyteller then makes evil win.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The Storyteller may break rules only to give false info or simulate absent evil characters; never invent arbitrary rules or change win conditions.",
+      "source": "https://wiki.bloodontheclocktower.com/Atheist"
+    },
+    {
+      "text": "If no Atheist is in play and the Storyteller is executed, evil wins.",
+      "source": "https://wiki.bloodontheclocktower.com/Atheist"
+    },
+    {
+      "text": "Good loses if only two players are alive.",
+      "source": "https://wiki.bloodontheclocktower.com/Atheist"
+    },
+    {
+      "text": "Night order numbers are from the bra1n townsquare roles.json; 0 there is recorded as null.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "setup-modifier",
+    "win-condition",
+    "false-info",
+    "on-execution"
+  ],
+  "test_scenarios": [
+    {
+      "name": "execute-storyteller",
+      "setup": "7 players, Atheist in play, all good.",
+      "actions": "Day 2: a player nominates the Storyteller; 4 of 7 living players vote.",
+      "expected": "The Storyteller is executed; good wins."
+    },
+    {
+      "name": "dead-atheist-still-wins",
+      "setup": "Atheist died on night 2.",
+      "actions": "Day 3: the Storyteller is nominated and executed.",
+      "expected": "Good wins although the Atheist is dead."
+    },
+    {
+      "name": "no-atheist",
+      "setup": "The Drunk believes they are the Atheist; Imp in play.",
+      "actions": "The Storyteller is nominated and executed.",
+      "expected": "Evil wins."
+    },
+    {
+      "name": "two-alive",
+      "setup": "Atheist game reaches two living players without executing the Storyteller.",
+      "actions": "Dawn.",
+      "expected": "Good loses."
+    }
+  ]
+}

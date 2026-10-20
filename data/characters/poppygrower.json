@@ -1,0 +1,78 @@
+{
+  "id": "poppygrower",
+  "name": "Poppy Grower",
+  "kind": "townsfolk",
+  "ability": "Minions & Demons do not know each other. If you die, they learn who each other are that night.",
+  "first_night": 4,
+  "other_nights": 3,
+  "reminders": [
+    "Evil wakes"
+  ],
+  "setup": "Skip Minion info and Demon info on the first night; the Demon still learns 3 not-in-play bluffs.",
+  "wakes": "Never wakes.",
+  "interaction": "None. After the Poppy Grower dies, that night the Minions learn the Demon and the Demon learns the Minions.",
+  "drunk_or_poisoned": "If drunk or poisoned on night 1, evil learns each other normally. Dying while drunk or poisoned triggers nothing.",
+  "jinxes": [
+    {
+      "with": "lilmonsta",
+      "text": "If Lil' Monsta & the Poppy Grower are alive, Minions wake one by one, until one of them chooses to take the Lil' Monsta token."
+    },
+    {
+      "with": "spy",
+      "text": "If the Poppy Grower has their ability, the Spy does not see the Grimoire."
+    },
+    {
+      "with": "widow",
+      "text": "If the Poppy Grower has their ability, the Widow does not see the Grimoire."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Optional rule: if the Poppy Grower becomes drunk or poisoned, or leaves play, evil learns each other that night.",
+      "source": "https://wiki.bloodontheclocktower.com/Poppy_Grower"
+    },
+    {
+      "text": "An evil Traveller still learns the Demon.",
+      "source": "https://wiki.bloodontheclocktower.com/Poppy_Grower"
+    },
+    {
+      "text": "If the Drunk believes they are the Poppy Grower, evil learns each other on night 1 as normal and the death triggers nothing.",
+      "source": "https://wiki.bloodontheclocktower.com/Poppy_Grower"
+    },
+    {
+      "text": "Night order numbers are from bra1n/townsquare src/roles.json (develop branch), not the botc-release list.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "setup-modifier",
+    "on-death",
+    "delayed-effect"
+  ],
+  "test_scenarios": [
+    {
+      "name": "night 1 no evil info",
+      "setup": "5 players: seat 0 Poppy Grower, 1 Chef, 2 Empath, 3 Poisoner, 4 Imp",
+      "actions": "Night 1",
+      "expected": "Imp gets 3 bluffs only; Poisoner gets no Demon info"
+    },
+    {
+      "name": "death triggers info",
+      "setup": "Same setup",
+      "actions": "Day 2: Poppy Grower executed",
+      "expected": "That night Poisoner learns Imp and Imp learns Poisoner"
+    },
+    {
+      "name": "drunk poppy grower",
+      "setup": "Seat 0 Drunk believing Poppy Grower, rest as above",
+      "actions": "Night 1",
+      "expected": "Normal Minion and Demon info"
+    },
+    {
+      "name": "poisoned at death",
+      "setup": "Same setup; Poisoner poisons Poppy Grower on night 2; Imp kills them night 2",
+      "actions": "Night 2",
+      "expected": "No evil info that night"
+    }
+  ]
+}

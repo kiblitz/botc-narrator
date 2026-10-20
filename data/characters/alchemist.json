@@ -1,0 +1,93 @@
+{
+  "id": "alchemist",
+  "name": "Alchemist",
+  "kind": "townsfolk",
+  "ability": "You have a Minion ability. When using this, the Storyteller may prompt you to choose differently.",
+  "first_night": 3,
+  "other_nights": null,
+  "reminders": [
+    "Is the Alchemist"
+  ],
+  "setup": "The Storyteller picks a not-in-play Minion; the Alchemist holds that Minion's ability. Setup effects of that ability (e.g. Baron +2 Outsiders) apply.",
+  "wakes": "First night (order 3) to learn which Minion ability they have; afterwards whenever that Minion would wake.",
+  "interaction": "First night: shown YOU ARE and the Minion token. Thereafter uses the Minion ability as that Minion would; if the ability makes a choice, the Storyteller may require a different choice and the Alchemist must comply.",
+  "drunk_or_poisoned": "The gained Minion ability does not work (no effect; false info if it gives info). Setup effects already applied remain.",
+  "jinxes": [
+    {
+      "with": "marionette",
+      "text": "An Alchemist-Marionette has no Marionette ability & the Marionette is in play."
+    },
+    {
+      "with": "mastermind",
+      "text": "An Alchemist-Mastermind has no Mastermind ability & the Mastermind is not-in-play."
+    },
+    {
+      "with": "spy",
+      "text": "An Alchemist-Spy has no Spy ability & a Spy is in play. After each execution, a living Alchemist-Spy may publicly guess a living player as the Spy. If correct, the Demon must choose the Spy tonight."
+    },
+    {
+      "with": "widow",
+      "text": "An Alchemist-Widow has no Widow ability & a Widow is in play. After each execution, a living Alchemist-Widow may publicly guess a living player as the Widow. If correct, the Demon must choose the Widow tonight."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "The Alchemist is good, registers as good, does not wake with the Minions and does not learn the Demon.",
+      "source": "https://wiki.bloodontheclocktower.com/Alchemist"
+    },
+    {
+      "text": "The Minion ability given is one that is not in play.",
+      "source": "https://wiki.bloodontheclocktower.com/Alchemist"
+    },
+    {
+      "text": "The Storyteller may prompt a different choice (at night by gesturing at the ability text); e.g. an Alchemist-Poisoner choosing a dangerous target is asked to choose again and must.",
+      "source": "https://wiki.bloodontheclocktower.com/Alchemist"
+    },
+    {
+      "text": "Older role data reads 'You have a not-in-play Minion ability.'; the current wiki text is used here.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    },
+    {
+      "text": "Night order numbers are from the bra1n townsquare roles.json; 0 there is recorded as null.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "ability-gain",
+    "believes-character",
+    "setup-modifier",
+    "registers-as"
+  ],
+  "test_scenarios": [
+    {
+      "name": "alchemist-poisoner",
+      "setup": "Seat 1 Alchemist (Poisoner ability), seat 2 Imp, seat 3 Baron, seat 4 Empath, seat 5 Chef.",
+      "actions": "Night 1: Alchemist is shown Poisoner and chooses seat 4. Night 2: Empath wakes.",
+      "expected": "Seat 4 is poisoned and may get false info; the Alchemist still registers good."
+    },
+    {
+      "name": "alchemist-baron-setup",
+      "setup": "7 players; Alchemist given the Baron ability; no Baron in play.",
+      "actions": "Setup.",
+      "expected": "Two extra Outsiders are in the bag; the Alchemist is good."
+    },
+    {
+      "name": "storyteller-redirects",
+      "setup": "Alchemist-Poisoner, Imp, Ravenkeeper.",
+      "actions": "Night 2: Alchemist chooses the Imp.",
+      "expected": "The Storyteller asks them to choose again; the Imp is not poisoned and the new choice is."
+    },
+    {
+      "name": "poisoned-alchemist",
+      "setup": "Alchemist-Poisoner whose neighbour No Dashii poisons them; Empath.",
+      "actions": "Alchemist chooses the Empath.",
+      "expected": "The Empath is not poisoned; the choice has no effect."
+    },
+    {
+      "name": "alchemist-spy-jinx",
+      "setup": "Alchemist (Spy), Spy in play, Imp.",
+      "actions": "After an execution the living Alchemist publicly guesses the Spy correctly.",
+      "expected": "The Alchemist has no Spy ability; the Imp must choose the Spy tonight."
+    }
+  ]
+}

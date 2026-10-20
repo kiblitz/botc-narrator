@@ -1,0 +1,81 @@
+{
+  "id": "innkeeper",
+  "name": "Innkeeper",
+  "kind": "townsfolk",
+  "ability": "Each night*, choose 2 players: they can't die tonight, but 1 is drunk until dusk.",
+  "first_night": null,
+  "other_nights": 9,
+  "reminders": [
+    "Safe",
+    "Drunk"
+  ],
+  "setup": null,
+  "wakes": "Each night except the first, early (before the Demon).",
+  "interaction": "Innkeeper chooses 2 players. Both are protected from all deaths tonight; the Storyteller makes one of them drunk until dusk.",
+  "drunk_or_poisoned": "No protection and nobody is made drunk; the Innkeeper is not told.",
+  "jinxes": [
+    {
+      "with": "leviathan",
+      "text": "If the Leviathan nominates and executes an Innkeeper-protected player, good wins."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Protection covers any death at night (Demon, Minion, Outsider, Townsfolk, Traveller) but not the next day's execution.",
+      "source": "https://wiki.bloodontheclocktower.com/Innkeeper"
+    },
+    {
+      "text": "The chosen player who is drunk uses their ability to no effect while drunk (Assassin example).",
+      "source": "https://wiki.bloodontheclocktower.com/Innkeeper"
+    },
+    {
+      "text": "The Innkeeper may choose themselves; if they are the one made drunk, the protection fails for both players.",
+      "source": "https://wiki.bloodontheclocktower.com/Innkeeper"
+    },
+    {
+      "text": "Safe reminders are removed at dawn, Drunk at dusk.",
+      "source": "https://wiki.bloodontheclocktower.com/Innkeeper"
+    },
+    {
+      "text": "Night order numbers from bra1n/townsquare develop src/roles.json (firstNight/otherNight; 0 mapped to null).",
+      "source": "https://wiki.bloodontheclocktower.com/Innkeeper"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "protect",
+    "drunk"
+  ],
+  "test_scenarios": [
+    {
+      "name": "protects",
+      "setup": "5 players: 1 Innkeeper, 2 Imp, 3 Poisoner, 4 Chef, 5 Empath. Night 2.",
+      "actions": "Innkeeper chooses 4 and 5; Storyteller makes 5 drunk; Imp kills 4.",
+      "expected": "Nobody dies; seat 5 is drunk until dusk (Empath info may be false)."
+    },
+    {
+      "name": "unprotected dies",
+      "setup": "Same.",
+      "actions": "Innkeeper chooses 4 and 5; Imp kills 1.",
+      "expected": "Seat 1 dies."
+    },
+    {
+      "name": "self-pick drunk",
+      "setup": "Same.",
+      "actions": "Innkeeper chooses 1 and 4; Storyteller makes 1 drunk; Imp kills 4.",
+      "expected": "The Innkeeper is drunk so there is no protection; seat 4 dies."
+    },
+    {
+      "name": "poisoned innkeeper",
+      "setup": "Same.",
+      "actions": "Poisoner poisons 1; Innkeeper chooses 4 and 5; Imp kills 4.",
+      "expected": "Seat 4 dies; no one is made drunk."
+    },
+    {
+      "name": "execution not prevented",
+      "setup": "Same.",
+      "actions": "Night 2 Innkeeper protects 4; day 2 seat 4 executed.",
+      "expected": "Seat 4 dies."
+    }
+  ]
+}

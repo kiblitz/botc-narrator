@@ -1,0 +1,76 @@
+{
+  "id": "minstrel",
+  "name": "Minstrel",
+  "kind": "townsfolk",
+  "ability": "When a Minion dies by execution, all other players (except Travellers) are drunk until dusk tomorrow.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Everyone drunk"
+  ],
+  "setup": null,
+  "wakes": "Never.",
+  "interaction": "None; after a Minion dies by execution, all non-Traveller players except the Minstrel are drunk until dusk of the next day.",
+  "drunk_or_poisoned": "If the Minstrel is drunk or poisoned when the Minion dies, nothing happens.",
+  "jinxes": [
+    {
+      "with": "legion",
+      "text": "If Legion died by execution today, Legion keeps their ability, but the Minstrel might learn they are Legion."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Does not trigger on a Minion's night death, on executing an already-dead Minion, or on an executed Minion that survives.",
+      "source": "https://wiki.bloodontheclocktower.com/Minstrel"
+    },
+    {
+      "text": "Traveller exile or execution does not trigger it; Travellers are not made drunk.",
+      "source": "https://wiki.bloodontheclocktower.com/Minstrel"
+    },
+    {
+      "text": "The Minstrel is not made drunk by their own ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Minstrel"
+    },
+    {
+      "text": "A Zombuul executed for the first time while everyone is drunk has no ability and dies, so good wins.",
+      "source": "https://wiki.bloodontheclocktower.com/Minstrel"
+    }
+  ],
+  "building_blocks": [
+    "on-execution",
+    "drunk",
+    "delayed-effect"
+  ],
+  "test_scenarios": [
+    {
+      "name": "minion executed",
+      "setup": "5 players: 1 Minstrel, 2 Imp, 3 Poisoner, 4 Chef, 5 Empath.",
+      "actions": "Day 1 seat 3 executed and dies.",
+      "expected": "Seats 2, 4 and 5 are drunk until dusk of day 2; night 2 Imp kill fails and nobody dies."
+    },
+    {
+      "name": "non-minion executed",
+      "setup": "Same.",
+      "actions": "Day 1 seat 4 executed.",
+      "expected": "Nobody is drunk."
+    },
+    {
+      "name": "minion night death",
+      "setup": "Same.",
+      "actions": "Night 2 Imp kills seat 3.",
+      "expected": "No drunkenness."
+    },
+    {
+      "name": "poisoned minstrel",
+      "setup": "1 Minstrel, 2 Imp, 3 Poisoner, 4 Scarlet Woman, 5 Chef, 6 Empath.",
+      "actions": "Night 1 Poisoner poisons seat 1; day 1 seat 4 executed.",
+      "expected": "No drunkenness."
+    },
+    {
+      "name": "expires",
+      "setup": "After scenario 1.",
+      "actions": "Dusk of day 2.",
+      "expected": "Everyone is sober again."
+    }
+  ]
+}

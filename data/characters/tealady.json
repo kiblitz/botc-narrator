@@ -1,0 +1,65 @@
+{
+  "id": "tealady",
+  "name": "Tea Lady",
+  "kind": "townsfolk",
+  "ability": "If both your alive neighbours are good, they can't die.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Can not die"
+  ],
+  "setup": null,
+  "wakes": "Never wakes.",
+  "interaction": "None. The Storyteller keeps Can not die reminders on both alive neighbours while both are good.",
+  "drunk_or_poisoned": "Neighbours can die.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Neighbours are the nearest alive players, skipping the dead; update immediately on deaths and alignment changes.",
+      "source": "https://wiki.bloodontheclocktower.com/Tea_Lady"
+    },
+    {
+      "text": "Protected neighbours survive Demon, Godfather and Gossip kills and execution (announced as executed, still alive); the Assassin still kills them.",
+      "source": "https://wiki.bloodontheclocktower.com/Tea_Lady"
+    },
+    {
+      "text": "Survival looks the same as Pacifist, Sailor and Fool effects.",
+      "source": "https://wiki.bloodontheclocktower.com/Tea_Lady"
+    },
+    {
+      "text": "Night order numbers are from bra1n/townsquare src/roles.json (develop branch), not the botc-release list.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "protect",
+    "demon-death-survival",
+    "on-execution"
+  ],
+  "test_scenarios": [
+    {
+      "name": "good neighbours protected",
+      "setup": "Seats: 0 Chef, 1 Tea Lady, 2 Empath, 3 Poisoner, 4 Imp",
+      "actions": "Imp attacks Empath",
+      "expected": "Empath survives"
+    },
+    {
+      "name": "evil neighbour",
+      "setup": "Seats: 0 Chef, 1 Tea Lady, 2 Poisoner, 3 Empath, 4 Imp",
+      "actions": "Imp attacks Chef",
+      "expected": "Chef dies"
+    },
+    {
+      "name": "neighbours skip dead",
+      "setup": "Seats: 0 Chef, 1 Tea Lady, 2 Poisoner (dead), 3 Empath, 4 Imp",
+      "actions": "Day: Empath executed",
+      "expected": "Empath survives"
+    },
+    {
+      "name": "poisoned",
+      "setup": "Seats: 0 Chef, 1 Tea Lady, 2 Empath, 3 Poisoner, 4 Imp; Tea Lady poisoned",
+      "actions": "Imp attacks Empath",
+      "expected": "Empath dies"
+    }
+  ]
+}

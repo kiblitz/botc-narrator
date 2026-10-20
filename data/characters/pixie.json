@@ -1,0 +1,67 @@
+{
+  "id": "pixie",
+  "name": "Pixie",
+  "kind": "townsfolk",
+  "ability": "You start knowing 1 in-play Townsfolk. If you were mad that you were this character, you gain their ability when they die.",
+  "first_night": 29,
+  "other_nights": null,
+  "reminders": [
+    "Mad",
+    "Has ability"
+  ],
+  "setup": null,
+  "wakes": "First night; later, if the ability is gained, whenever that Townsfolk would wake.",
+  "interaction": "Shown one in-play Townsfolk token; that player is marked with Mad.",
+  "drunk_or_poisoned": "May be shown a false Townsfolk; if the marked player dies while the Pixie is drunk or poisoned, no ability is gained.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Only the real marked Townsfolk dying counts; a Minion bluffing that character dying gives nothing.",
+      "source": "https://wiki.bloodontheclocktower.com/Pixie"
+    },
+    {
+      "text": "The Storyteller judges madness; sharing a claim without disputing it, or admitting to being the Pixie, likely fails.",
+      "source": "https://wiki.bloodontheclocktower.com/Pixie"
+    },
+    {
+      "text": "If the marked player changes character and then dies, the Pixie gains the original Townsfolk ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Pixie"
+    },
+    {
+      "text": "Night order numbers are from bra1n/townsquare src/roles.json (develop branch), not the botc-release list.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "learn-character",
+    "madness",
+    "on-death",
+    "ability-gain"
+  ],
+  "test_scenarios": [
+    {
+      "name": "mad and gains",
+      "setup": "5 players: seat 0 Pixie, 1 Washerwoman, 2 Chef, 3 Poisoner, 4 Imp",
+      "actions": "Night 1: Pixie shown Washerwoman; Pixie claims Washerwoman all day; Washerwoman executed",
+      "expected": "Has ability reminder; Pixie gains the Washerwoman ability"
+    },
+    {
+      "name": "not mad",
+      "setup": "Same setup",
+      "actions": "Pixie claims Pixie; Washerwoman executed",
+      "expected": "No ability gained"
+    },
+    {
+      "name": "bluffer dies",
+      "setup": "Same setup; Poisoner bluffs Washerwoman",
+      "actions": "Poisoner executed",
+      "expected": "No ability gained"
+    },
+    {
+      "name": "poisoned first night",
+      "setup": "Same setup; Poisoner poisons Pixie on night 1",
+      "actions": "Pixie woken",
+      "expected": "May be shown a not-in-play Townsfolk"
+    }
+  ]
+}

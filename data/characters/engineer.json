@@ -1,0 +1,80 @@
+{
+  "id": "engineer",
+  "name": "Engineer",
+  "kind": "townsfolk",
+  "ability": "Once per game, at night, choose which Minions or which Demon is in play.",
+  "first_night": 13,
+  "other_nights": 5,
+  "reminders": [
+    "No ability"
+  ],
+  "setup": null,
+  "wakes": "Each night until the ability is used.",
+  "interaction": "Declines, or points at a Demon or at Minions (as many as the Minion count). Changed evil players are woken and shown their new character. The Engineer is not told the result.",
+  "drunk_or_poisoned": "Not addressed on the wiki; presumably the choice has no effect and the ability is spent.",
+  "jinxes": [
+    {
+      "with": "legion",
+      "text": "If Legion is created, all evil players become Legion. If Legion is in play, the Engineer starts knowing this but has no ability."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Choose Minions or a Demon, not both. The Demon player stays the Demon, Minions stay Minions; the evil count is unchanged.",
+      "source": "https://wiki.bloodontheclocktower.com/Engineer"
+    },
+    {
+      "text": "Wrong number of choices: the Storyteller adjusts as fairly as possible; only script characters may be chosen.",
+      "source": "https://wiki.bloodontheclocktower.com/Engineer"
+    },
+    {
+      "text": "Bracketed setup changes (e.g. Baron) do not apply mid-game; Outsiders already added stay.",
+      "source": "https://wiki.bloodontheclocktower.com/Engineer"
+    },
+    {
+      "text": "The Storyteller decides which Minion player becomes which chosen Minion; Minions already matching keep their character.",
+      "source": "https://wiki.bloodontheclocktower.com/Engineer"
+    },
+    {
+      "text": "Night order numbers are from the bra1n townsquare roles.json; 0 there is recorded as null.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "choose-character",
+    "character-change",
+    "once-per-game"
+  ],
+  "test_scenarios": [
+    {
+      "name": "change-demon",
+      "setup": "Engineer, Imp, Poisoner.",
+      "actions": "Night 2: the Engineer chooses Lleech.",
+      "expected": "The Imp player becomes the Lleech and is shown it; the Engineer has no ability."
+    },
+    {
+      "name": "baron-to-boomdandy",
+      "setup": "Engineer, Baron (+2 Outsiders), Imp.",
+      "actions": "Night 1: chooses Boomdandy.",
+      "expected": "The Baron player becomes the Boomdandy; the extra Outsiders remain."
+    },
+    {
+      "name": "partial-match",
+      "setup": "Spy, Assassin, Witch, Imp, Engineer.",
+      "actions": "Engineer chooses Spy, Assassin, Mezepheles.",
+      "expected": "The Witch becomes the Mezepheles; others unchanged."
+    },
+    {
+      "name": "legion-jinx",
+      "setup": "Legion in play with the Engineer.",
+      "actions": "Night 1.",
+      "expected": "The Engineer learns Legion is in play and has no ability."
+    },
+    {
+      "name": "poisoned-engineer",
+      "setup": "Engineer poisoned by the Poisoner; Imp.",
+      "actions": "Chooses Vortox.",
+      "expected": "Nothing changes; the ability is spent."
+    }
+  ]
+}

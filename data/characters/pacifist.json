@@ -1,0 +1,66 @@
+{
+  "id": "pacifist",
+  "name": "Pacifist",
+  "kind": "townsfolk",
+  "ability": "Executed good players might not die.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": null,
+  "wakes": "Never wakes.",
+  "interaction": "No interaction. When a good player is executed the Storyteller decides whether they die; only the result is announced.",
+  "drunk_or_poisoned": "No effect: executed good players die as normal.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Announce only whether the executed player died, never why. A surviving execution still counts as the day's execution, so no more nominations that day.",
+      "source": "https://wiki.bloodontheclocktower.com/Pacifist"
+    },
+    {
+      "text": "The Storyteller may never trigger it; saving none of five executed good players is legal.",
+      "source": "https://wiki.bloodontheclocktower.com/Pacifist"
+    },
+    {
+      "text": "Affects execution only, not exile (an exiled good Bishop dies).",
+      "source": "https://wiki.bloodontheclocktower.com/Pacifist"
+    },
+    {
+      "text": "The Pacifist can be executed and survive by its own ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Pacifist"
+    },
+    {
+      "text": "Night order numbers are from bra1n/townsquare src/roles.json (develop branch), not the botc-release list.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "on-execution",
+    "demon-death-survival"
+  ],
+  "test_scenarios": [
+    {
+      "name": "good executee spared",
+      "setup": "5 players: seat 0 Pacifist, 1 Innkeeper, 2 Chef, 3 Poisoner, 4 Imp",
+      "actions": "Day 1: Innkeeper executed; Storyteller chooses to spare",
+      "expected": "Execution announced, Innkeeper stays alive, no further nominations that day"
+    },
+    {
+      "name": "good executee dies",
+      "setup": "Same setup",
+      "actions": "Day 1: Chef executed; Storyteller chooses not to spare",
+      "expected": "Chef dies"
+    },
+    {
+      "name": "evil executee always dies",
+      "setup": "Same setup",
+      "actions": "Day 1: Poisoner executed",
+      "expected": "Poisoner dies; no Storyteller choice offered"
+    },
+    {
+      "name": "poisoned pacifist",
+      "setup": "Same setup; Poisoner poisons Pacifist on night 1",
+      "actions": "Day 1: Innkeeper executed",
+      "expected": "Innkeeper dies; no spare option offered"
+    }
+  ]
+}

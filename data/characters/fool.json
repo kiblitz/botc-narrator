@@ -1,0 +1,67 @@
+{
+  "id": "fool",
+  "name": "Fool",
+  "kind": "townsfolk",
+  "ability": "The first time you die, you don't.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "No ability"
+  ],
+  "setup": null,
+  "wakes": "Never.",
+  "interaction": "None. On the first death that would happen, the Fool stays alive and gets the No ability reminder; if executed, the Storyteller announces the execution but that they do not die.",
+  "drunk_or_poisoned": "A drunk or poisoned Fool dies normally and the ability is not used up.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "If another effect already prevents the death (Monk, Innkeeper, Tea Lady, Soldier...), the Fool's ability is not used.",
+      "source": "https://wiki.bloodontheclocktower.com/Fool"
+    },
+    {
+      "text": "An executed Fool survives; announce the execution without explaining why. A second execution kills them.",
+      "source": "https://wiki.bloodontheclocktower.com/Fool"
+    },
+    {
+      "text": "The wiki page writes '1st'; roles.json writes 'first'. Same rule.",
+      "source": "https://wiki.bloodontheclocktower.com/Fool"
+    }
+  ],
+  "building_blocks": [
+    "once-per-game",
+    "demon-death-survival",
+    "on-execution"
+  ],
+  "test_scenarios": [
+    {
+      "name": "survives demon",
+      "setup": "5 players: 1 Fool, 2 Imp, 3 Poisoner, 4 Chef, 5 Empath.",
+      "actions": "Night 2 Imp kills seat 1.",
+      "expected": "Seat 1 lives and gets No ability; nobody dies at dawn."
+    },
+    {
+      "name": "second death",
+      "setup": "After scenario 1.",
+      "actions": "Night 3 Imp kills seat 1.",
+      "expected": "Seat 1 dies."
+    },
+    {
+      "name": "execution",
+      "setup": "Same seats, Fool unused.",
+      "actions": "Day 1 seat 1 executed.",
+      "expected": "Executed but stays alive; No ability placed; no further execution that day."
+    },
+    {
+      "name": "protected first",
+      "setup": "1 Fool, 2 Imp, 3 Poisoner, 4 Chef, 5 Monk.",
+      "actions": "Night 2 Monk protects seat 1; Imp kills seat 1.",
+      "expected": "Seat 1 lives and keeps the Fool ability."
+    },
+    {
+      "name": "poisoned fool",
+      "setup": "5 players: 1 Fool, 2 Imp, 3 Poisoner, 4 Chef, 5 Empath.",
+      "actions": "Night 2 Poisoner poisons seat 1; Imp kills seat 1.",
+      "expected": "Seat 1 dies."
+    }
+  ]
+}

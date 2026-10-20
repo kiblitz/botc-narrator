@@ -1,0 +1,81 @@
+{
+  "id": "farmer",
+  "name": "Farmer",
+  "kind": "townsfolk",
+  "ability": "When you die at night, an alive good player becomes a Farmer.",
+  "first_night": null,
+  "other_nights": 48,
+  "reminders": [],
+  "setup": null,
+  "wakes": "Does not wake. If the Farmer died tonight, an alive good player chosen by the Storyteller is woken late in the night.",
+  "interaction": "Storyteller picks an alive good player and shows them YOU ARE and the Farmer token; their character becomes Farmer.",
+  "drunk_or_poisoned": "If the Farmer is drunk or poisoned when they die at night, no new Farmer is made.",
+  "jinxes": [
+    {
+      "with": "leviathan",
+      "text": "Each night*, the Leviathan chooses an alive good player (different to previous nights): a chosen Farmer uses their ability but does not die."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Only good players can become the Farmer; evil Townsfolk/Outsiders are ineligible.",
+      "source": "https://wiki.bloodontheclocktower.com/Farmer"
+    },
+    {
+      "text": "A Farmer turned evil (e.g. by Mezepheles) still creates a new Farmer when it dies at night.",
+      "source": "https://wiki.bloodontheclocktower.com/Farmer"
+    },
+    {
+      "text": "Day deaths (e.g. execution) do not trigger the ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Farmer"
+    },
+    {
+      "text": "The new Farmer loses their old ability and its ongoing effects end immediately; Farmers do not learn who the other Farmers are.",
+      "source": "https://wiki.bloodontheclocktower.com/Farmer"
+    },
+    {
+      "text": "Wording: roles.json says 'If you die at night'; the wiki page says 'When you die at night'. The wiki wording was used.",
+      "source": "https://wiki.bloodontheclocktower.com/Farmer"
+    },
+    {
+      "text": "Night order numbers from bra1n/townsquare develop src/roles.json (firstNight/otherNight; 0 mapped to null).",
+      "source": "https://wiki.bloodontheclocktower.com/Farmer"
+    }
+  ],
+  "building_blocks": [
+    "on-death",
+    "character-change"
+  ],
+  "test_scenarios": [
+    {
+      "name": "night death passes on",
+      "setup": "5 players: 1 Farmer, 2 Imp, 3 Poisoner, 4 Chef, 5 Empath.",
+      "actions": "Night 2 Imp kills seat 1; Storyteller picks seat 5.",
+      "expected": "Seat 5 is woken and learns they are the Farmer; seat 5 becomes Farmer and loses the Empath ability."
+    },
+    {
+      "name": "execution does not trigger",
+      "setup": "Same seats.",
+      "actions": "Day 1 seat 1 is executed.",
+      "expected": "No new Farmer."
+    },
+    {
+      "name": "evil ineligible",
+      "setup": "5 players: 1 Farmer, 2 Imp, 3 Poisoner, 4 Chef, 5 Empath (dead).",
+      "actions": "Night 2 Imp kills seat 1.",
+      "expected": "Only seat 4 is offered; seat 4 becomes the Farmer."
+    },
+    {
+      "name": "poisoned farmer",
+      "setup": "Same 5 seats. Night 2 Poisoner poisons seat 1.",
+      "actions": "Imp kills seat 1.",
+      "expected": "No new Farmer is created."
+    },
+    {
+      "name": "chain",
+      "setup": "After scenario 1, seat 5 is Farmer.",
+      "actions": "Night 3 Imp kills seat 5.",
+      "expected": "Seat 4 becomes Farmer; seats 1 and 5 are dead Farmers."
+    }
+  ]
+}

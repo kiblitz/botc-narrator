@@ -1,0 +1,69 @@
+{
+  "id": "courtier",
+  "name": "Courtier",
+  "kind": "townsfolk",
+  "ability": "Once per game, at night, choose a character: they are drunk for 3 nights & 3 days.",
+  "first_night": 19,
+  "other_nights": 8,
+  "reminders": [
+    "Drunk 3",
+    "Drunk 2",
+    "Drunk 1",
+    "No ability"
+  ],
+  "setup": null,
+  "wakes": "Each night until the ability is used.",
+  "interaction": "Shakes head or points at a character icon on the sheet. Not told whether that character is in play.",
+  "drunk_or_poisoned": "If drunk or poisoned when choosing, the ability is spent with no effect. If the Courtier becomes drunk or poisoned during the 3 nights & days, the target sobers up, and is drunk again if the Courtier recovers within the window.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Choosing a not-in-play character does nothing and the ability is still spent.",
+      "source": "https://wiki.bloodontheclocktower.com/Courtier"
+    },
+    {
+      "text": "Drunkenness starts that night and ends at dusk after the third drunk night.",
+      "source": "https://wiki.bloodontheclocktower.com/Courtier"
+    },
+    {
+      "text": "Drunk Mastermind: if the Demon is executed, good wins immediately.",
+      "source": "https://wiki.bloodontheclocktower.com/Courtier"
+    },
+    {
+      "text": "Night order numbers are from the bra1n townsquare roles.json; 0 there is recorded as null.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "choose-character",
+    "drunk",
+    "once-per-game",
+    "delayed-effect"
+  ],
+  "test_scenarios": [
+    {
+      "name": "drunk-demon",
+      "setup": "Courtier, Shabaloth, others.",
+      "actions": "Night 5: the Courtier chooses Shabaloth.",
+      "expected": "Shabaloth's kills fail on nights 5-7; sober from dusk after night 7's day."
+    },
+    {
+      "name": "not-in-play",
+      "setup": "Courtier, Imp; no Vortox in play.",
+      "actions": "Night 1: chooses Vortox.",
+      "expected": "Nothing happens; the Courtier has no ability and is not woken again."
+    },
+    {
+      "name": "drunk-courtier",
+      "setup": "The Courtier is drunk (Sweetheart died).",
+      "actions": "Night 2: chooses Imp.",
+      "expected": "The Imp is not drunk; the ability is spent."
+    },
+    {
+      "name": "courtier-poisoned-mid-window",
+      "setup": "Courtier made the Imp drunk on night 2; a Poisoner poisons the Courtier on night 3 only.",
+      "actions": "Night 3 the Imp attacks; night 4 the Imp attacks.",
+      "expected": "Night 3 kill succeeds (Imp sober); night 4 the Imp is drunk again and the kill fails."
+    }
+  ]
+}

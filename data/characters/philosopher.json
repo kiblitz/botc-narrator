@@ -1,0 +1,83 @@
+{
+  "id": "philosopher",
+  "name": "Philosopher",
+  "kind": "townsfolk",
+  "ability": "Once per game, at night, choose a good character: gain that ability. If this character is in play, they are drunk.",
+  "first_night": 2,
+  "other_nights": 2,
+  "reminders": [
+    "Drunk",
+    "Is the Philosopher"
+  ],
+  "setup": null,
+  "wakes": "Each night until the ability is used; afterwards wakes when the gained character would.",
+  "interaction": "Shakes head or points to a Townsfolk or Outsider icon. Not in play: token swapped for that character with the Is the Philosopher reminder. In play: that player gets the Drunk reminder.",
+  "drunk_or_poisoned": "Choosing while drunk or poisoned spends the once-per-game ability with no effect (no ability gained, nobody drunk). If a Philosopher who gained an in-play ability becomes drunk, poisoned or dies, the original player sobers.",
+  "jinxes": [
+    {
+      "with": "bountyhunter",
+      "text": "If the Philosopher gains the Bounty Hunter ability, a Townsfolk might turn evil."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Gains the ability but does not become the character; acts when that character acts, and a first-night-only ability is used the same night it is chosen.",
+      "source": "https://wiki.bloodontheclocktower.com/Philosopher"
+    },
+    {
+      "text": "Copying an in-play Artist drunks the real Artist; if the Philosopher dies or becomes drunk or poisoned, the Artist sobers.",
+      "source": "https://wiki.bloodontheclocktower.com/Philosopher"
+    },
+    {
+      "text": "If the ability is regained via Bone Collector or doubled via Barista, the Philosopher may choose a new or the same ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Philosopher"
+    },
+    {
+      "text": "Abilities that work while dead (Klutz) still work for a dead Philosopher.",
+      "source": "https://wiki.bloodontheclocktower.com/Philosopher"
+    },
+    {
+      "text": "Night order numbers are from bra1n/townsquare src/roles.json (develop branch), not the botc-release list.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "choose-character",
+    "once-per-game",
+    "ability-gain",
+    "drunk",
+    "believes-character"
+  ],
+  "test_scenarios": [
+    {
+      "name": "copy in-play character",
+      "setup": "5 players: seat 0 Philosopher, 1 Empath, 2 Chef, 3 Poisoner, 4 Imp",
+      "actions": "Night 2: Philosopher chooses Empath",
+      "expected": "Empath gets the Drunk reminder; Philosopher gets Empath info from that night on"
+    },
+    {
+      "name": "copy not-in-play character",
+      "setup": "Same setup",
+      "actions": "Night 1: Philosopher chooses Clockmaker",
+      "expected": "Token becomes Clockmaker with Is the Philosopher; learns the Clockmaker number on night 1"
+    },
+    {
+      "name": "philosopher dies",
+      "setup": "Philosopher has copied Empath",
+      "actions": "Imp kills Philosopher",
+      "expected": "Empath is sober again"
+    },
+    {
+      "name": "poisoned when choosing",
+      "setup": "Poisoner poisons Philosopher on night 2",
+      "actions": "Philosopher chooses Empath",
+      "expected": "Ability spent, Empath not drunk, Philosopher gains nothing"
+    },
+    {
+      "name": "decline",
+      "setup": "Same setup",
+      "actions": "Night 1: Philosopher shakes head",
+      "expected": "Philosopher wakes again next night"
+    }
+  ]
+}

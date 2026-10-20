@@ -1,0 +1,83 @@
+{
+  "id": "cannibal",
+  "name": "Cannibal",
+  "kind": "townsfolk",
+  "ability": "You have the ability of the recently killed executee. If they are evil, you are poisoned until a good player dies by execution.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Poisoned",
+    "Died today"
+  ],
+  "setup": null,
+  "wakes": "When the gained ability would wake, at that character's night order.",
+  "interaction": "Not told which ability was gained. After an evil executee, poisoned and woken as the character the evil player claimed, to fake an ability.",
+  "drunk_or_poisoned": "The gained ability malfunctions. After an evil executee the Cannibal is poisoned until a good player dies by execution, which also gives them that player's ability.",
+  "jinxes": [
+    {
+      "with": "butler",
+      "text": "If the Cannibal gains the Butler ability, the Cannibal learns this."
+    },
+    {
+      "with": "juggler",
+      "text": "If the Juggler guesses on their first day and dies by execution, tonight the living Cannibal learns how many guesses the Juggler got correct."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Each new execution death replaces the previous ability; executing a dead player, or one who survives, gives nothing.",
+      "source": "https://wiki.bloodontheclocktower.com/Cannibal"
+    },
+    {
+      "text": "Abilities that work while dead (e.g. Recluse, Ravenkeeper, Sweetheart) are kept after the Cannibal dies.",
+      "source": "https://wiki.bloodontheclocktower.com/Cannibal"
+    },
+    {
+      "text": "An executed Mutant gives an ability that never wakes, so the Cannibal learns nothing.",
+      "source": "https://wiki.bloodontheclocktower.com/Cannibal"
+    },
+    {
+      "text": "Night order numbers are from the bra1n townsquare roles.json; 0 there is recorded as null.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "ability-gain",
+    "on-execution",
+    "poison",
+    "false-info",
+    "delayed-effect"
+  ],
+  "test_scenarios": [
+    {
+      "name": "gains-clockmaker",
+      "setup": "Cannibal; Clockmaker executed and dies day 1; Imp and Poisoner two steps apart.",
+      "actions": "Night 2.",
+      "expected": "The Cannibal learns 2."
+    },
+    {
+      "name": "evil-executee",
+      "setup": "Widow bluffing Fortune Teller executed and dies day 1; Imp.",
+      "actions": "Night 2: Cannibal woken to pick two players and picks the Imp.",
+      "expected": "The Cannibal is poisoned; the Storyteller may answer no."
+    },
+    {
+      "name": "poison-cleared",
+      "setup": "Cannibal poisoned from an evil executee; day 2 the Empath is executed and dies.",
+      "actions": "Night 3.",
+      "expected": "Poison is removed; the Cannibal has the Empath ability and gets true info."
+    },
+    {
+      "name": "survivor-no-gain",
+      "setup": "Cannibal has the Chef ability; day 2 a player protected by the Tea Lady is executed and survives.",
+      "actions": "Night 3.",
+      "expected": "The Cannibal keeps the Chef ability; gains nothing."
+    },
+    {
+      "name": "butler-jinx",
+      "setup": "Butler executed and dies.",
+      "actions": "Night.",
+      "expected": "The Cannibal is told they have the Butler ability."
+    }
+  ]
+}

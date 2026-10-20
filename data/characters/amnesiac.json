@@ -1,0 +1,62 @@
+{
+  "id": "amnesiac",
+  "name": "Amnesiac",
+  "kind": "townsfolk",
+  "ability": "You do not know what your ability is. Each day, privately guess what it is: you learn how accurate you are.",
+  "first_night": 32,
+  "other_nights": 47,
+  "reminders": [
+    "?"
+  ],
+  "setup": "The Storyteller secretly designs the Amnesiac's ability before the game.",
+  "wakes": "Whenever the hidden ability requires (orders 32 first night and 47 other nights are placeholders; the real slot depends on the ability).",
+  "interaction": "At night acts as the hidden ability dictates. Each day privately guesses the ability; the Storyteller answers Cold, Warm, Hot or Bingo.",
+  "drunk_or_poisoned": "The hidden ability malfunctions (no effect or false info). The wiki does not say whether the daily accuracy answer may also be false.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Feedback: Cold (very wrong), Warm (on the right track), Hot (very close), Bingo (exact). A correct guess in different words counts.",
+      "source": "https://wiki.bloodontheclocktower.com/Amnesiac"
+    },
+    {
+      "text": "The ability should be guessable over time and may be slightly stronger than a normal Townsfolk.",
+      "source": "https://wiki.bloodontheclocktower.com/Amnesiac"
+    },
+    {
+      "text": "Night order numbers are from the bra1n townsquare roles.json; 0 there is recorded as null.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "day-ability",
+    "ability-gain",
+    "learn-number",
+    "false-info"
+  ],
+  "test_scenarios": [
+    {
+      "name": "hot-guess",
+      "setup": "Seat 1 Amnesiac (hidden: each night point at two players, learn if either is a Minion), seat 2 Imp, seat 3 Poisoner.",
+      "actions": "Night 2: points at seats 2 and 3, gets a nod. Day: guesses 'I learn if both are Minions'.",
+      "expected": "The Storyteller answers Hot."
+    },
+    {
+      "name": "bingo",
+      "setup": "Amnesiac with hidden ability 'learn how many living neighbours are Townsfolk'.",
+      "actions": "Day: guesses exactly that in different words.",
+      "expected": "The Storyteller answers Bingo."
+    },
+    {
+      "name": "cold",
+      "setup": "Same as bingo.",
+      "actions": "Day: guesses 'I protect a player at night'.",
+      "expected": "The Storyteller answers Cold."
+    },
+    {
+      "name": "poisoned-amnesiac",
+      "setup": "Amnesiac (two-player Minion check) poisoned by the Poisoner.",
+      "actions": "Night: points at the Poisoner and a Townsfolk.",
+      "expected": "The Storyteller may give a false head shake."
+    }
+  ]
+}

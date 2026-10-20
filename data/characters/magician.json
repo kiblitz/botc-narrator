@@ -1,0 +1,78 @@
+{
+  "id": "magician",
+  "name": "Magician",
+  "kind": "townsfolk",
+  "ability": "The Demon thinks you are a Minion. Minions think you are a Demon.",
+  "first_night": 5,
+  "other_nights": null,
+  "reminders": [],
+  "setup": null,
+  "wakes": "Never; the effect modifies the Minion info and Demon info steps on the first night.",
+  "interaction": "Minions are shown THIS IS THE DEMON pointing at both the Demon and the Magician (any order). The Demon is shown THESE ARE YOUR MINIONS pointing at the Minions and the Magician, then the 3 bluffs.",
+  "drunk_or_poisoned": "If drunk or poisoned at the info steps, evil learn each other normally.",
+  "jinxes": [
+    {
+      "with": "legion",
+      "text": "If the Magician is in play, during the Demon info step, Legion wake in separate groups. Each group learns which players are good, but does not learn the Magician."
+    },
+    {
+      "with": "marionette",
+      "text": "If the Magician is alive, the Demon doesn't know which neighbor is the Marionette."
+    },
+    {
+      "with": "spy",
+      "text": "When the Spy sees the Grimoire, the Demon and Magician's character tokens are removed."
+    },
+    {
+      "with": "widow",
+      "text": "When the Widow sees the Grimoire, the Demon and Magician's character tokens are removed."
+    },
+    {
+      "with": "lilmonsta",
+      "text": "If the Magician is alive, the Storyteller chooses which Minion babysits Lil' Monsta."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "If evil learn each other later (Poppy Grower death), the Magician's effect applies then as on the first night.",
+      "source": "https://wiki.bloodontheclocktower.com/Magician"
+    },
+    {
+      "text": "The Storyteller may point at the Demon/Minions and the Magician in any order.",
+      "source": "https://wiki.bloodontheclocktower.com/Magician"
+    },
+    {
+      "text": "Night order numbers from bra1n/townsquare develop src/roles.json (firstNight/otherNight; 0 mapped to null).",
+      "source": "https://wiki.bloodontheclocktower.com/Magician"
+    }
+  ],
+  "building_blocks": [
+    "false-info"
+  ],
+  "test_scenarios": [
+    {
+      "name": "minion info",
+      "setup": "5 players: 1 Magician, 2 Imp, 3 Poisoner, 4 Chef, 5 Empath. Night 1.",
+      "actions": "Minion info step.",
+      "expected": "Seat 3 is shown seats 1 and 2 as the Demon."
+    },
+    {
+      "name": "demon info",
+      "setup": "Same.",
+      "actions": "Demon info step.",
+      "expected": "Seat 2 is shown seats 1 and 3 as Minions, plus 3 bluffs."
+    },
+    {
+      "name": "poppy grower delay",
+      "setup": "1 Magician, 2 Imp, 3 Poisoner, 4 Poppy Grower, 5 Chef.",
+      "actions": "Night 1 evil learn nothing; night 2 seat 4 has died.",
+      "expected": "That night seat 3 is shown seats 1 and 2 as Demon and seat 2 is shown 1 and 3 as Minions."
+    },
+    {
+      "name": "spy jinx",
+      "setup": "1 Magician, 2 Imp, 3 Spy, 4 Chef, 5 Empath.",
+      "actions": "Spy views the Grimoire.",
+      "expected": "The seat 1 and seat 2 character tokens are hidden from the Spy."
+    }
+  ]
+}

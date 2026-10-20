@@ -1,0 +1,66 @@
+{
+  "id": "sailor",
+  "name": "Sailor",
+  "kind": "townsfolk",
+  "ability": "Each night, choose an alive player: either you or they are drunk until dusk. You can't die.",
+  "first_night": 11,
+  "other_nights": 4,
+  "reminders": [
+    "Drunk"
+  ],
+  "setup": null,
+  "wakes": "Every night.",
+  "interaction": "Points to an alive player; the Storyteller decides whether the Sailor or that player is drunk until dusk (choosing self makes the Sailor drunk).",
+  "drunk_or_poisoned": "Can die, and the choice has no effect.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "A sober Sailor executed: announce the execution, they stay alive, no explanation.",
+      "source": "https://wiki.bloodontheclocktower.com/Sailor"
+    },
+    {
+      "text": "If the Sailor picks a Demon, Minion or Outsider, the Storyteller usually makes the Sailor drunk instead.",
+      "source": "https://wiki.bloodontheclocktower.com/Sailor"
+    },
+    {
+      "text": "A drunk Sailor killed by an ability (e.g. Gossip) or executed to prove their claim dies.",
+      "source": "https://wiki.bloodontheclocktower.com/Sailor"
+    },
+    {
+      "text": "Night order numbers are from bra1n/townsquare src/roles.json (develop branch), not the botc-release list.",
+      "source": "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "drunk",
+    "demon-death-survival",
+    "on-execution"
+  ],
+  "test_scenarios": [
+    {
+      "name": "target drunk",
+      "setup": "5 players: seat 0 Sailor, 1 Empath, 2 Chef, 3 Poisoner, 4 Imp",
+      "actions": "Night 2: Sailor picks Empath; Storyteller drunks Empath; Imp attacks Sailor",
+      "expected": "Empath info may be false; Sailor survives"
+    },
+    {
+      "name": "sailor drunk",
+      "setup": "Same setup",
+      "actions": "Night 2: Sailor picks Imp; Storyteller drunks Sailor; Imp attacks Sailor",
+      "expected": "Sailor dies"
+    },
+    {
+      "name": "executed sober",
+      "setup": "Same setup",
+      "actions": "Day 1: sober Sailor executed",
+      "expected": "Sailor survives"
+    },
+    {
+      "name": "poisoned",
+      "setup": "Same setup; Poisoner poisons Sailor",
+      "actions": "Imp attacks Sailor",
+      "expected": "Sailor dies; nobody drunk by the Sailor"
+    }
+  ]
+}

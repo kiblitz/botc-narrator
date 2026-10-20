@@ -1,0 +1,83 @@
+{
+  "id": "exorcist",
+  "name": "Exorcist",
+  "kind": "townsfolk",
+  "ability": "Each night*, choose a player (different to last night): the Demon, if chosen, learns who you are then doesn't wake tonight.",
+  "first_night": null,
+  "other_nights": 21,
+  "reminders": [
+    "Chosen"
+  ],
+  "setup": null,
+  "wakes": "Each night except the first, before the Demon.",
+  "interaction": "Exorcist points at a player other than last night's choice. If it is the Demon, the Demon is woken, shown THIS CHARACTER SELECTED YOU plus the Exorcist token and pointed to the Exorcist, and does not wake again for its own ability that night.",
+  "drunk_or_poisoned": "The Exorcist still chooses, but the Demon is not told and wakes and acts normally.",
+  "jinxes": [
+    {
+      "with": "leviathan",
+      "text": "If the Leviathan nominates and executes the Exorcist-chosen player, good wins."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Choosing a non-Demon player does not stop the Demon from attacking.",
+      "source": "https://wiki.bloodontheclocktower.com/Exorcist"
+    },
+    {
+      "text": "Only the Demon's own waking is skipped; passive or earlier-set Demon effects still work (Zombuul survives, Pukka's previously poisoned player still dies, Shabaloth may still regurgitate).",
+      "source": "https://wiki.bloodontheclocktower.com/Exorcist"
+    },
+    {
+      "text": "The Demon still wakes if another character's ability requires it.",
+      "source": "https://wiki.bloodontheclocktower.com/Exorcist"
+    },
+    {
+      "text": "Cannot choose the same player on consecutive nights.",
+      "source": "https://wiki.bloodontheclocktower.com/Exorcist"
+    },
+    {
+      "text": "A Po that chose no one and is then Exorcised may kill three the following night, since its last choice was no one.",
+      "source": "https://wiki.bloodontheclocktower.com/Exorcist"
+    },
+    {
+      "text": "Night order numbers from bra1n/townsquare develop src/roles.json (firstNight/otherNight; 0 mapped to null).",
+      "source": "https://wiki.bloodontheclocktower.com/Exorcist"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "learn-player"
+  ],
+  "test_scenarios": [
+    {
+      "name": "blocks the demon",
+      "setup": "5 players: 1 Exorcist, 2 Imp, 3 Poisoner, 4 Chef, 5 Empath. Night 2.",
+      "actions": "Exorcist chooses seat 2.",
+      "expected": "Imp learns seat 1 is the Exorcist and does not wake; nobody dies at dawn."
+    },
+    {
+      "name": "non-demon choice",
+      "setup": "Same seats. Night 2.",
+      "actions": "Exorcist chooses seat 4; Imp chooses seat 5.",
+      "expected": "Seat 5 dies; Imp is not told anything."
+    },
+    {
+      "name": "different to last night",
+      "setup": "Same seats. Night 2 Exorcist chose seat 2.",
+      "actions": "Night 3: Exorcist chooses.",
+      "expected": "Seat 2 is not offered; every other player is."
+    },
+    {
+      "name": "poisoned exorcist",
+      "setup": "Same seats. Night 2 Poisoner poisons seat 1.",
+      "actions": "Exorcist chooses seat 2; Imp chooses seat 4.",
+      "expected": "Imp is not told about the Exorcist, wakes normally, and seat 4 dies."
+    },
+    {
+      "name": "pukka delayed kill",
+      "setup": "1 Exorcist, 2 Pukka, 3 Chef, 4 Empath, 5 Poisoner. Night 1 Pukka poisoned seat 3.",
+      "actions": "Night 2 Exorcist chooses seat 2.",
+      "expected": "Pukka does not wake; seat 3 still dies at dawn."
+    }
+  ]
+}
