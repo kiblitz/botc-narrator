@@ -165,27 +165,28 @@ fn adjusted(base: Counts, picks: &[Pick]) -> Counts {
     })
 }
 
-/// A not-yet-picked character of `kind`, or a copy of a picked one that
-/// duplicates in setup.
+/// A copy of a picked character of `kind` that duplicates in setup (every
+/// extra Demon is Legion), or else a not-yet-picked character of `kind`.
 fn next(
     rng: &mut impl Rng,
     script: &script::Script,
     picks: &[Pick],
     kind: character::Kind,
 ) -> Option<character::Ref> {
+    let duplicate = picks
+        .iter()
+        .map(|p| p.character)
+        .find(|c| c.kind() == kind && c.duplicates_in_setup());
+    if duplicate.is_some() {
+        return duplicate;
+    }
     let unused: Vec<character::Ref> = script
         .characters
         .iter()
         .copied()
         .filter(|c| c.kind() == kind && !picks.iter().any(|p| character::same(p.character, *c)))
         .collect();
-    if let Some(c) = unused.choose(rng) {
-        return Some(*c);
-    }
-    picks
-        .iter()
-        .map(|p| p.character)
-        .find(|c| c.kind() == kind && c.duplicates_in_setup())
+    unused.choose(rng).copied()
 }
 
 /// Removes `n` picks of `kind`, the most recent first, preferring picks

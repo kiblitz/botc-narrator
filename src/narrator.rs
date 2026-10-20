@@ -215,9 +215,9 @@ pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id, ability: charac
     }
 }
 
-/// End of day: living players' day-end abilities (the Mayor) fire.
+/// End of day: active players' day-end abilities (the Mayor) fire.
 pub fn end_day(ctx: &mut ctx::Write<'_>) {
-    for (id, ability) in ctx.living_abilities() {
+    for (id, ability) in ctx.active_abilities() {
         ability.on_day_end(ctx, &id);
     }
 }

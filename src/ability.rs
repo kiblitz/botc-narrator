@@ -45,21 +45,53 @@ pub fn alive_neighbours(state: &game::State, me: &player::Id) -> Vec<player::Id>
     neighbours
 }
 
-/// Players who died since the current day began (or during the last day, if
-/// it is night): "if an Outsider died today".
-pub fn died_today(state: &game::State) -> Vec<player::Id> {
+/// `me`'s nearest `kind` players clockwise and anticlockwise, alive or dead
+/// (one if both directions find the same player): "your 2 Townsfolk
+/// neighbours".
+pub fn nearest_of_kind(
+    state: &game::State,
+    me: &player::Id,
+    kind: character::Kind,
+) -> Vec<player::Id> {
+    let seats = state.seat_order();
+    let n = seats.len();
+    let Some(i) = seats.iter().position(|p| p == me) else {
+        return Vec::new();
+    };
+    let nearest = |seat: &dyn Fn(usize) -> usize| {
+        (1..n)
+            .map(|k| &seats[seat(k)])
+            .find(|p| state.kind(p) == kind)
+            .cloned()
+    };
+    let mut found: Vec<player::Id> = [nearest(&|k| (i + n - k) % n), nearest(&|k| (i + k) % n)]
+        .into_iter()
+        .flatten()
+        .collect();
+    found.dedup();
+    found
+}
+
+/// The events of the current day (or of the last day, if it is night).
+pub fn today(state: &game::State) -> &[event::Event] {
     let history = state.history();
     let day_start = history
         .iter()
         .rposition(|e| matches!(e, event::Event::PhaseBegan(game::Phase::Day(_))));
     let Some(start) = day_start else {
-        return Vec::new();
+        return &[];
     };
     let day_end = history[start..]
         .iter()
         .position(|e| matches!(e, event::Event::PhaseBegan(game::Phase::Night(_))))
         .map_or(history.len(), |i| start + i);
-    history[start..day_end]
+    &history[start..day_end]
+}
+
+/// Players who died since the current day began (or during the last day, if
+/// it is night): "if an Outsider died today".
+pub fn died_today(state: &game::State) -> Vec<player::Id> {
+    today(state)
         .iter()
         .filter_map(|e| match e {
             event::Event::Died { player, .. } => Some(player.clone()),
@@ -323,6 +355,43 @@ pub fn mark(
     }
 }
 
+/// Makes exactly `targets` carry `source`'s `effect` token placed by `me`
+/// (several copies, as with the No Dashii's two Poisoned tokens): tokens on
+/// other players are removed, missing ones added.
+pub fn sync_marks(
+    ctx: &mut ctx::Write<'_>,
+    me: &player::Id,
+    source: character::Ref,
+    effect: game::Effect,
+    expiry: game::Expiry,
+    targets: &[player::Id],
+) {
+    let reminder = game::Reminder::new(source, me, effect, expiry);
+    for p in ctx.state().seat_order() {
+        let has = ctx.state().player(&p).reminders.contains(&reminder);
+        let wanted = targets.contains(&p);
+        if has && !wanted {
+            ctx.remove_reminder(&p, &reminder);
+        } else if wanted && !has {
+            ctx.add_reminder(&p, reminder.clone());
+        }
+    }
+}
+
+/// Players carrying `source`'s `effect` token placed by `me`, in seat order.
+pub fn marked(
+    state: &game::State,
+    me: &player::Id,
+    source: character::Ref,
+    effect: game::Effect,
+) -> Vec<player::Id> {
+    state
+        .seat_order()
+        .into_iter()
+        .filter(|p| has_mark(state, me, source, p, effect))
+        .collect()
+}
+
 /// Whether `source`'s token placed by `me` is on `target`.
 pub fn has_mark(
     state: &game::State,
@@ -380,6 +449,12 @@ pub fn kill(ctx: &mut ctx::Write<'_>, me: &player::Id, target: &player::Id) -> b
     !ctx.state().is_malfunctioning(me) && ctx.kill(target, event::Cause::Ability { by: me.clone() })
 }
 
+/// A demon kill of `target` by `me` (Monk protection applies), unless `me`
+/// is malfunctioning. Returns whether someone died.
+pub fn demon_kill(ctx: &mut ctx::Write<'_>, me: &player::Id, target: &player::Id) -> bool {
+    !ctx.state().is_malfunctioning(me) && ctx.kill(target, event::Cause::Demon)
+}
+
 /// The demon's nightly attack: wake, choose a living player, sleep, and kill
 /// them as a demon kill (unless malfunctioning). Choosing themself is a
 /// starpass. Returns the choice.
@@ -388,15 +463,16 @@ pub fn demon_attack(ctx: &mut ctx::Write<'_>, me: &player::Id) -> Option<player:
     ctx.wake(me);
     let target = ctx.ask_one(me, "Who do you want to kill?", &candidates);
     ctx.sleep(me);
-    if let Some(target) = &target
-        && !ctx.state().is_malfunctioning(me)
-    {
-        let cause = if target == me {
-            event::Cause::Starpass
-        } else {
-            event::Cause::Demon
-        };
-        ctx.kill(target, cause);
+    match &target {
+        Some(target) if target == me => {
+            if !ctx.state().is_malfunctioning(me) {
+                ctx.kill(target, event::Cause::Starpass);
+            }
+        }
+        Some(target) => {
+            demon_kill(ctx, me, target);
+        }
+        None => {}
     }
     target
 }

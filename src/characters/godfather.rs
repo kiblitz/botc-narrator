@@ -34,7 +34,7 @@ impl character::Def for Def {
 
     /// On the first night to learn; afterwards only if an Outsider died today.
     fn wakes_tonight(&self, state: &game::State, me: &player::Id) -> bool {
-        state.is_alive(me)
+        state.ability_active(me)
             && (state.phase() == game::Phase::Night(1)
                 || ability::died_today(state)
                     .iter()

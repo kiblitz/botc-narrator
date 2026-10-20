@@ -25,7 +25,7 @@ impl character::Def for Def {
 
 /// Once per game, publicly chooses a player: if they are the demon, they die.
 fn slay(ctx: &mut ctx::Write<'_>, me: &player::Id) {
-    if !ctx.state().is_alive(me) || !ability::use_once(ctx, me, &Def) {
+    if !ctx.state().ability_active(me) || !ability::use_once(ctx, me, &Def) {
         return;
     }
     let candidates = ctx.state().alive_ids();

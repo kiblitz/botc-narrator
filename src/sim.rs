@@ -41,6 +41,9 @@ const EVIL_VOTES_EVIL: f64 = 0.1;
 const GOOD_VOTES: f64 = 0.45;
 /// Chance a mad player breaks their madness on a given day.
 const BREAKS_MADNESS: f64 = 0.3;
+/// Chance a player who "may choose" chooses no-one (the Po charging up, a
+/// player chosen by the Al-Hadikhia choosing death).
+const CHOOSES_NO_ONE: f64 = 0.2;
 
 const NAMES: [&str; MAX_PLAYERS] = [
     "Ada", "Bram", "Cleo", "Dev", "Esme", "Finn", "Gus", "Hana", "Ivo", "Juno", "Kit", "Lux",
@@ -300,8 +303,10 @@ impl table::Io for Recorder {
     }
 
     fn tell(&mut self, player: &player::Id, message: &info::Message) {
-        if let info::Message::Bluffs(characters) = message {
-            debug_assert!(self.bluffs.is_none(), "the demon is told bluffs once");
+        // Several demons (Legion) all learn the same bluffs: keep the first.
+        if let info::Message::Bluffs(characters) = message
+            && self.bluffs.is_none()
+        {
             self.bluffs = Some(Bluffs {
                 demon: player.to_string(),
                 characters: characters.clone(),
@@ -340,6 +345,22 @@ impl table::Io for Recorder {
         answer
     }
 
+    fn ask_up_to(
+        &mut self,
+        player: &player::Id,
+        prompt: &str,
+        candidates: &[player::Id],
+        max: usize,
+    ) -> Vec<player::Id> {
+        if self.rng.random_bool(CHOOSES_NO_ONE) {
+            let text = format!("{player} chooses no-one");
+            let step = self.push(Kind::Ask, Some(player), text, Audience::Player);
+            step.flow = Some(Flow::from_player(player));
+            return Vec::new();
+        }
+        table::Io::ask(self, player, prompt, candidates, max)
+    }
+
     fn event(&mut self, event: &event::Event, view: &game::State) {
         self.sync(view);
         let text = event.to_string();
@@ -366,6 +387,12 @@ impl table::Io for Recorder {
                     from: Endpoint::Player(nominator.to_string()),
                     to: Endpoint::Player(nominee.to_string()),
                 });
+            }
+            event::Event::Revived(player) => {
+                self.push(Kind::Event, Some(player), text, Audience::Public);
+            }
+            event::Event::Announced(_) => {
+                self.push(Kind::Event, None, text, Audience::Public);
             }
             event::Event::Executed(_) => {
                 self.push(Kind::Event, None, text, Audience::Public);
@@ -484,7 +511,7 @@ pub fn simulate(seed: u64, players: usize, script: &script::Script) -> Trace {
 /// believes they are the Slayer), then nominations and a majority vote.
 fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
     let holders: Vec<(player::Id, character::Ref)> = ctx
-        .living_abilities()
+        .active_abilities()
         .into_iter()
         .filter(|(_, ability)| ability.day_action().is_some())
         .collect();

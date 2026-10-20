@@ -25,6 +25,20 @@ pub trait Io {
         count: usize,
     ) -> Vec<player::Id>;
 
+    /// Ask a player who "may choose" to point at up to `max` distinct
+    /// candidates; fewer (or none) is a legal answer. The default answers as
+    /// to [`Io::ask`], so never chooses fewer: override it to let players
+    /// choose no-one.
+    fn ask_up_to(
+        &mut self,
+        player: &player::Id,
+        prompt: &str,
+        candidates: &[player::Id],
+        max: usize,
+    ) -> Vec<player::Id> {
+        self.ask(player, prompt, candidates, max)
+    }
+
     /// Ask a player to choose one of `options` (characters); returns its
     /// index. Invalid answers are replaced by the first option.
     fn ask_character(
@@ -97,6 +111,20 @@ impl Io for Console {
         let names: Vec<&str> = answer.iter().map(player::Id::as_str).collect();
         println!("[ask {player}] {prompt} -> {}", names.join(", "));
         answer
+    }
+
+    fn ask_up_to(
+        &mut self,
+        player: &player::Id,
+        prompt: &str,
+        candidates: &[player::Id],
+        max: usize,
+    ) -> Vec<player::Id> {
+        if rand::Rng::random_bool(&mut self.rng, 0.2) {
+            println!("[ask {player}] {prompt} -> no-one");
+            return Vec::new();
+        }
+        self.ask(player, prompt, candidates, max)
     }
 
     fn event(&mut self, event: &event::Event, _view: &game::State) {

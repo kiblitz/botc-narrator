@@ -140,10 +140,12 @@ pub trait Def: Sync {
         None
     }
 
-    /// Whether `me` wakes for this ability tonight. By default living
-    /// players wake; checked when their turn comes, not when the night starts.
+    /// Whether `me` wakes for this ability tonight. By default players whose
+    /// ability is active (`game::State::ability_active`: alive, or dead but
+    /// keeping it) wake; checked when their turn comes, not when the night
+    /// starts.
     fn wakes_tonight(&self, state: &game::State, me: &player::Id) -> bool {
-        state.is_alive(me)
+        state.ability_active(me)
     }
 
     fn day_action(&self) -> Option<DayFn> {

@@ -25,6 +25,8 @@ pub enum Event {
         player: player::Id,
         cause: Cause,
     },
+    /// A dead player comes back to life (the Shabaloth, the Al-Hadikhia).
+    Revived(player::Id),
     KillPrevented {
         player: player::Id,
         by: &'static str,
@@ -74,6 +76,8 @@ pub enum Event {
         needed: usize,
     },
     Note(String),
+    /// Something the storyteller tells everyone ("the Leviathan is in play").
+    Announced(String),
     Won(character::Alignment),
 }
 
@@ -84,6 +88,7 @@ impl fmt::Display for Event {
             Event::Nominated { nominee, nominator } => write!(f, "{nominator} nominates {nominee}"),
             Event::Executed(p) => write!(f, "{p} is executed"),
             Event::Died { player, cause } => write!(f, "{player} dies ({cause:?})"),
+            Event::Revived(player) => write!(f, "{player} is alive again"),
             Event::KillPrevented { player, by } => write!(f, "{player} survives ({by})"),
             Event::KillRedirected { from, to } => write!(f, "kill on {from} redirected to {to}"),
             Event::Transformed { player, into } => write!(f, "{player} becomes the {into}"),
@@ -119,6 +124,7 @@ impl fmt::Display for Event {
                 needed,
             } => write!(f, "{} votes for {nominee} ({needed} needed)", voters.len()),
             Event::Note(text) => f.write_str(text),
+            Event::Announced(text) => write!(f, "Announcement: {text}"),
             Event::Won(alignment) => write!(f, "{alignment} wins!"),
         }
     }

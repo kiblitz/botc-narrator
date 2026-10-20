@@ -51,7 +51,7 @@ Night actions are tagged `NightAction::ReadOnly` (gets `ctx::Read`, which cannot
 
 ### Grimoire state
 
-`game::State` keeps players in seat order with **reminder tokens** (`game::Reminder { source, effect, expiry }`) instead of hardcoded flags. Poisoned, Drunk, Protected and AbilityUsed have rules meaning; `Effect::Mad(character)` marks a player mad about being a character; `Effect::Custom` covers tokens only their character interprets (Butler's master, Fortune Teller's red herring). Placing a token moves it, like a physical token. `Expiry::Dusk` tokens are removed when the next night begins, or when the player whose ability placed them dies. The game keeps a typed `event::Event` history.
+`game::State` keeps players in seat order with **reminder tokens** (`game::Reminder { source, effect, expiry }`) instead of hardcoded flags. Poisoned, Drunk, Protected, AbilityUsed and KeepsAbility (a dead player's ability still works while the placer lives and functions: the Vigormortis's Minions) have rules meaning; `Effect::Mad(character)` marks a player mad about being a character; `Effect::Custom` covers tokens only their character interprets (Butler's master, Fortune Teller's red herring). Placing a token moves it, like a physical token; `ctx::Write::add_reminder` leaves the copies on other players instead (the No Dashii's two Poisoned tokens; at most one equal token per player). `Expiry::Dusk` tokens are removed when the next night begins, or when the player whose ability placed them dies. The game keeps a typed `event::Event` history.
 
 Each player also has:
 
@@ -90,11 +90,24 @@ A script is a JSON file in `data/scripts/<id>.json` in the standard script forma
 
 Butler voting restriction, nomination/voting rules, and reminder tokens in the Spy's grimoire view. Misinformation for "one of these two is the X" only offers characters in play, not the whole script. Abilities cannot yet modify votes (vote weight, dead votes, Butler); a believed character makes every ability of that player malfunction (right for the Drunk, not for a Lunatic who gains another ability); nothing can veto a win. The Saint's loss fires on execution before any ability can prevent the death. The simulator's player view shows a Drunk their real character (it does not read `believes` yet). The Fang Gu's jump only notices Monk protection (other ways an Outsider would survive still let it jump). A Cerenovus execution is judged once, at the end of the day. The Mathematician's count is an approximation: the engine does not record which abilities misfired, so any number up to how many other players are malfunctioning counts as true and the storyteller picks. The Chambermaid counts a player as woken by their ability if one of their abilities has a turn tonight that it wakes for, judged when she acts (a player who dies before a later turn still counts). The Seamstress passes by pointing at herself. The Dreamer may be shown the Vortox, and the Grandmother does not yet trigger the Leviathan jinx.
 
+Demons:
+
+- The Zombuul's first death is not announced and it still counts as alive for nominations, votes and information.
+- Lil' Monsta's babysitter does not register as the Demon to information abilities, the player dealt it (now a Minion) gets the first night's demon info, and Minions choose among living Minions only.
+- Legion's evil-only vote makes the execution fail (the nominee survives) rather than zeroing the tally.
+- The Leviathan's evil win on a second good execution is judged at dusk.
+- Poison from the No Dashii, Vigormortis, Lleech and Pukka is updated at phase changes and deaths, not the moment the demon becomes drunk or a neighbour changes character.
+- A regurgitated or revived player does not regain used abilities.
+- Revivals and the Al-Hadikhia's choices are announced at once rather than at dawn.
+- The Pukka's and Shabaloth's tokens are only updated when they act or die (a Pukka that loses its ability some other way leaves its victim poisoned).
+- Lil' Monsta is not a player, so a poisoned or drunk babysitter still lets a player die (a deliberate reading of the rules).
+- Demon jinxes are not modelled.
+
 ## Simulator site
 
 `site/` is a static page that generates random, plausible Trouble Brewing games in the browser (the engine compiled to WebAssembly from `web/`) and lets you step through them. Players sit in a circle; each step shows who is awake, what they were told or asked, storyteller decisions and public events. Click a player to see everything they know so far, or switch the view to one player's point of view to hide what they couldn't see. Pick a script (only Trouble Brewing so far; new scripts in `script::all()` appear automatically). Games are reproducible from `#script=...&seed=...&players=...` in the URL. Information steps highlight the players and characters they name.
 
-Generation (`sim.rs`) uses legal setups for 5-15 players (`setup::choose`), players who act on simple heuristics (evil targets good), a random storyteller, daily nominations with a majority vote (no ghost votes), mad players who break madness with a fixed probability, and night deaths announced at dawn. Day actions such as the Slayer's shot are public.
+Generation (`sim.rs`) uses legal setups for 5-15 players (`setup::choose`), players who act on simple heuristics (evil targets good), a random storyteller, daily nominations with a majority vote (no ghost votes), mad players who break madness with a fixed probability, players who "may choose" choosing no-one now and then (the Po charging), and night deaths announced at dawn. Day actions such as the Slayer's shot are public.
 
 ```sh
 sh scripts/serve-web.sh              # build the wasm and serve at http://localhost:8080

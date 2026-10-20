@@ -74,6 +74,29 @@ impl<'a> Read<'a> {
         self.ask(player, prompt, candidates, 1).into_iter().next()
     }
 
+    /// Ask a player who "may choose" for up to `max` distinct candidates;
+    /// an empty answer is choosing no-one. Invalid answers count as no-one.
+    pub fn ask_up_to(
+        &mut self,
+        player: &player::Id,
+        prompt: &str,
+        candidates: &[player::Id],
+        max: usize,
+    ) -> Vec<player::Id> {
+        let max = max.min(candidates.len());
+        if max == 0 {
+            return Vec::new();
+        }
+        let answer = self.io.ask_up_to(player, prompt, candidates, max);
+        if answer.len() <= max
+            && storyteller::is_selection(&answer, answer.len(), |a| candidates.contains(a))
+        {
+            answer
+        } else {
+            Vec::new()
+        }
+    }
+
     /// Ask a player to choose one of `options` (characters).
     pub fn ask_character(
         &mut self,
@@ -373,12 +396,17 @@ impl<'a> Write<'a> {
         self.record(event::Event::Note(text.into()));
     }
 
-    /// Moves to the next phase; living players' night-start or day-start
+    /// Something everyone at the table is told.
+    pub fn announce(&mut self, text: impl Into<String>) {
+        self.record(event::Event::Announced(text.into()));
+    }
+
+    /// Moves to the next phase; active players' night-start or day-start
     /// abilities fire.
     pub fn advance_phase(&mut self) -> game::Phase {
         let phase = self.state.advance_phase();
         self.record(event::Event::PhaseBegan(phase));
-        for (id, ability) in self.living_abilities() {
+        for (id, ability) in self.active_abilities() {
             match phase {
                 game::Phase::Night(_) => ability.on_night_start(self, &id),
                 game::Phase::Day(_) => ability.on_day_start(self, &id),
@@ -388,9 +416,16 @@ impl<'a> Write<'a> {
         phase
     }
 
-    /// Every living player's abilities, in seat order.
-    pub fn living_abilities(&self) -> Vec<(player::Id, character::Ref)> {
-        self.abilities_of(&self.state.alive_ids())
+    /// The abilities of every player whose ability is active (alive, or dead
+    /// but keeping it: `game::State::ability_active`), in seat order.
+    pub fn active_abilities(&self) -> Vec<(player::Id, character::Ref)> {
+        let active: Vec<player::Id> = self
+            .state
+            .seat_order()
+            .into_iter()
+            .filter(|id| self.state.ability_active(id))
+            .collect();
+        self.abilities_of(&active)
     }
 
     /// The abilities of `players`, in the given order.
@@ -414,6 +449,17 @@ impl<'a> Write<'a> {
         });
     }
 
+    /// Adds a token without moving its copies on other players (at most one
+    /// equal token per player), for abilities with several identical tokens
+    /// (see `ability::sync_marks`).
+    pub fn add_reminder(&mut self, target: &player::Id, reminder: game::Reminder) {
+        self.state.add_reminder(target, reminder.clone());
+        self.record(event::Event::ReminderPlaced {
+            player: target.clone(),
+            reminder,
+        });
+    }
+
     /// Take `reminder` off `target`, if it is there.
     pub fn remove_reminder(&mut self, target: &player::Id, reminder: &game::Reminder) {
         if self.state.remove_reminder(target, reminder) {
@@ -422,6 +468,15 @@ impl<'a> Write<'a> {
                 reminder: reminder.clone(),
             });
         }
+    }
+
+    /// A dead player comes back to life (their abilities work again).
+    pub fn revive(&mut self, target: &player::Id) {
+        if self.state.is_alive(target) {
+            return;
+        }
+        self.state.mark_alive(target);
+        self.record(event::Event::Revived(target.clone()));
     }
 
     /// Tell `target` they are `character`, which they are not (or, with
@@ -492,7 +547,7 @@ impl<'a> Write<'a> {
             });
             return false;
         }
-        for (id, ability) in self.living_abilities() {
+        for (id, ability) in self.active_abilities() {
             if self.state.is_malfunctioning(&id) {
                 continue;
             }
@@ -527,7 +582,7 @@ impl<'a> Write<'a> {
             player: target.clone(),
             cause: cause.clone(),
         });
-        let mut watchers = self.living_abilities();
+        let mut watchers = self.active_abilities();
         watchers.extend(self.abilities_of(std::slice::from_ref(target)));
         for (id, ability) in watchers {
             ability.on_death(self, &id, target, &cause);
@@ -608,6 +663,16 @@ impl<'a> Write<'a> {
         candidates: &[player::Id],
     ) -> Option<player::Id> {
         self.read().ask_one(player, prompt, candidates)
+    }
+
+    pub fn ask_up_to(
+        &mut self,
+        player: &player::Id,
+        prompt: &str,
+        candidates: &[player::Id],
+        max: usize,
+    ) -> Vec<player::Id> {
+        self.read().ask_up_to(player, prompt, candidates, max)
     }
 
     pub fn ask_character(

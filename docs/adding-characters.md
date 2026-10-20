@@ -70,7 +70,14 @@ Override only the hooks the ability uses (the full list is in the README,
 | protect / poison / any token | `mark(ctx, me, &Def, target, effect, expiry)`, `has_mark` |
 | once per game | `use_once(ctx, me, &Def)`, `used`, `used_tonight` |
 | take a token off | `ctx.remove_reminder(target, &reminder)` |
-| kill | `kill(ctx, me, target)`; the demon's attack: `demon_attack` |
+| kill | `kill(ctx, me, target)`; the demon's attack: `demon_attack`; a demon kill of a given player: `demon_kill` |
+| "you may choose" (no-one is legal) | `ctx.ask_up_to` |
+| several identical tokens (No Dashii's two Poisoned) | `sync_marks`, `marked` |
+| nearest neighbours of a kind, alive or dead (No Dashii, Vigormortis) | `nearest_of_kind` |
+| bring a dead player back | `ctx.revive` |
+| tell everyone something | `ctx.announce` |
+| a dead player keeps their ability | a `game::Effect::KeepsAbility` token (lasts while its placer lives and functions) |
+| "today" | `today` (the day's events), `died_today` |
 | storyteller choices | `storyteller_agrees`, `storyteller_picks_player`, `storyteller_picks_character` |
 | setup modifier | `setup_counts` with `setup::Counts::shift_outsiders` / `with` |
 | not-in-play characters, the script | `not_in_play`, `ctx.state().script()` |
@@ -93,6 +100,11 @@ Override only the hooks the ability uses (the full list is in the README,
   `on_madness_broken` asking `storyteller_agrees` before `ctx.execute`.
 - **Fang Gu** (`fang_gu.rs`): `setup_counts` (+1 Outsider), `registers_as`
   Outsider, `use_once`, `transform` + `set_alignment`, then killing itself.
+- Demons: **Pukka** (`pukka.rs`, `marked` + `sync_marks`: the poisoned player dies next night),
+  **No Dashii** (`no_dashii.rs`, `sync_marks` on `nearest_of_kind`
+  Townsfolk at every phase change), **Po** (`ask_up_to` and a charge token),
+  **Legion** (`duplicates_in_setup`, one voice for the group), **Lil' Monsta**
+  (a carried ability: `transform` + `gain_ability`).
 - Trouble Brewing (`imp.rs`, `monk.rs`, `empath.rs`, ...) are a few lines each.
 
 ## Tests

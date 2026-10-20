@@ -33,6 +33,9 @@ pub enum Effect {
     /// convince the group of it, or the ability that placed the token may
     /// punish them (see `narrator::check_madness`).
     Mad(&'static str),
+    /// A dead player keeps their ability while whoever placed this token is
+    /// alive and functioning (Minions the Vigormortis kills).
+    KeepsAbility,
     /// A token with no built-in rules meaning, interpreted by the character
     /// that placed it (e.g. the Butler's master).
     Custom(&'static str),
@@ -258,6 +261,18 @@ impl State {
         self.player(id).alive
     }
 
+    /// Whether the player's abilities work at all: they are alive, or dead
+    /// with a `KeepsAbility` token from a living, functioning player.
+    pub fn ability_active(&self, id: &player::Id) -> bool {
+        let p = self.player(id);
+        p.alive
+            || p.reminders.iter().any(|r| {
+                r.effect == Effect::KeepsAbility
+                    && self.is_alive(&r.placed_by)
+                    && !self.is_malfunctioning(&r.placed_by)
+            })
+    }
+
     pub fn character(&self, id: &player::Id) -> character::Ref {
         self.player(id).character
     }
@@ -453,6 +468,16 @@ impl State {
         self.player_mut(target).reminders.push(reminder);
     }
 
+    /// Adds a token without moving its copies on other players (at most one
+    /// equal token per player): for abilities with several identical tokens
+    /// (the No Dashii's two Poisoned).
+    pub(crate) fn add_reminder(&mut self, target: &player::Id, reminder: Reminder) {
+        let p = self.player_mut(target);
+        if !p.reminders.contains(&reminder) {
+            p.reminders.push(reminder);
+        }
+    }
+
     /// Returns whether the token was there.
     pub(crate) fn remove_reminder(&mut self, target: &player::Id, reminder: &Reminder) -> bool {
         let reminders = &mut self.player_mut(target).reminders;
@@ -476,6 +501,12 @@ impl State {
         if at_night {
             self.deaths_tonight.push(id.clone());
         }
+    }
+
+    pub(crate) fn mark_alive(&mut self, id: &player::Id) {
+        let p = self.player_mut(id);
+        p.alive = true;
+        p.ghost_vote = false;
     }
 
     pub(crate) fn mark_executed(&mut self, id: &player::Id) {
