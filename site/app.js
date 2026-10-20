@@ -73,8 +73,8 @@ function buildBoard() {
     const angle = -Math.PI / 2 + (2 * Math.PI * i) / n;
     const div = el("div", "seat");
     div.dataset.name = seat.name;
-    div.style.left = `${50 + 41 * Math.cos(angle)}%`;
-    div.style.top = `${50 + 41 * Math.sin(angle)}%`;
+    div.style.left = `${50 + 39 * Math.cos(angle)}%`;
+    div.style.top = `${50 + 39 * Math.sin(angle)}%`;
     div.append(el("div", "token"), el("div", "name", seat.name), el("div", "reminders"));
     div.addEventListener("click", () => {
       selected = selected === seat.name ? null : seat.name;

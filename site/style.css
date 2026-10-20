@@ -58,11 +58,12 @@ main {
 
 #board {
   position: relative;
-  flex: 1;
-  min-height: 420px;
-  border-radius: 50%;
+  /* A circle that fits both the column width and the viewport height. */
+  width: min(100%, calc(100vh - 160px));
+  min-width: 360px;
   aspect-ratio: 1;
-  max-height: calc(100vh - 160px);
+  flex: none;
+  border-radius: 50%;
   margin: 0 auto;
   background: radial-gradient(circle, #241f33 0%, #1a1724 70%);
   border: 1px solid var(--line);
@@ -91,13 +92,13 @@ main {
   cursor: pointer;
 }
 .token {
-  width: 76px; height: 76px;
+  width: 84px; height: 84px;
   margin: 0 auto;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   padding: 6px;
   font-size: 10.5px; font-weight: 600; line-height: 1.1;
-  overflow-wrap: anywhere;
+  hyphens: auto;
   background: #ece3cf;
   color: #2a2233;
   border: 4px solid var(--good);
@@ -164,3 +165,15 @@ li.player .who, #knowledge-list .who { color: var(--good); font-weight: 600; }
 li.public { color: var(--text); }
 li.future { opacity: 0.35; }
 .winner { color: var(--gold); font-weight: 700; }
+
+/* Portrait or narrow screens: the board on top at full width, the panels below it. */
+@media (max-aspect-ratio: 1/1), (max-width: 1000px) {
+  main {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+  #board { width: min(100%, max(360px, calc(100vh - 420px))); }
+  aside { flex-direction: row; min-height: 360px; max-height: 50vh; }
+  aside section { flex: 1; }
+  #knowledge { max-height: none; overflow: auto; }
+}

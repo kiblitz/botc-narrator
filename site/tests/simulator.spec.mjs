@@ -85,3 +85,18 @@ test("night deaths are announced at dawn without their cause", async ({ page }) 
   expect(log).toContain("Ada died in the night");
   expect(log).not.toContain("(Demon)");
 });
+
+for (const [width, height] of [[1080, 1920], [1920, 1080], [800, 600]]) {
+  test(`the board fits a ${width}x${height} screen`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await open(page);
+    const board = await page.locator("#board").boundingBox();
+    expect(board.x).toBeGreaterThanOrEqual(0);
+    expect(board.x + board.width).toBeLessThanOrEqual(width);
+    for (const seat of await page.locator(".seat").all()) {
+      const box = await seat.boundingBox();
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(width);
+    }
+  });
+}
