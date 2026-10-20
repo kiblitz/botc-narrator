@@ -103,8 +103,10 @@ pub trait Io {
         false
     }
 
-    /// A yes/no `question` about `player`: their choice, or what the table
-    /// saw them do.
+    /// A typed yes/no `question` about `player`: a rules choice (use an
+    /// ability, claim a character) or what the table saw (said the word, lost
+    /// roshambo). Unlike `ask_yes_no`'s free-text prompt, the question is
+    /// typed so a table can answer each kind differently.
     fn confirm(&mut self, _player: &player::Id, _question: &Question) -> bool {
         false
     }
