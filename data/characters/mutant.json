@@ -1,0 +1,54 @@
+{
+  "id": "mutant",
+  "name": "Mutant",
+  "kind": "outsider",
+  "ability": "If you are “mad” about being an Outsider, you might be executed.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": null,
+  "wakes": "never",
+  "interaction": "Nothing: no night action.",
+  "drunk_or_poisoned": "A drunk or poisoned Mutant can be mad about being an Outsider without being executed.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "At any time, including at night, if the Storyteller judges the Mutant is trying to convince the group they are an Outsider, the Storyteller may execute them. It counts as the day's execution; if it happens during the day the game moves to night and no other execution occurs.",
+      "source": "https://wiki.bloodontheclocktower.com/Mutant"
+    },
+    {
+      "text": "Judged on intent, not exact wording: hints, winks or deliberate evasive silence can count as being mad about being an Outsider.",
+      "source": "https://wiki.bloodontheclocktower.com/Mutant"
+    }
+  ],
+  "building_blocks": [
+    "madness",
+    "storyteller-execution"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Mutant reveals",
+      "setup": "Alice is the Mutant; Bob is the Imp.",
+      "actions": "Day 1 Alice says 'I am the Mutant'.",
+      "expected": "Storyteller may execute Alice immediately; the day ends with no further execution."
+    },
+    {
+      "name": "Mutant bluffs Townsfolk",
+      "setup": "Alice is the Mutant.",
+      "actions": "Alice claims Chef and gives a number.",
+      "expected": "Alice is not executed by her ability."
+    },
+    {
+      "name": "Poisoned Mutant",
+      "setup": "Alice is the Mutant, poisoned by Carol the Poisoner.",
+      "actions": "Alice says she is the Mutant.",
+      "expected": "No ability execution happens."
+    },
+    {
+      "name": "Mad at night",
+      "setup": "Alice is the Mutant; Dave is the Witch.",
+      "actions": "At night Dave tells the Storyteller Alice claimed to be the Klutz.",
+      "expected": "Storyteller may execute Alice; her death is recorded as an execution."
+    }
+  ]
+}

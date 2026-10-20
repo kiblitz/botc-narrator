@@ -1,0 +1,90 @@
+{
+  "id": "plaguedoctor",
+  "name": "Plague Doctor",
+  "kind": "outsider",
+  "ability": "When you die, the Storyteller gains a Minion ability.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Storyteller Ability"
+  ],
+  "setup": null,
+  "wakes": "never (a gained night ability is used by the Storyteller at that Minion's night-order position)",
+  "interaction": "Nothing: no night action.",
+  "drunk_or_poisoned": "If the Plague Doctor is drunk or poisoned when they die, the Storyteller gains no ability. Becoming drunk later does not remove an already-gained ability.",
+  "jinxes": [
+    {
+      "with": "baron",
+      "text": "If the Storyteller would gain the Baron ability, up to two players become Outsiders."
+    },
+    {
+      "with": "boomdandy",
+      "text": "If the Storyteller would gain the Boomdandy ability, a player becomes the Boomdandy."
+    },
+    {
+      "with": "fearmonger",
+      "text": "If the Storyteller would gain the Fearmonger ability, a Minion gains it, and learns this."
+    },
+    {
+      "with": "goblin",
+      "text": "If the Storyteller would gain the Goblin ability, a Minion gains it, and learns this."
+    },
+    {
+      "with": "marionette",
+      "text": "If the Storyteller would gain the Marionette ability, one of the Demon's good neighbors becomes the Marionette."
+    },
+    {
+      "with": "scarletwoman",
+      "text": "If the Storyteller would gain the Scarlet Woman ability, a Minion gains it, and learns this."
+    },
+    {
+      "with": "spy",
+      "text": "If the Storyteller would gain the Spy ability, a Minion gains it, and learns this."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "The Storyteller does not become evil, a player, or a valid target, and cannot vote or nominate. The ability lasts for the rest of the game.",
+      "source": "https://wiki.bloodontheclocktower.com/Plague_Doctor"
+    },
+    {
+      "text": "The gained ability may duplicate an in-play Minion (e.g. two Cerenovus effects after a Pit-Hag).",
+      "source": "https://wiki.bloodontheclocktower.com/Plague_Doctor"
+    },
+    {
+      "text": "A later drunk effect on the dead Plague Doctor (e.g. Minstrel) does not remove the gained ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Plague_Doctor"
+    }
+  ],
+  "building_blocks": [
+    "ability-gain",
+    "on-death",
+    "storyteller-ability"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Gains Poisoner",
+      "setup": "Alice Plague Doctor, Bob Imp, Carol Spy.",
+      "actions": "Alice is executed day 1; Storyteller picks Poisoner.",
+      "expected": "From night 2 the Storyteller poisons a player each night at the Poisoner's position."
+    },
+    {
+      "name": "Drunk at death",
+      "setup": "Alice Plague Doctor, made drunk by a dead Sweetheart.",
+      "actions": "Alice dies.",
+      "expected": "Storyteller gains nothing."
+    },
+    {
+      "name": "Spy jinx",
+      "setup": "Alice Plague Doctor, Carol Poisoner.",
+      "actions": "Alice dies; Storyteller would gain Spy.",
+      "expected": "Carol gains the Spy ability and learns this."
+    },
+    {
+      "name": "Baron jinx",
+      "setup": "Alice Plague Doctor, Dave Chef, Erin Empath.",
+      "actions": "Alice dies; Storyteller would gain Baron.",
+      "expected": "Up to two players (e.g. Dave, Erin) become Outsiders."
+    }
+  ]
+}

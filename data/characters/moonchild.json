@@ -1,0 +1,75 @@
+{
+  "id": "moonchild",
+  "name": "Moonchild",
+  "kind": "outsider",
+  "ability": "When you learn that you died, publicly choose 1 alive player. Tonight, if it was a good player, they die.",
+  "first_night": null,
+  "other_nights": 50,
+  "reminders": [
+    "Dead"
+  ],
+  "setup": null,
+  "wakes": "never",
+  "interaction": "Nothing: no night action.",
+  "drunk_or_poisoned": "Checked at night: if drunk or poisoned at night, nobody dies even if chosen while sober; if sober at night, the curse kills even if the choice was made while drunk.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The Moonchild must choose shortly after learning of its death; deliberately skipping is cheating.",
+      "source": "https://wiki.bloodontheclocktower.com/Moonchild"
+    },
+    {
+      "text": "If killed again later, the Moonchild chooses again.",
+      "source": "https://wiki.bloodontheclocktower.com/Moonchild"
+    },
+    {
+      "text": "The Goon dies if it was good when chosen, regardless of its alignment at night.",
+      "source": "https://wiki.bloodontheclocktower.com/Moonchild"
+    },
+    {
+      "text": "If executed but surviving (e.g. Pacifist), the Moonchild makes no choice.",
+      "source": "https://wiki.bloodontheclocktower.com/Moonchild"
+    },
+    {
+      "text": "Protected players (Sailor, Fool, Tea Lady, Innkeeper) do not die from the curse.",
+      "source": "https://wiki.bloodontheclocktower.com/Moonchild"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "kill",
+    "on-death"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Good target dies",
+      "setup": "Alice Moonchild, Bob Exorcist, Carol Pukka.",
+      "actions": "Alice is killed; in the morning she chooses Bob.",
+      "expected": "Bob dies that night."
+    },
+    {
+      "name": "Evil target survives",
+      "setup": "Alice Moonchild, Eve Assassin.",
+      "actions": "Alice is executed and chooses Eve.",
+      "expected": "Nobody dies from the curse."
+    },
+    {
+      "name": "Pacifist save",
+      "setup": "Alice Moonchild, Bob Pacifist.",
+      "actions": "Alice is executed but survives.",
+      "expected": "No choice is made."
+    },
+    {
+      "name": "Poisoned at night",
+      "setup": "Alice Moonchild chooses Bob (good) by day; that night Eve Poisoner poisons Alice.",
+      "actions": "Night.",
+      "expected": "Bob does not die."
+    },
+    {
+      "name": "Dies twice",
+      "setup": "Alice Moonchild, Carol Shabaloth.",
+      "actions": "Alice is eaten and chooses Eve (evil); later regurgitated, eaten again, and chooses Bob (good).",
+      "expected": "Eve survives; Bob dies."
+    }
+  ]
+}

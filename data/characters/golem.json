@@ -1,0 +1,69 @@
+{
+  "id": "golem",
+  "name": "Golem",
+  "kind": "outsider",
+  "ability": "You may only nominate once per game. When you do, if the nominee is not the Demon, they die.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Can not nominate"
+  ],
+  "setup": null,
+  "wakes": "never",
+  "interaction": "Nothing: no night action.",
+  "drunk_or_poisoned": "If drunk or poisoned, the nominee does not die; the Golem has still used its one nomination.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "If the Golem nominates a non-Demon, that player dies and the vote proceeds; if the nominee is the Demon, the vote proceeds with no explanation. Either way the Golem may not nominate again.",
+      "source": "https://wiki.bloodontheclocktower.com/Golem"
+    },
+    {
+      "text": "A Recluse registering as the Demon does not die.",
+      "source": "https://wiki.bloodontheclocktower.com/Golem"
+    },
+    {
+      "text": "If the Golem nominates by accident, the Storyteller may refuse the nomination, provided that does not reveal a Golem is in play.",
+      "source": "https://wiki.bloodontheclocktower.com/Golem"
+    }
+  ],
+  "building_blocks": [
+    "kill",
+    "nomination-restriction",
+    "on-nominated",
+    "once-per-game",
+    "registers-as"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Kills non-Demon",
+      "setup": "Alice Golem, Bob Poppy Grower, Carol Imp.",
+      "actions": "Alice nominates Bob.",
+      "expected": "Bob dies; voting proceeds; Alice gets Can not nominate."
+    },
+    {
+      "name": "Nominates Demon",
+      "setup": "Alice Golem, Carol Imp.",
+      "actions": "Alice nominates Carol.",
+      "expected": "Nobody dies; the vote proceeds; Alice can no longer nominate."
+    },
+    {
+      "name": "Recluse registers as Demon",
+      "setup": "Alice Golem, Bob Recluse (Storyteller registers him as the Demon), Carol Imp.",
+      "actions": "Alice nominates Bob.",
+      "expected": "Bob survives."
+    },
+    {
+      "name": "Poisoned Golem",
+      "setup": "Alice Golem poisoned by Eve Poisoner, Bob Chef.",
+      "actions": "Alice nominates Bob.",
+      "expected": "Bob survives; Alice still may not nominate again."
+    },
+    {
+      "name": "Second nomination refused",
+      "setup": "Alice Golem who already nominated, Dave Chef.",
+      "actions": "Alice tries to nominate Dave.",
+      "expected": "The nomination is not allowed."
+    }
+  ]
+}

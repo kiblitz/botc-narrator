@@ -1,0 +1,76 @@
+{
+  "id": "goon",
+  "name": "Goon",
+  "kind": "outsider",
+  "ability": "Each night, the 1st player to choose you with their ability is drunk until dusk. You become their alignment.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Drunk"
+  ],
+  "setup": null,
+  "wakes": "Only to be shown its new alignment when it changes.",
+  "interaction": "Told: Its new alignment, if it changed.",
+  "drunk_or_poisoned": "If drunk or poisoned, the choosing player is not made drunk and the Goon does not change alignment.",
+  "jinxes": [
+    {
+      "with": "pithag",
+      "text": "If the Pit-Hag turns an evil player into the Goon, they can't turn good due to their own ability."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Being chosen by the Storyteller (e.g. Grandmother's grandchild) does not trigger the Goon.",
+      "source": "https://wiki.bloodontheclocktower.com/Goon"
+    },
+    {
+      "text": "The Goon changes alignment and makes the chooser drunk even if the chooser was already drunk or poisoned.",
+      "source": "https://wiki.bloodontheclocktower.com/Goon"
+    },
+    {
+      "text": "The Assassin can kill the Goon, and the Goon still turns evil.",
+      "source": "https://wiki.bloodontheclocktower.com/Goon"
+    },
+    {
+      "text": "Only the first player to choose the Goon each night is affected; the Drunk reminder is removed at dusk.",
+      "source": "https://wiki.bloodontheclocktower.com/Goon"
+    }
+  ],
+  "building_blocks": [
+    "alignment-change",
+    "drunk",
+    "on-chosen"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Imp attacks Goon",
+      "setup": "Alice Goon (good), Carol Imp.",
+      "actions": "Night 2 Carol chooses Alice.",
+      "expected": "Carol is drunk so Alice does not die; Alice becomes evil and is told."
+    },
+    {
+      "name": "Only first chooser",
+      "setup": "Alice Goon (good), Bob Monk, Carol Imp; Bob acts before Carol.",
+      "actions": "Bob protects Alice, then Carol attacks Alice.",
+      "expected": "Bob is drunk (no protection) and Alice stays good; Carol is not drunk, so Alice dies."
+    },
+    {
+      "name": "Assassin kills Goon",
+      "setup": "Alice Goon (good), Eve Assassin.",
+      "actions": "Eve chooses Alice.",
+      "expected": "Eve is drunk but Alice still dies (per the wiki ruling) and Alice turns evil."
+    },
+    {
+      "name": "Poisoned Goon",
+      "setup": "Alice Goon poisoned, Bob Courtier.",
+      "actions": "Bob chooses Alice.",
+      "expected": "Bob is not drunk and Alice's alignment is unchanged."
+    },
+    {
+      "name": "Grandmother does not trigger",
+      "setup": "Alice Goon is Bob Grandmother's grandchild.",
+      "actions": "First night.",
+      "expected": "No drunkenness and no alignment change."
+    }
+  ]
+}

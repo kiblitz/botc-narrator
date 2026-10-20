@@ -1,0 +1,71 @@
+{
+  "id": "puzzlemaster",
+  "name": "Puzzlemaster",
+  "kind": "outsider",
+  "ability": "1 player is drunk, even if you die. If you guess (once) who it is, learn the Demon player, but guess wrong & get false info.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Drunk",
+    "Guess used"
+  ],
+  "setup": "While preparing the first night, the Storyteller marks one player with the Drunk reminder (usually a Townsfolk; a Minion or Demon only with good reason).",
+  "wakes": "never (the guess is made at any time, publicly or privately)",
+  "interaction": "Told: After the guess: the Demon player if correct, otherwise a non-Demon player; never whether the guess was right. Chooses: Once per game, a player guessed to be the drunk one.",
+  "drunk_or_poisoned": "While the Puzzlemaster is drunk or poisoned the marked player is not drunk, and a guess may give false info.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The marked player stays drunk even after the Puzzlemaster dies.",
+      "source": "https://wiki.bloodontheclocktower.com/Puzzlemaster"
+    },
+    {
+      "text": "Guessing a player who is drunk from another source counts as wrong; only the Puzzlemaster's Drunk reminder matters.",
+      "source": "https://wiki.bloodontheclocktower.com/Puzzlemaster"
+    },
+    {
+      "text": "The Storyteller never confirms whether the guess was correct; a wrong guess yields a non-Demon player.",
+      "source": "https://wiki.bloodontheclocktower.com/Puzzlemaster"
+    }
+  ],
+  "building_blocks": [
+    "day-ability",
+    "drunk",
+    "false-info",
+    "learn-player",
+    "once-per-game",
+    "setup-modifier"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Correct guess",
+      "setup": "Alice Puzzlemaster; Bob Empath marked Drunk; Carol Imp.",
+      "actions": "Alice guesses Bob.",
+      "expected": "Alice learns Carol; Guess used is marked."
+    },
+    {
+      "name": "Wrong guess",
+      "setup": "Alice Puzzlemaster; Bob marked Drunk; Carol Imp; Dave Chef.",
+      "actions": "Alice guesses Dave.",
+      "expected": "Alice learns a non-Demon player (e.g. Dave)."
+    },
+    {
+      "name": "Second guess",
+      "setup": "Alice Puzzlemaster with Guess used.",
+      "actions": "Alice guesses again.",
+      "expected": "Nothing happens."
+    },
+    {
+      "name": "Dead Puzzlemaster",
+      "setup": "Alice Puzzlemaster; Bob marked Drunk.",
+      "actions": "Alice dies.",
+      "expected": "Bob remains drunk."
+    },
+    {
+      "name": "Drunk elsewhere",
+      "setup": "Bob drunk via Puzzlemaster; Erin drunk via Sweetheart.",
+      "actions": "Alice guesses Erin.",
+      "expected": "Wrong guess: Alice learns a non-Demon player."
+    }
+  ]
+}

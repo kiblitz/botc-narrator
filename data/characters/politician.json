@@ -1,0 +1,68 @@
+{
+  "id": "politician",
+  "name": "Politician",
+  "kind": "outsider",
+  "ability": "If you were the player most responsible for your team losing, you change alignment & win, even if dead.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": null,
+  "wakes": "never",
+  "interaction": "Nothing: no night action.",
+  "drunk_or_poisoned": "A drunk or poisoned Politician cannot change alignment; they lose with their team.",
+  "jinxes": [
+    {
+      "with": "legion",
+      "text": "The Politician might register as evil to Legion."
+    },
+    {
+      "with": "pithag",
+      "text": "If the Pit-Hag turns an evil player into the Politician, they can't turn good due to their own ability."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Checked at game end: the Storyteller judges whether the Politician was clearly the single most responsible player; minor contributions do not count.",
+      "source": "https://wiki.bloodontheclocktower.com/Politician"
+    },
+    {
+      "text": "An evil Politician most responsible for evil losing turns good and wins.",
+      "source": "https://wiki.bloodontheclocktower.com/Politician"
+    },
+    {
+      "text": "If their team wins, they simply win with it. Alignment detectors see their current (starting) alignment.",
+      "source": "https://wiki.bloodontheclocktower.com/Politician"
+    }
+  ],
+  "building_blocks": [
+    "alignment-change",
+    "game-end-check",
+    "win-condition"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Politician causes loss",
+      "setup": "Alice good Politician, Bob Imp.",
+      "actions": "Final 3: Alice talks the town out of executing; Bob kills; evil wins.",
+      "expected": "Alice turns evil and wins."
+    },
+    {
+      "name": "Not most responsible",
+      "setup": "Alice Politician, Dave Saint.",
+      "actions": "Town executes Dave on its own reasoning.",
+      "expected": "Good loses; Alice loses too."
+    },
+    {
+      "name": "Poisoned",
+      "setup": "Alice Politician, poisoned at game end; she caused the loss.",
+      "actions": "Evil wins.",
+      "expected": "Alice does not change alignment and loses."
+    },
+    {
+      "name": "Good wins",
+      "setup": "Alice Politician, Bob Imp.",
+      "actions": "Bob is executed.",
+      "expected": "Alice wins with good."
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "id": "sweetheart",
+  "name": "Sweetheart",
+  "kind": "outsider",
+  "ability": "When you die, 1 player is drunk from now on.",
+  "first_night": null,
+  "other_nights": 41,
+  "reminders": [
+    "Drunk"
+  ],
+  "setup": null,
+  "wakes": "never (Storyteller places the Drunk reminder when the Sweetheart dies)",
+  "interaction": "Nothing: no night action.",
+  "drunk_or_poisoned": "If drunk or poisoned when it dies, no player becomes drunk.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The Storyteller chooses any player (usually a Townsfolk); the drunkenness lasts for the rest of the game.",
+      "source": "https://wiki.bloodontheclocktower.com/Sweetheart"
+    }
+  ],
+  "building_blocks": [
+    "drunk",
+    "on-death"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Day death",
+      "setup": "Alice Sweetheart, Bob Mathematician.",
+      "actions": "Alice is executed.",
+      "expected": "Storyteller marks Bob Drunk; Bob may get false info."
+    },
+    {
+      "name": "Demon drunk",
+      "setup": "Alice Sweetheart, Carol Imp.",
+      "actions": "Alice dies; Storyteller makes Carol drunk.",
+      "expected": "Carol's night kill fails."
+    },
+    {
+      "name": "Poisoned at death",
+      "setup": "Alice Sweetheart, poisoned.",
+      "actions": "Alice dies.",
+      "expected": "Nobody becomes drunk."
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "id": "klutz",
+  "name": "Klutz",
+  "kind": "outsider",
+  "ability": "When you learn that you died, publicly choose 1 alive player: if they are evil, your team loses.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": null,
+  "wakes": "never",
+  "interaction": "Nothing: no night action.",
+  "drunk_or_poisoned": "If drunk or poisoned when choosing, choosing an evil player does nothing.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Choosing a good player has no effect.",
+      "source": "https://wiki.bloodontheclocktower.com/Klutz"
+    },
+    {
+      "text": "If an evil Klutz chooses an evil player, the evil team loses (good wins).",
+      "source": "https://wiki.bloodontheclocktower.com/Klutz"
+    },
+    {
+      "text": "If the Klutz forgets, the Storyteller may privately remind them.",
+      "source": "https://wiki.bloodontheclocktower.com/Klutz"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "on-death",
+    "win-condition"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Chooses good",
+      "setup": "Alice Klutz, Bob Seamstress, Carol Imp.",
+      "actions": "Alice is executed and chooses Bob.",
+      "expected": "The game continues."
+    },
+    {
+      "name": "Chooses Demon",
+      "setup": "Alice Klutz, Carol Imp.",
+      "actions": "Alice is killed at night; at dawn she chooses Carol.",
+      "expected": "Evil wins."
+    },
+    {
+      "name": "Poisoned Klutz",
+      "setup": "Alice Klutz poisoned by Eve Poisoner.",
+      "actions": "Alice is executed and chooses Eve.",
+      "expected": "Nothing happens."
+    },
+    {
+      "name": "Evil Klutz",
+      "setup": "Alice Klutz turned evil, Carol Imp.",
+      "actions": "Alice dies and chooses Carol.",
+      "expected": "Good wins."
+    }
+  ]
+}

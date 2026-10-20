@@ -1,0 +1,60 @@
+{
+  "id": "tinker",
+  "name": "Tinker",
+  "kind": "outsider",
+  "ability": "You might die at any time.",
+  "first_night": null,
+  "other_nights": 49,
+  "reminders": [
+    "Dead"
+  ],
+  "setup": null,
+  "wakes": "never",
+  "interaction": "Nothing: no night action.",
+  "drunk_or_poisoned": "A drunk or poisoned Tinker cannot die from its ability.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Day deaths are announced immediately; night deaths are marked with Dead and announced at dawn without a cause.",
+      "source": "https://wiki.bloodontheclocktower.com/Tinker"
+    },
+    {
+      "text": "Protection from death (e.g. Tea Lady, Innkeeper) stops the Tinker dying from its ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Tinker"
+    },
+    {
+      "text": "The Storyteller should avoid killing the Tinker when it would end the game, and may choose never to kill it.",
+      "source": "https://wiki.bloodontheclocktower.com/Tinker"
+    }
+  ],
+  "building_blocks": [
+    "kill",
+    "storyteller-kill"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Night death",
+      "setup": "Alice Tinker, Bob Imp, Dave Chef.",
+      "actions": "Bob kills Dave; Storyteller also kills Alice.",
+      "expected": "At dawn Alice and Dave are announced dead, no cause."
+    },
+    {
+      "name": "Protected",
+      "setup": "Alice Tinker protected by a Tea Lady.",
+      "actions": "Storyteller tries to kill Alice.",
+      "expected": "Alice survives."
+    },
+    {
+      "name": "Poisoned",
+      "setup": "Alice Tinker, poisoned.",
+      "actions": "Storyteller tries to kill Alice.",
+      "expected": "Not allowed; Alice survives."
+    },
+    {
+      "name": "Day death",
+      "setup": "Alice Tinker.",
+      "actions": "Storyteller kills Alice during the day.",
+      "expected": "Death announced immediately."
+    }
+  ]
+}

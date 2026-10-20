@@ -1,0 +1,86 @@
+{
+  "id": "damsel",
+  "name": "Damsel",
+  "kind": "outsider",
+  "ability": "All Minions know a Damsel is in play. If a Minion publicly guesses you (once), your team loses.",
+  "first_night": 31,
+  "other_nights": 46,
+  "reminders": [
+    "Guess used"
+  ],
+  "setup": null,
+  "wakes": "never (Minions are woken on the first night, or when they become a Minion, and shown the Damsel token)",
+  "interaction": "Told: Each Minion is shown the Damsel token.",
+  "drunk_or_poisoned": "If drunk or poisoned, a correct Minion guess does not make good lose (the guess is still used).",
+  "jinxes": [
+    {
+      "with": "pithag",
+      "text": "If a Pit-Hag creates a Damsel, the Storyteller chooses which player it is."
+    },
+    {
+      "with": "spy",
+      "text": "If the Spy is (or has been) in play, the Damsel is poisoned."
+    },
+    {
+      "with": "widow",
+      "text": "If the Widow is (or has been) in play, the Damsel is poisoned."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Minions get one guess in total; a wrong guess by any Minion uses it up.",
+      "source": "https://wiki.bloodontheclocktower.com/Damsel"
+    },
+    {
+      "text": "A Demon pretending to be a Minion and guessing does not count.",
+      "source": "https://wiki.bloodontheclocktower.com/Damsel"
+    },
+    {
+      "text": "Minions may guess at any time.",
+      "source": "https://wiki.bloodontheclocktower.com/Damsel"
+    },
+    {
+      "text": "A dead Damsel has no ability, so guessing them does nothing.",
+      "source": "https://wiki.bloodontheclocktower.com/Damsel"
+    }
+  ],
+  "building_blocks": [
+    "day-ability",
+    "minion-info",
+    "once-per-game",
+    "public-guess",
+    "win-condition"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Correct guess",
+      "setup": "Alice Damsel, Eve Witch, Carol Imp.",
+      "actions": "Day 2, Eve publicly guesses Alice is the Damsel.",
+      "expected": "Game ends; evil wins."
+    },
+    {
+      "name": "Wrong guess uses it up",
+      "setup": "Alice Damsel, Eve Boomdandy, Frank Goblin, Carol Imp.",
+      "actions": "Eve guesses Bob; later Frank guesses Alice.",
+      "expected": "First guess fails and Guess used is placed; the second guess does nothing."
+    },
+    {
+      "name": "Spy jinx",
+      "setup": "Alice Damsel, Eve Spy, Carol Imp.",
+      "actions": "Eve guesses Alice.",
+      "expected": "The Damsel is poisoned by the jinx, so nothing happens."
+    },
+    {
+      "name": "Dead Damsel",
+      "setup": "Alice Damsel (executed day 1), Eve Poisoner, Carol Imp.",
+      "actions": "Day 2 Eve guesses Alice.",
+      "expected": "Nothing happens."
+    },
+    {
+      "name": "Demon guessing",
+      "setup": "Alice Damsel, Carol Imp.",
+      "actions": "Carol publicly guesses Alice.",
+      "expected": "Nothing happens; only Minion guesses count."
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "id": "lunatic",
+  "name": "Lunatic",
+  "kind": "outsider",
+  "ability": "You think you are a Demon, but you are not. The Demon knows who you are & who you choose at night.",
+  "first_night": 8,
+  "other_nights": 20,
+  "reminders": [
+    "Chosen"
+  ],
+  "setup": "The Lunatic is given a Demon token instead (tokens swapped after the bag) and believes it is that Demon.",
+  "wakes": "Each night as if it were the Demon, before the real Demon.",
+  "interaction": "Told: First night: shown 'These are your minions' with as many players as Minions in play (any players) and 3 good bluff characters (may include in-play ones). The real Demon is shown who the Lunatic is and whom it chose each night. Chooses: Whatever its believed Demon would choose; the choices have no effect.",
+  "drunk_or_poisoned": "If drunk or poisoned, the Storyteller may give the Demon false information about the Lunatic's identity or choices; the Lunatic still believes it is the Demon.",
+  "jinxes": [
+    {
+      "with": "mathematician",
+      "text": "The Mathematician learns if the Lunatic attacks a different player than the real Demon attacked."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "The Lunatic's 'Minions' can be any players, and its bluffs may include in-play characters.",
+      "source": "https://wiki.bloodontheclocktower.com/Lunatic"
+    },
+    {
+      "text": "The real Demon wakes after the Lunatic, is shown the Lunatic and its choices, then acts normally.",
+      "source": "https://wiki.bloodontheclocktower.com/Lunatic"
+    },
+    {
+      "text": "Each night the Storyteller marks every player the Lunatic chooses with a Chosen reminder, then shows the real Demon the Lunatic and those players.",
+      "source": "https://wiki.bloodontheclocktower.com/Lunatic"
+    }
+  ],
+  "building_blocks": [
+    "believes-character",
+    "demon-learns",
+    "fake-demon-info"
+  ],
+  "test_scenarios": [
+    {
+      "name": "First night",
+      "setup": "Alice Lunatic (thinks Imp), Carol Imp, Eve Poisoner.",
+      "actions": "First night.",
+      "expected": "Alice is shown 1 'Minion' (any player) and 3 bluffs; Carol learns Alice is the Lunatic."
+    },
+    {
+      "name": "Lunatic attack",
+      "setup": "Alice Lunatic, Bob Chef, Carol Imp, Dave Empath.",
+      "actions": "Night 2 Alice chooses Bob; Carol is told and chooses Dave.",
+      "expected": "Bob survives; Dave dies."
+    },
+    {
+      "name": "Believes Shabaloth",
+      "setup": "Alice Lunatic (thinks Shabaloth), Carol Imp.",
+      "actions": "Alice chooses Bob and Dave.",
+      "expected": "Neither dies unless the Imp kills them; Carol sees both choices."
+    },
+    {
+      "name": "Poisoned Lunatic",
+      "setup": "Alice Lunatic poisoned, Carol Imp.",
+      "actions": "Alice chooses Bob.",
+      "expected": "The Storyteller may show Carol a different choice."
+    }
+  ]
+}

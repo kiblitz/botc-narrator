@@ -1,0 +1,76 @@
+{
+  "id": "barber",
+  "name": "Barber",
+  "kind": "outsider",
+  "ability": "If you died today or tonight, the Demon may choose 2 players (not another Demon) to swap characters.",
+  "first_night": null,
+  "other_nights": 40,
+  "reminders": [
+    "Haircuts tonight"
+  ],
+  "setup": null,
+  "wakes": "Never wakes itself; the night after the Barber dies, the Demon wakes to choose a swap, and swapped players wake to learn their new character.",
+  "interaction": "Told: The Demon is shown 'This character selected you' and the Barber token; each swapped player is shown 'You are' and their new character. Chooses: The Demon may choose 2 players (not another Demon) to swap characters, or decline.",
+  "drunk_or_poisoned": "If the Barber is drunk or poisoned when it dies, no swap happens (the Demon is not offered haircuts).",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Alignments do not change when characters are swapped; each swapped player learns their new character.",
+      "source": "https://wiki.bloodontheclocktower.com/Barber"
+    },
+    {
+      "text": "The Demon may decline to swap.",
+      "source": "https://wiki.bloodontheclocktower.com/Barber"
+    },
+    {
+      "text": "A player who gains a character gains its full ability, including 'start knowing' and once-per-game abilities.",
+      "source": "https://wiki.bloodontheclocktower.com/Barber"
+    },
+    {
+      "text": "The Demon may swap itself, but may not swap with another Demon. If several Demons are alive, the Storyteller chooses which one swaps.",
+      "source": "https://wiki.bloodontheclocktower.com/Barber"
+    },
+    {
+      "text": "If a player dies and then becomes the Barber, the Demon cannot swap that night.",
+      "source": "https://wiki.bloodontheclocktower.com/Barber"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "learn-character",
+    "on-death",
+    "swap-characters"
+  ],
+  "test_scenarios": [
+    {
+      "name": "Swap after execution",
+      "setup": "Alice Barber, Bob Snake Charmer, Carol Vortox, Dave Witch.",
+      "actions": "Alice is executed. That night Carol chooses Bob and Alice.",
+      "expected": "Alice becomes a dead good Snake Charmer and Bob a living good Barber; both are told their new characters."
+    },
+    {
+      "name": "Demon swaps itself",
+      "setup": "Alice Barber, Carol Vortox (evil), Dave Witch (evil).",
+      "actions": "Alice is killed at night; the next night Carol chooses herself and Dave.",
+      "expected": "Carol is now an evil Witch and Dave the evil Vortox (the Demon)."
+    },
+    {
+      "name": "Demon declines",
+      "setup": "Alice Barber, Carol Imp.",
+      "actions": "Alice is executed; that night Carol declines.",
+      "expected": "No characters change; Haircuts tonight is removed."
+    },
+    {
+      "name": "Poisoned Barber",
+      "setup": "Alice Barber poisoned by Eve Poisoner, Carol Imp.",
+      "actions": "Alice is executed while poisoned.",
+      "expected": "Carol is not offered a swap."
+    },
+    {
+      "name": "Cannot pick another Demon",
+      "setup": "Alice Barber, Carol Imp, Dave Imp (second Demon), Bob Chef.",
+      "actions": "Alice dies; Carol is woken to swap.",
+      "expected": "Legal choices exclude Dave; Carol may swap e.g. Bob with herself, but not with Dave."
+    }
+  ]
+}
