@@ -60,7 +60,6 @@ main {
   position: relative;
   /* A circle that fits both the column width and the viewport height. */
   width: min(100%, calc(100vh - 160px));
-  min-width: 360px;
   aspect-ratio: 1;
   flex: none;
   border-radius: 50%;
@@ -86,19 +85,20 @@ main {
 
 .seat {
   position: absolute;
-  width: 112px;
+  width: calc(var(--token, 84px) * 1.35);
   transform: translate(-50%, -50%);
   text-align: center;
   cursor: pointer;
 }
 .token {
-  width: 84px; height: 84px;
+  width: var(--token, 84px); height: var(--token, 84px);
   margin: 0 auto;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   padding: 6px;
   font-size: 10.5px; font-weight: 600; line-height: 1.1;
   hyphens: auto;
+  overflow-wrap: anywhere;
   background: #ece3cf;
   color: #2a2233;
   border: 4px solid var(--good);
@@ -172,8 +172,13 @@ li.future { opacity: 0.35; }
     grid-template-columns: minmax(0, 1fr);
     height: auto;
   }
-  #board { width: min(100%, max(360px, calc(100vh - 420px))); }
+  #board { width: min(100%, max(320px, calc(100vh - 420px))); }
   aside { flex-direction: row; min-height: 360px; max-height: 50vh; }
   aside section { flex: 1; }
   #knowledge { max-height: none; overflow: auto; }
+}
+
+/* Phones: panels stack too. */
+@media (max-width: 600px) {
+  aside { flex-direction: column; max-height: none; }
 }

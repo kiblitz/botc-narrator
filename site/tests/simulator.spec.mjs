@@ -86,17 +86,34 @@ test("night deaths are announced at dawn without their cause", async ({ page }) 
   expect(log).not.toContain("(Demon)");
 });
 
-for (const [width, height] of [[1080, 1920], [1920, 1080], [800, 600]]) {
-  test(`the board fits a ${width}x${height} screen`, async ({ page }) => {
+for (const [width, height, players] of [
+  [1080, 1920, 8],
+  [1920, 1080, 15],
+  [1280, 500, 15],
+  [800, 600, 15],
+  [375, 667, 15],
+]) {
+  test(`${players} seats fit a ${width}x${height} screen without overlapping`, async ({ page }) => {
     await page.setViewportSize({ width, height });
-    await open(page);
+    await open(page, `#seed=7&players=${players}`);
     const board = await page.locator("#board").boundingBox();
     expect(board.x).toBeGreaterThanOrEqual(0);
     expect(board.x + board.width).toBeLessThanOrEqual(width);
-    for (const seat of await page.locator(".seat").all()) {
-      const box = await seat.boundingBox();
+    const tokens = [];
+    for (const token of await page.locator(".seat .token").all()) {
+      const box = await token.boundingBox();
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(width);
+      expect(box.y).toBeGreaterThanOrEqual(board.y - box.height);
+      expect(box.y + box.height).toBeLessThanOrEqual(board.y + board.height + box.height);
+      tokens.push(box);
+    }
+    for (let i = 0; i < tokens.length; i++) {
+      for (let j = i + 1; j < tokens.length; j++) {
+        const [a, b] = [tokens[i], tokens[j]];
+        const overlap = a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+        expect(overlap, `tokens ${i} and ${j} overlap`).toBe(false);
+      }
     }
   });
 }

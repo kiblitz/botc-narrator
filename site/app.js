@@ -82,6 +82,17 @@ function buildBoard() {
     });
     board.append(div);
   });
+  sizeSeats();
+}
+
+/** Shrinks tokens so seats never overlap around the circle. */
+function sizeSeats() {
+  const board = $("board");
+  if (!game) return;
+  const circumference = Math.PI * 2 * 0.39 * board.clientWidth;
+  // Each seat is 1.35 tokens wide; keep a little gap between neighbours.
+  const fit = circumference / game.trace.players.length / 1.35 / 1.1;
+  board.style.setProperty("--token", `${Math.max(36, Math.min(84, fit))}px`);
 }
 
 function render() {
@@ -264,6 +275,7 @@ async function main() {
     else if (e.key === "End") go(visibleSteps().length - 1);
     else return;
   });
+  new ResizeObserver(sizeSeats).observe($("board"));
   const { seed, players } = fromHash();
   load(seed, players);
   document.body.dataset.ready = "true";
