@@ -37,7 +37,7 @@ test("keyboard and phase jumps move through the game", async ({ page }) => {
 test("a player's point of view hides other characters and private steps", async ({ page }) => {
   await open(page);
   await page.locator("#pov").selectOption("Ada");
-  await expect(page.locator('.seat[data-name="Ada"] .token')).toHaveText("Washerwoman");
+  await expect(page.locator('.seat[data-name="Ada"] .token .label')).toHaveText("Washerwoman");
   await expect(page.locator('.seat[data-name="Dev"] .token')).toHaveText("?");
   await page.keyboard.press("End");
   const log = await page.locator("#log").innerText();
@@ -125,4 +125,14 @@ test("townsfolk and outsiders get different shades of blue", async ({ page }) =>
   // Seed 7 / 8 players: Ada is the Washerwoman, Bram the Butler.
   expect(await border("Ada")).toBe("rgb(47, 104, 196)");
   expect(await border("Bram")).toBe("rgb(134, 185, 243)");
+});
+
+test("tokens show the official character icon", async ({ page }) => {
+  await open(page);
+  await expect(page.locator('.seat[data-name="Ada"] .token img')).toHaveAttribute(
+    "src",
+    /\/icons\/washerwoman\.png$/,
+  );
+  await page.locator("#pov").selectOption("Ada");
+  await expect(page.locator('.seat[data-name="Dev"] .token img')).toHaveCount(0);
 });

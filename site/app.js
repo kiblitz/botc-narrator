@@ -3,6 +3,10 @@ import * as botcWeb from "./pkg/botc_web.js";
 const MIN_PLAYERS = 5;
 const MAX_PLAYERS = 15;
 const PLAY_INTERVAL_MS = 700;
+// Official character icons, loaded from the townsquare (clocktower.online)
+// assets rather than copied into this repository.
+const ICON_BASE = "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/assets/icons/";
+const iconUrl = (character) => `${ICON_BASE}${character.toLowerCase().replace(/[^a-z]/g, "")}.png`;
 
 const isPhase = (step) => step.kind === "phase_began";
 const phaseLabel = ({ kind, number }) =>
@@ -125,7 +129,7 @@ function render() {
     div.classList.toggle("awake", awake.has(seat.name) && (pov === "" || pov === seat.name));
     div.classList.toggle("active", step.player === seat.name);
     div.classList.toggle("selected", selected === seat.name);
-    div.querySelector(".token").textContent = known ? seat.character : "?";
+    renderToken(div.querySelector(".token"), known ? seat.character : null);
     const reminders = div.querySelector(".reminders");
     reminders.replaceChildren(
       ...(pov === "" ? seat.reminders : []).map((r) => el("span", `reminder ${r}`, r)),
@@ -143,6 +147,22 @@ function render() {
   scrub.value = cursor;
   $("counter").textContent = `${cursor + 1} / ${steps.length}`;
   $("play").textContent = timer ? "⏸" : "▶";
+}
+
+/** The character's icon with its name underneath, or "?" when unknown. */
+function renderToken(token, character) {
+  if (token.dataset.character === (character ?? "")) return;
+  token.dataset.character = character ?? "";
+  token.title = character ?? "Unknown character";
+  if (!character) {
+    token.replaceChildren("?");
+    return;
+  }
+  const img = el("img", "icon");
+  img.alt = "";
+  img.src = iconUrl(character);
+  img.addEventListener("error", () => img.remove());
+  token.replaceChildren(img, el("span", "label", character));
 }
 
 /** Steps said to or by a player, shown with their name. */
