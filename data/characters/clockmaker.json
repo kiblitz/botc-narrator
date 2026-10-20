@@ -22,7 +22,7 @@
       "source": "https://wiki.bloodontheclocktower.com/Clockmaker"
     },
     {
-      "text": "The Recluse may register as the Demon or a Minion and the Spy may register as not a Minion, changing the count at the Storyteller's choice.",
+      "text": "The Recluse may register as the Demon or a Minion and the Spy may register as not a Minion, changing the count at the Storyteller's choice. Derived from the general registration rules; the Clockmaker page does not mention them.",
       "source": "https://wiki.bloodontheclocktower.com/Recluse"
     }
   ],
@@ -52,7 +52,7 @@
     },
     {
       "name": "traveller not a minion",
-      "setup": "Circle: Alice Clockmaker, Bob Imp, Cara evil Thief (Traveller), Dan Chef, Eve Spy.",
+      "setup": "Circle: Alice Clockmaker, Bob Imp, Cara evil Thief (Traveller), Dan Chef, Eve Poisoner.",
       "actions": "Night 1.",
       "expected": "Cara is ignored; Eve is 2 steps the other way (Alice, Eve): Alice learns 2."
     }

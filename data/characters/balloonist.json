@@ -78,7 +78,7 @@
       "name": "spy registers as townsfolk",
       "setup": "Alice Balloonist, Bob Chef, Cara Butler, Dan Spy, Eve Imp.",
       "actions": "Night 1 storyteller shows Dan, registering as Townsfolk. Night 2.",
-      "expected": "Night 2 the previous type is Townsfolk: Bob is not legal; Cara or Eve are."
+      "expected": "Night 2 the previous type is Townsfolk: Bob is not legal; Cara, Dan (registering as a Minion) or Eve are."
     }
   ],
   "sources": [

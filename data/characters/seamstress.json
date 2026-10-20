@@ -5,14 +5,15 @@
   "ability": "Once per game, at night, choose 2 players (not yourself): you learn if they are the same alignment.",
   "first_night": 62,
   "other_nights": 83,
-  "reminders": ["No ability"],
+  "reminders": ["No Ability"],
   "setup": [],
   "wakes": "Every night, including the first, until the ability is used. The Seamstress may decline to choose. Once the ability is used, they are marked No ability and no longer woken.",
-  "chooses": "Either nothing, or 2 players other than themself.",
+  "chooses": "Either nothing, or any 2 players other than themself (alive or dead, Travellers allowed).",
   "learns": "Yes (nod) if the two players are the same alignment, no (shake) otherwise.",
   "malfunction": "If drunk or poisoned when choosing, the ability is still used up (No ability) and the Storyteller may give either answer. The engine offers the false answer as a misinformation option.",
   "jinxes": [],
   "rulings": [
+    { "text": "They may choose alive or dead players or even Travellers.", "source": "https://wiki.bloodontheclocktower.com/Seamstress" },
     { "text": "The question is whether the two share an alignment, not whether both are good: two evil players give yes.", "source": "https://wiki.bloodontheclocktower.com/Seamstress" },
     { "text": "A player whose character was changed (e.g. by the Pit-Hag into a good character) is compared on their current alignment.", "source": "https://wiki.bloodontheclocktower.com/Seamstress" },
     { "text": "Signalling no action does not use the ability. Choosing players uses it and removes the Seamstress from the night order.", "source": "https://wiki.bloodontheclocktower.com/Seamstress" }

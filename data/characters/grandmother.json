@@ -43,8 +43,8 @@
     {
       "name": "poisoned grandmother: misinformation and survival",
       "setup": "Alice Grandmother, Bob Tinker (Grandchild), Carol Imp, Dave Poisoner, Eve Chef. Poisoner poisons Alice on night 1 and night 2.",
-      "actions": "First night: Grandmother wakes; misinformation options are offered centrally and the storyteller picks Eve as the Chef. Night 2: Imp kills Bob.",
-      "expected": "Alice learns Eve is the Chef; at dawn Bob is dead and Alice survives."
+      "actions": "First night: Grandmother wakes; misinformation options are offered centrally and the storyteller picks Bob as the Chef (Bob is really the Tinker). Night 2: Imp kills Bob.",
+      "expected": "Alice learns Bob is the Chef (Bob is really the Tinker); at dawn Bob is dead and Alice survives."
     },
     {
       "name": "leviathan jinx: grandchild executed",
