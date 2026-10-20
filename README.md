@@ -59,9 +59,9 @@ Drunk (thinks they are a Townsfolk), Recluse/Spy misregistration, Fortune Teller
 
 ## Simulator site
 
-`site/` is a static page that generates random, plausible Trouble Brewing games in the browser (the engine compiled to WebAssembly from `web/`) and lets you step through them. Players sit in a circle; each step shows who is awake, what they were told or asked, storyteller decisions and public events. Click a player to see everything they know so far, or switch the view to one player's point of view to hide what they couldn't see. Games are reproducible from `#seed=…&players=…` in the URL.
+`site/` is a static page that generates random, plausible Trouble Brewing games in the browser (the engine compiled to WebAssembly from `web/`) and lets you step through them. Players sit in a circle; each step shows who is awake, what they were told or asked, storyteller decisions and public events. Click a player to see everything they know so far, or switch the view to one player's point of view to hide what they couldn't see. Games are reproducible from `#seed=...&players=...` in the URL.
 
-Generation (`sim.rs`) uses legal setups for 5–15 players (no Drunk yet), players who act on simple heuristics (evil targets good), a random storyteller, and daily nominations with a majority vote.
+Generation (`sim.rs`) uses legal setups for 5-15 players (no Drunk yet), players who act on simple heuristics (evil targets good), a random storyteller, daily nominations with a majority vote (no ghost votes), and night deaths announced at dawn. Day actions such as the Slayer's shot are public.
 
 ```sh
 sh scripts/serve-web.sh              # build the wasm and serve at http://localhost:8080

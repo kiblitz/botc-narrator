@@ -29,7 +29,7 @@ test("keyboard and phase jumps move through the game", async ({ page }) => {
   await page.keyboard.press("Shift+ArrowRight");
   await expect(page.locator("#phase")).toHaveText("Day 1");
   await page.keyboard.press("End");
-  await expect(page.locator("#log .winner")).toHaveText(/Game over: (Good|Evil) wins\./);
+  await expect(page.locator("#log .winner")).toHaveText(/^Game over: /);
   await page.keyboard.press("Home");
   await expect(page.locator("#counter")).toHaveText(/^1 \//);
 });
@@ -56,4 +56,32 @@ test("loading a seed is reproducible and shareable", async ({ page }) => {
   await page.locator("#load").click();
   await expect(page).toHaveURL(/#seed=123&players=12$/);
   expect(await page.locator("#log").innerText()).toBe(first);
+});
+
+test("in a player's view, other players' private info stays hidden", async ({ page }) => {
+  await open(page);
+  await page.locator("#pov").selectOption("Ada");
+  await page.keyboard.press("End");
+  // Clicking another seat must not reveal what they were told.
+  await page.locator('.seat[data-name="Cleo"]').click();
+  await expect(page.locator("#knowledge-title")).toHaveText("What Ada knows — Washerwoman");
+  await expect(page.locator("#knowledge-list")).not.toContainText("Evil: Cleo, Dev");
+});
+
+test("night deaths are announced at dawn without their cause", async ({ page }) => {
+  await open(page);
+  await page.locator("#pov").selectOption("Hana");
+  // Seed 7 / 8 players: Ada dies to the demon on night 2.
+  await page.keyboard.press("Shift+ArrowRight"); // Day 1
+  await page.keyboard.press("Shift+ArrowRight"); // Night 2
+  await page.keyboard.press("Shift+ArrowRight"); // Day 2
+  await expect(page.locator("#phase")).toHaveText("Day 2");
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator('.seat[data-name="Ada"]')).not.toHaveClass(/dead/);
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator('.seat[data-name="Ada"]')).toHaveClass(/dead/);
+  const log = await page.locator("#log").innerText();
+  expect(log).toContain("Ada died in the night");
+  expect(log).not.toContain("(Demon)");
 });

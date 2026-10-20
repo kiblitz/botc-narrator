@@ -109,7 +109,7 @@ pub fn prompt(goal: &str, decision: &storyteller::Decision, view: &game::State) 
             if p.alive { "" } else { " DEAD" }
         );
         for r in &p.reminders {
-            let _ = write!(s, " [{:?} from {}]", r.effect, r.source);
+            let _ = write!(s, " [{} from {}]", r.effect, r.source);
         }
         s.push('\n');
     }

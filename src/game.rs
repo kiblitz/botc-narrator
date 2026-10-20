@@ -4,7 +4,8 @@ use crate::character;
 use crate::event;
 use crate::player;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(tag = "kind", content = "number", rename_all = "snake_case")]
 pub enum Phase {
     Setup,
     Night(u32),
@@ -31,6 +32,15 @@ pub enum Effect {
     /// A token with no built-in rules meaning, interpreted by the character
     /// that placed it (e.g. the Butler's master).
     Custom(&'static str),
+}
+
+impl fmt::Display for Effect {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Effect::Custom(name) => f.write_str(name),
+            effect => fmt::Debug::fmt(effect, f),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

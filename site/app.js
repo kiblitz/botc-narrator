@@ -1,8 +1,12 @@
-import init, { simulate } from "./pkg/botc_web.js";
+import * as botcWeb from "./pkg/botc_web.js";
 
 const MIN_PLAYERS = 5;
 const MAX_PLAYERS = 15;
 const PLAY_INTERVAL_MS = 700;
+
+const isPhase = (step) => step.kind === "phase_began";
+const phaseLabel = ({ kind, number }) =>
+  kind === "setup" ? "Setup" : `${kind === "night" ? "Night" : "Day"} ${number}`;
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => {
@@ -23,17 +27,21 @@ let timer = null;
 
 function load(seed, players) {
   stop();
-  const trace = JSON.parse(simulate(seed, players));
-  // Who is awake after each step.
+  const trace = JSON.parse(botcWeb.simulate(seed, players));
+  // Who is awake, and whose deaths the table has heard about, after each step.
   const awake = [];
+  const announced = [];
   let now = new Set();
+  let dead = new Set();
   for (const step of trace.steps) {
     if (step.kind === "wake") now = new Set(now).add(step.player);
     if (step.kind === "sleep") { now = new Set(now); now.delete(step.player); }
-    if (step.kind === "event" && step.text.startsWith("===")) now = new Set();
+    if (isPhase(step)) now = new Set();
+    if (step.kind === "death") dead = new Set(dead).add(step.player);
     awake.push(now);
+    announced.push(dead);
   }
-  game = { seed, players, trace, awake };
+  game = { seed, players, trace, awake, announced };
   pov = "";
   selected = null;
   cursor = 0;
@@ -83,14 +91,14 @@ function render() {
   const snapshot = game.trace.snapshots[step.snapshot];
   const awake = game.awake[index];
   const board = $("board");
-  board.classList.toggle("night", step.phase.startsWith("Night"));
-  board.classList.toggle("day", step.phase.startsWith("Day"));
-  $("phase").textContent = step.phase;
+  board.classList.toggle("night", step.phase.kind === "night");
+  board.classList.toggle("day", step.phase.kind === "day");
+  $("phase").textContent = phaseLabel(step.phase);
 
   const caption = $("caption");
   caption.className = step.audience === "storyteller" ? "storyteller" : "";
   caption.replaceChildren();
-  if (step.player && step.kind !== "event") caption.append(el("span", "who", `${step.player}: `));
+  if (step.player && hasSpeaker(step)) caption.append(el("span", "who", `${step.player}: `));
   caption.append(step.text);
 
   for (const div of board.querySelectorAll(".seat")) {
@@ -99,7 +107,9 @@ function render() {
     div.className = "seat";
     div.classList.toggle("evil", known && seat.alignment === "Evil");
     div.classList.toggle("hidden", !known);
-    div.classList.toggle("dead", !seat.alive);
+    // Players only see deaths once they are announced.
+    const dead = pov === "" ? !seat.alive : game.announced[index].has(seat.name);
+    div.classList.toggle("dead", dead);
     div.classList.toggle("awake", awake.has(seat.name) && (pov === "" || pov === seat.name));
     div.classList.toggle("active", step.player === seat.name);
     div.classList.toggle("selected", selected === seat.name);
@@ -123,11 +133,16 @@ function render() {
   $("play").textContent = timer ? "⏸" : "▶";
 }
 
+/** Steps said to or by a player, shown with their name. */
+function hasSpeaker(step) {
+  return ["wake", "sleep", "tell", "ask"].includes(step.kind);
+}
+
 function logItem(step, current) {
   const li = el("li", step.audience);
-  if (step.kind === "event" && step.text.startsWith("===")) li.classList.add("phase");
+  if (isPhase(step)) li.classList.add("phase");
   if (current) li.classList.add("current");
-  if (step.player && step.kind !== "event") li.append(el("span", "who", `${step.player}: `));
+  if (step.player && hasSpeaker(step)) li.append(el("span", "who", `${step.player}: `));
   li.append(step.text);
   return li;
 }
@@ -140,15 +155,17 @@ function renderLog(steps) {
     li.addEventListener("click", () => { cursor = i; render(); });
     log.append(li);
   });
-  if (cursor === steps.length - 1 && game.trace.winner) {
-    log.append(el("li", "winner", `Game over: ${game.trace.winner} wins.`));
+  if (cursor === steps.length - 1) {
+    const end = game.trace.winner ? `Game over: ${game.trace.winner} wins.` : "Game over: no winner within the day limit.";
+    log.append(el("li", "winner", end));
   }
   log.querySelector(".current")?.scrollIntoView({ block: "nearest" });
 }
 
 /** What the selected player has been told and asked so far. */
 function renderKnowledge(globalIndex) {
-  const who = selected ?? (pov || null);
+  // In a player's view, only that player's own knowledge is visible.
+  const who = pov || selected;
   const list = $("knowledge-list");
   list.replaceChildren();
   if (!who) {
@@ -164,7 +181,7 @@ function renderKnowledge(globalIndex) {
   if (private_.length === 0) list.append(el("li", "", "Nothing private yet."));
   for (const s of private_) {
     const li = el("li", "player");
-    li.append(el("span", "who", `${s.phase}: `), s.kind === "ask" ? `chose — ${s.text}` : s.text);
+    li.append(el("span", "who", `${phaseLabel(s.phase)}: `), s.kind === "ask" ? `chose — ${s.text}` : s.text);
     list.append(li);
   }
 }
@@ -183,9 +200,8 @@ function step(delta) {
 
 function jumpPhase(direction) {
   const steps = visibleSteps();
-  const isPhase = ({ step }) => step.kind === "event" && step.text.startsWith("===");
   let i = cursor + direction;
-  while (i > 0 && i < steps.length - 1 && !isPhase(steps[i])) i += direction;
+  while (i > 0 && i < steps.length - 1 && !isPhase(steps[i].step)) i += direction;
   go(Math.max(0, Math.min(i, steps.length - 1)));
 }
 
@@ -215,7 +231,7 @@ function fromHash() {
 }
 
 async function main() {
-  await init();
+  await botcWeb.default();
   for (let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++) $("players").add(new Option(String(n), String(n)));
   $("controls").addEventListener("submit", (e) => {
     e.preventDefault();

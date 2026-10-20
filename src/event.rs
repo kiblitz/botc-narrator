@@ -62,7 +62,7 @@ impl fmt::Display for Event {
             Event::Transformed { player, into } => write!(f, "{player} becomes the {into}"),
             Event::ReminderPlaced { player, reminder } => write!(
                 f,
-                "{} ({}) marks {player}: {:?}",
+                "{} ({}) marks {player}: {}",
                 reminder.placed_by, reminder.source, reminder.effect
             ),
             Event::Voted {

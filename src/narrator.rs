@@ -144,6 +144,20 @@ pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id) {
     }
 }
 
+/// End of day: living players' day-end abilities (the Mayor) fire.
+pub fn end_day(ctx: &mut ctx::Write<'_>) {
+    let alive: Vec<(player::Id, character::Ref)> = ctx
+        .state()
+        .players()
+        .iter()
+        .filter(|p| p.alive)
+        .map(|p| (p.id.clone(), p.character))
+        .collect();
+    for (id, character) in alive {
+        character.on_day_end(ctx, &id);
+    }
+}
+
 pub fn nominate(ctx: &mut ctx::Write<'_>, nominator: &player::Id, nominee: &player::Id) {
     ctx.record(event::Event::Nominated {
         nominee: nominee.clone(),

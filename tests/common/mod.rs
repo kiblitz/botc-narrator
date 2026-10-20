@@ -152,7 +152,7 @@ pub fn grimoire(state: &game::State) -> String {
             out.push_str(" [dead]");
         }
         for r in &p.reminders {
-            let _ = write!(out, " [{:?} by {}]", r.effect, r.source);
+            let _ = write!(out, " [{} by {}]", r.effect, r.source);
         }
         out.push('\n');
     }

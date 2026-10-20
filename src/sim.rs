@@ -24,9 +24,20 @@ use crate::storyteller;
 use crate::table;
 use crate::trouble_brewing;
 
+use crate::characters;
+
 pub const MIN_PLAYERS: usize = 5;
 pub const MAX_PLAYERS: usize = 15;
 const MAX_DAYS: u32 = 12;
+/// Chance the Slayer shoots on a given day.
+const SLAYER_SHOOTS: f64 = 0.35;
+/// Chance the demon picks any player (possibly themself: a starpass) instead of
+/// a good player.
+const DEMON_WILD_PICK: f64 = 0.05;
+/// Vote chances: evil for a good nominee, evil for an evil nominee, good for anyone.
+const EVIL_VOTES_GOOD: f64 = 0.8;
+const EVIL_VOTES_EVIL: f64 = 0.1;
+const GOOD_VOTES: f64 = 0.45;
 
 const NAMES: [&str; MAX_PLAYERS] = [
     "Ada", "Bram", "Cleo", "Dev", "Esme", "Finn", "Gus", "Hana", "Ivo", "Juno", "Kit", "Lux",
@@ -46,7 +57,8 @@ fn distribution(players: usize) -> (usize, usize, usize) {
 }
 
 /// A legal Trouble Brewing setup in random seat order. The Drunk is left out
-/// because it is not modelled yet.
+/// because it is not modelled yet, so with only three Outsiders available the
+/// Baron adds fewer than two when the base count already has two.
 pub fn setup(rng: &mut impl Rng, players: usize) -> Vec<(player::Id, character::Ref)> {
     let players = players.clamp(MIN_PLAYERS, MAX_PLAYERS);
     let script = trouble_brewing::script();
@@ -55,7 +67,7 @@ pub fn setup(rng: &mut impl Rng, players: usize) -> Vec<(player::Id, character::
             .characters
             .iter()
             .copied()
-            .filter(|c| c.kind() == kind && c.id() != "drunk")
+            .filter(|c| c.kind() == kind && c.id() != character::Def::id(&characters::drunk::Def))
             .collect()
     };
     let pick = |rng: &mut dyn rand::RngCore, pool: &[character::Ref], n: usize| {
@@ -67,7 +79,10 @@ pub fn setup(rng: &mut impl Rng, players: usize) -> Vec<(player::Id, character::
     let (mut townsfolk, mut outsiders, minions) = distribution(players);
     let minions = pick(rng, &of_kind(character::Kind::Minion), minions);
     let outsider_pool = of_kind(character::Kind::Outsider);
-    if minions.iter().any(|m| m.id() == "baron") {
+    if minions
+        .iter()
+        .any(|m| m.id() == character::Def::id(&characters::baron::Def))
+    {
         let added = 2.min(outsider_pool.len() - outsiders);
         outsiders += added;
         townsfolk -= added;
@@ -91,15 +106,15 @@ pub struct Trace {
     /// Grimoire snapshots; each step refers to one by index.
     pub snapshots: Vec<Vec<Seat>>,
     pub steps: Vec<Step>,
-    pub winner: Option<String>,
+    pub winner: Option<character::Alignment>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Seat {
     pub name: String,
     pub character: &'static str,
-    pub kind: String,
-    pub alignment: String,
+    pub kind: character::Kind,
+    pub alignment: character::Alignment,
     pub alive: bool,
     pub reminders: Vec<String>,
 }
@@ -115,10 +130,25 @@ pub enum Audience {
     Storyteller,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Kind {
+    PhaseBegan,
+    Wake,
+    Sleep,
+    Tell,
+    Ask,
+    /// A player died; public deaths are announced (at dawn for night deaths)
+    /// without their cause.
+    Death,
+    Event,
+    Decision,
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct Step {
-    pub phase: String,
-    pub kind: &'static str,
+    pub phase: game::Phase,
+    pub kind: Kind,
     pub player: Option<String>,
     pub text: String,
     pub audience: Audience,
@@ -131,41 +161,33 @@ fn seats(view: &game::State) -> Vec<Seat> {
         .map(|p| Seat {
             name: p.id.to_string(),
             character: p.character.name(),
-            kind: p.character.kind().to_string(),
-            alignment: p.alignment.to_string(),
+            kind: p.character.kind(),
+            alignment: p.alignment,
             alive: p.alive,
-            reminders: p
-                .reminders
-                .iter()
-                .map(|r| match r.effect {
-                    game::Effect::Custom(name) => name.to_string(),
-                    effect => format!("{effect:?}"),
-                })
-                .collect(),
+            reminders: p.reminders.iter().map(|r| r.effect.to_string()).collect(),
         })
         .collect()
 }
 
 /// The table during a simulation: records every step and answers questions
 /// for the players with plausible heuristics.
+///
+/// `view` and the snapshots are refreshed on every event. That is complete
+/// because every grimoire change goes through `ctx::Write::record`.
 struct Recorder {
     rng: rand::rngs::StdRng,
     view: game::State,
-    phase: String,
+    phase: game::Phase,
+    /// Night deaths, announced publicly when the day begins.
+    unannounced: Vec<player::Id>,
     snapshots: Vec<Vec<Seat>>,
     steps: Vec<Step>,
 }
 
 impl Recorder {
-    fn push(
-        &mut self,
-        kind: &'static str,
-        player: Option<&player::Id>,
-        text: String,
-        audience: Audience,
-    ) {
+    fn push(&mut self, kind: Kind, player: Option<&player::Id>, text: String, audience: Audience) {
         self.steps.push(Step {
-            phase: self.phase.clone(),
+            phase: self.phase,
             kind,
             player: player.map(ToString::to_string),
             text,
@@ -176,7 +198,7 @@ impl Recorder {
 
     fn sync(&mut self, view: &game::State) {
         self.view = view.clone();
-        self.phase = view.phase().to_string();
+        self.phase = view.phase();
         let seats = seats(view);
         if self.snapshots.last() != Some(&seats) {
             self.snapshots.push(seats);
@@ -193,8 +215,11 @@ impl Recorder {
     ) -> Vec<player::Id> {
         let view = &self.view;
         let me = view.character(player);
-        let targets_good = view.is_evil(player) && me.kind() != character::Kind::Demon
-            || me.kind() == character::Kind::Demon && !self.rng.random_bool(0.05);
+        let targets_good = if me.kind() == character::Kind::Demon {
+            !self.rng.random_bool(DEMON_WILD_PICK)
+        } else {
+            view.is_evil(player)
+        };
         let good: Vec<player::Id> = candidates
             .iter()
             .filter(|c| !view.is_evil(c) && *c != player)
@@ -215,7 +240,7 @@ impl Recorder {
 impl table::Io for Recorder {
     fn wake(&mut self, player: &player::Id) {
         self.push(
-            "wake",
+            Kind::Wake,
             Some(player),
             format!("{player} wakes"),
             Audience::Player,
@@ -224,7 +249,7 @@ impl table::Io for Recorder {
 
     fn sleep(&mut self, player: &player::Id) {
         self.push(
-            "sleep",
+            Kind::Sleep,
             Some(player),
             format!("{player} sleeps"),
             Audience::Player,
@@ -232,7 +257,12 @@ impl table::Io for Recorder {
     }
 
     fn tell(&mut self, player: &player::Id, message: &info::Message) {
-        self.push("tell", Some(player), message.to_string(), Audience::Player);
+        self.push(
+            Kind::Tell,
+            Some(player),
+            message.to_string(),
+            Audience::Player,
+        );
     }
 
     fn ask(
@@ -245,26 +275,52 @@ impl table::Io for Recorder {
         let answer = self.answer(player, candidates, count);
         let names: Vec<&str> = answer.iter().map(player::Id::as_str).collect();
         let text = format!("{prompt} {}", names.join(", "));
-        self.push("ask", Some(player), text, Audience::Player);
+        // Day abilities (the Slayer's shot) are public.
+        let audience = match self.phase {
+            game::Phase::Day(_) => Audience::Public,
+            _ => Audience::Player,
+        };
+        self.push(Kind::Ask, Some(player), text, audience);
         answer
     }
 
     fn event(&mut self, event: &event::Event, view: &game::State) {
         self.sync(view);
-        let (player, audience) = match event {
-            event::Event::PhaseBegan(_)
-            | event::Event::Nominated { .. }
+        let text = event.to_string();
+        match event {
+            event::Event::PhaseBegan(phase) => {
+                self.push(Kind::PhaseBegan, None, text, Audience::Public);
+                if let game::Phase::Day(_) = phase {
+                    for dead in std::mem::take(&mut self.unannounced) {
+                        let text = format!("{dead} died in the night");
+                        self.push(Kind::Death, Some(&dead), text, Audience::Public);
+                    }
+                }
+            }
+            event::Event::Died { player, .. } => {
+                // The cause is the storyteller's; the table only learns who died.
+                self.push(Kind::Event, Some(player), text, Audience::Storyteller);
+                if let game::Phase::Night(_) = self.phase {
+                    self.unannounced.push(player.clone());
+                } else {
+                    let text = format!("{player} dies");
+                    self.push(Kind::Death, Some(player), text, Audience::Public);
+                }
+            }
+            event::Event::Nominated { .. }
             | event::Event::Executed(_)
             | event::Event::Voted { .. }
-            | event::Event::Won(_) => (None, Audience::Public),
-            event::Event::Died { player, .. } => (Some(player), Audience::Public),
+            | event::Event::Won(_) => self.push(Kind::Event, None, text, Audience::Public),
             event::Event::KillPrevented { player, .. }
             | event::Event::Transformed { player, .. }
-            | event::Event::ReminderPlaced { player, .. } => (Some(player), Audience::Storyteller),
-            event::Event::KillRedirected { to, .. } => (Some(to), Audience::Storyteller),
-            event::Event::Note(_) => (None, Audience::Storyteller),
-        };
-        self.push("event", player, event.to_string(), audience);
+            | event::Event::ReminderPlaced { player, .. } => {
+                self.push(Kind::Event, Some(player), text, Audience::Storyteller);
+            }
+            event::Event::KillRedirected { to, .. } => {
+                self.push(Kind::Event, Some(to), text, Audience::Storyteller);
+            }
+            event::Event::Note(_) => self.push(Kind::Event, None, text, Audience::Storyteller),
+        }
     }
 
     fn decided(&mut self, decision: &storyteller::Decision, picks: &[usize]) {
@@ -278,7 +334,7 @@ impl table::Io for Recorder {
             decision.options.len(),
             picked.join(", ")
         );
-        self.push("decision", None, text, Audience::Storyteller);
+        self.push(Kind::Decision, None, text, Audience::Storyteller);
     }
 }
 
@@ -290,7 +346,8 @@ pub fn simulate(seed: u64, players: usize) -> Trace {
     let mut table = Recorder {
         rng: rand::rngs::StdRng::seed_from_u64(rng.random()),
         view: state.clone(),
-        phase: String::new(),
+        phase: game::Phase::Setup,
+        unannounced: Vec::new(),
         snapshots: Vec::new(),
         steps: Vec::new(),
     };
@@ -313,16 +370,19 @@ pub fn simulate(seed: u64, players: usize) -> Trace {
         players: initial,
         snapshots: table.snapshots,
         steps: table.steps,
-        winner: state.winner().map(|w| w.to_string()),
+        winner: state.winner(),
     }
 }
 
 /// A day: maybe a Slayer shot, then nominations and a majority vote.
 fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
-    if let Some(slayer) = ctx.state().find("slayer").cloned()
+    if let Some(slayer) = ctx
+        .state()
+        .find(character::Def::id(&characters::slayer::Def))
+        .cloned()
         && ctx.state().is_alive(&slayer)
         && !ctx.state().has_effect(&slayer, game::Effect::AbilityUsed)
-        && rng.random_bool(0.35)
+        && rng.random_bool(SLAYER_SHOOTS)
     {
         narrator::day_action(ctx, &slayer);
     }
@@ -347,6 +407,7 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
         nominated.push(nominee.clone());
         narrator::nominate(ctx, &nominator, &nominee);
         if !ctx.state().is_alive(&nominator) || ctx.state().executed_today().is_some() {
+            narrator::end_day(ctx);
             return; // the Virgin executed the nominator
         }
         let votes = votes(ctx.state(), &nominee, rng);
@@ -373,18 +434,22 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
     {
         ctx.execute(&nominee);
     }
+    if ctx.state().winner().is_none() {
+        narrator::end_day(ctx);
+    }
 }
 
-/// Living players vote: evil players back good nominees, good players are split.
+/// Living players vote (ghost votes are not modelled): evil players back good
+/// nominees, good players are split.
 fn votes(state: &game::State, nominee: &player::Id, rng: &mut impl Rng) -> usize {
     state
         .alive_ids()
         .iter()
         .filter(|voter| {
             let p = match (state.is_evil(voter), state.is_evil(nominee)) {
-                (true, false) => 0.8,
-                (true, true) => 0.1,
-                (false, _) => 0.45,
+                (true, false) => EVIL_VOTES_GOOD,
+                (true, true) => EVIL_VOTES_EVIL,
+                (false, _) => GOOD_VOTES,
             };
             rng.random_bool(p)
         })

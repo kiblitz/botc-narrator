@@ -55,7 +55,10 @@ fn simulated_games_are_well_formed_and_deterministic() {
         assert!(!trace.steps.is_empty());
         for step in &trace.steps {
             assert!(step.snapshot < trace.snapshots.len());
-            if matches!(step.kind, "tell" | "ask" | "wake" | "sleep") {
+            if matches!(
+                step.kind,
+                sim::Kind::Tell | sim::Kind::Ask | sim::Kind::Wake | sim::Kind::Sleep
+            ) {
                 assert!(step.player.is_some(), "{step:?}");
             }
         }

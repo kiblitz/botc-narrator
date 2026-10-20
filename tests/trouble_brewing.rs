@@ -568,14 +568,14 @@ fn first_night_info_characters_get_truthful_options() {
         === end parallel ===
         wake Butler
           Butler? Choose your master => Imp
-        * Butler (butler) marks Imp: Custom("master")
+        * Butler (butler) marks Imp: master
         sleep Butler
         wake Spy
           storyteller [1 of 1 options] information for Spy (Spy): "Imp=Imp, Spy=Spy, Wash=Washerwoman, Lib=Librarian, Inv=Investigator, Butler=Butler"
           -> Spy: Imp=Imp, Spy=Spy, Wash=Washerwoman, Lib=Librarian, Inv=Investigator, Butler=Butler
         sleep Spy
         --- grimoire ---
-        Imp: Imp [Custom("master") by butler]
+        Imp: Imp [master by butler]
         Spy: Spy
         Wash: Washerwoman
         Lib: Librarian
@@ -681,4 +681,35 @@ fn poison_ends_when_the_poisoner_becomes_the_imp() {
     g.answers(&[&["Chef"], &["Chef"], &["Imp"]]).run(night);
     assert_eq!(g.state.character(&p("Poisoner")).id(), "imp");
     assert!(!g.state.has_effect(&p("Chef"), game::Effect::Poisoned));
+}
+
+#[test]
+fn mayor_wins_with_three_alive_and_no_execution() {
+    let seats: &[(&str, character::Ref)] = &[
+        ("Imp", &imp::Def),
+        ("Mayor", &mayor::Def),
+        ("Chef", &chef::Def),
+    ];
+    let mut g = common::Game::new(seats);
+    g.run(|ctx| {
+        ctx.advance_phase();
+        ctx.advance_phase();
+        narrator::end_day(ctx);
+    });
+    assert_eq!(g.state.winner(), Some(character::Alignment::Good));
+
+    // An execution today means no Mayor win.
+    let mut g = common::Game::new(&[
+        ("Imp", &imp::Def),
+        ("Mayor", &mayor::Def),
+        ("Chef", &chef::Def),
+        ("Empath", &empath::Def),
+    ]);
+    g.run(|ctx| {
+        ctx.advance_phase();
+        ctx.advance_phase();
+        ctx.execute(&p("Empath"));
+        narrator::end_day(ctx);
+    });
+    assert_eq!(g.state.winner(), None);
 }

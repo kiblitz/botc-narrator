@@ -4,7 +4,7 @@ use crate::ctx;
 use crate::event;
 use crate::player;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
 pub enum Kind {
     Townsfolk,
     Outsider,
@@ -27,7 +27,7 @@ impl fmt::Display for Kind {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
 pub enum Alignment {
     Good,
     Evil,
@@ -72,6 +72,9 @@ pub trait Def: Sync {
     fn on_nominated(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _nominator: &player::Id) {}
 
     fn on_executed(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id) {}
+
+    /// Called for each living player when the day ends.
+    fn on_day_end(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id) {}
 
     /// Called after any player dies: first for every living player, then for
     /// the player who died.
