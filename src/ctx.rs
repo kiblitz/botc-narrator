@@ -10,10 +10,16 @@ use crate::player;
 use crate::storyteller;
 use crate::table;
 
+/// A night choice: who chose, and whom. Choices made through a `Read` are
+/// kept until the narrator resolves them (`Write::resolve_choices`), since a
+/// read-only ability cannot change the grimoire.
+pub type Choice = (player::Id, Vec<player::Id>);
+
 pub struct Read<'a> {
     state: &'a game::State,
     io: &'a mut dyn table::Io,
     storyteller: &'a mut dyn storyteller::Strategy,
+    choices: &'a mut Vec<Choice>,
 }
 
 impl<'a> Read<'a> {
@@ -21,11 +27,13 @@ impl<'a> Read<'a> {
         state: &'a game::State,
         io: &'a mut dyn table::Io,
         storyteller: &'a mut dyn storyteller::Strategy,
+        choices: &'a mut Vec<Choice>,
     ) -> Self {
         Self {
             state,
             io,
             storyteller,
+            choices,
         }
     }
 
@@ -58,10 +66,21 @@ impl<'a> Read<'a> {
             return Vec::new();
         }
         let answer = self.io.ask(player, prompt, candidates, count);
-        if storyteller::is_selection(&answer, count, |a| candidates.contains(a)) {
+        let answer = if storyteller::is_selection(&answer, count, |a| candidates.contains(a)) {
             answer
         } else {
             candidates[..count].to_vec()
+        };
+        self.chose(player, &answer);
+        answer
+    }
+
+    /// Keeps a night choice for `Write::resolve_choices`.
+    fn chose(&mut self, player: &player::Id, chosen: &[player::Id]) {
+        if let game::Phase::Night(_) = self.state.phase()
+            && !chosen.is_empty()
+        {
+            self.choices.push((player.clone(), chosen.to_vec()));
         }
     }
 
@@ -88,13 +107,20 @@ impl<'a> Read<'a> {
             return Vec::new();
         }
         let answer = self.io.ask_up_to(player, prompt, candidates, max);
-        if answer.len() <= max
+        let answer = if answer.len() <= max
             && storyteller::is_selection(&answer, answer.len(), |a| candidates.contains(a))
         {
             answer
         } else {
             Vec::new()
-        }
+        };
+        self.chose(player, &answer);
+        answer
+    }
+
+    /// Whether `player` tried to convince the group they are `about`.
+    pub fn is_mad_about(&mut self, player: &player::Id, about: &'static str) -> bool {
+        self.io.is_mad_about(player, about)
     }
 
     /// Ask a player a yes/no question (do they agree?).
@@ -385,6 +411,8 @@ pub struct Write<'a> {
     state: &'a mut game::State,
     io: &'a mut dyn table::Io,
     storyteller: &'a mut dyn storyteller::Strategy,
+    /// Night choices not yet resolved (see [`Write::resolve_choices`]).
+    choices: Vec<Choice>,
 }
 
 impl<'a> Write<'a> {
@@ -397,12 +425,30 @@ impl<'a> Write<'a> {
             state,
             io,
             storyteller,
+            choices: Vec::new(),
         }
     }
 
     /// A read-only view of this context, for talking to players and the storyteller.
     pub fn read(&mut self) -> Read<'_> {
-        Read::new(self.state, self.io, self.storyteller)
+        Read::new(self.state, self.io, self.storyteller, &mut self.choices)
+    }
+
+    /// Night choices made so far react: the chooser's abilities
+    /// (`character::Def::on_choose`), then each chosen player's
+    /// (`on_chosen`, the Goon). Choices through `Write::ask` resolve at once;
+    /// the narrator resolves those of read-only abilities after each action.
+    pub fn resolve_choices(&mut self) {
+        for (chooser, chosen) in std::mem::take(&mut self.choices) {
+            for (id, ability) in self.abilities_of(std::slice::from_ref(&chooser)) {
+                ability.on_choose(self, &id, &chosen);
+            }
+            for (id, ability) in self.abilities_of(&chosen) {
+                if id != chooser {
+                    ability.on_chosen(self, &id, &chooser);
+                }
+            }
+        }
     }
 
     pub fn state(&self) -> &game::State {
@@ -433,6 +479,15 @@ impl<'a> Write<'a> {
     pub fn advance_phase(&mut self) -> game::Phase {
         let phase = self.state.advance_phase();
         self.record(event::Event::PhaseBegan(phase));
+        if let game::Phase::Day(_) = phase {
+            // Night deaths are learnt at dawn.
+            let dead = self.state.deaths_tonight().to_vec();
+            for (id, ability) in self.abilities_of(&dead) {
+                if self.state.winner().is_none() {
+                    ability.on_learns_death(self, &id);
+                }
+            }
+        }
         for (id, ability) in self.active_abilities() {
             match phase {
                 game::Phase::Night(_) => ability.on_night_start(self, &id),
@@ -677,6 +732,14 @@ impl<'a> Write<'a> {
             ability.on_death(self, &id, target, &cause);
         }
         self.check_win();
+        // A day death is learnt at once; night deaths at dawn (`advance_phase`).
+        if let game::Phase::Day(_) = self.state.phase() {
+            for (id, ability) in self.abilities_of(std::slice::from_ref(target)) {
+                if self.state.winner().is_none() {
+                    ability.on_learns_death(self, &id);
+                }
+            }
+        }
     }
 
     /// Execute `target`: their execution triggers fire, then they die unless
@@ -709,6 +772,10 @@ impl<'a> Write<'a> {
         if self.state.winner().is_none() {
             self.state.set_winner(alignment);
             self.record(event::Event::Won(alignment));
+            let everyone = self.state.seat_order();
+            for (id, ability) in self.abilities_of(&everyone) {
+                ability.on_win(self, &id, alignment);
+            }
         }
     }
 
@@ -743,7 +810,9 @@ impl<'a> Write<'a> {
         candidates: &[player::Id],
         count: usize,
     ) -> Vec<player::Id> {
-        self.read().ask(player, prompt, candidates, count)
+        let answer = self.read().ask(player, prompt, candidates, count);
+        self.resolve_choices();
+        answer
     }
 
     pub fn ask_one(
@@ -752,7 +821,7 @@ impl<'a> Write<'a> {
         prompt: &str,
         candidates: &[player::Id],
     ) -> Option<player::Id> {
-        self.read().ask_one(player, prompt, candidates)
+        self.ask(player, prompt, candidates, 1).into_iter().next()
     }
 
     pub fn ask_up_to(
@@ -762,7 +831,9 @@ impl<'a> Write<'a> {
         candidates: &[player::Id],
         max: usize,
     ) -> Vec<player::Id> {
-        self.read().ask_up_to(player, prompt, candidates, max)
+        let answer = self.read().ask_up_to(player, prompt, candidates, max);
+        self.resolve_choices();
+        answer
     }
 
     pub fn ask_yes_no(&mut self, player: &player::Id, prompt: &str) -> bool {
@@ -776,6 +847,10 @@ impl<'a> Write<'a> {
         options: &[character::Ref],
     ) -> Option<character::Ref> {
         self.read().ask_character(player, prompt, options)
+    }
+
+    pub fn is_mad_about(&mut self, player: &player::Id, about: &'static str) -> bool {
+        self.read().is_mad_about(player, about)
     }
 
     pub fn choose<T: Clone>(

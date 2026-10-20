@@ -50,6 +50,9 @@ const AGREES: f64 = 0.5;
 const MAX_TRAVELLERS: usize = 2;
 /// Chance a Traveller is evil.
 const EVIL_TRAVELLER: f64 = 0.4;
+/// Chance a player tries, on a given day, to convince the group they are
+/// something they must not be mad about (the Mutant, an Outsider).
+const MAD_ABOUT: f64 = 0.1;
 
 const NAMES: [&str; MAX_PLAYERS + MAX_TRAVELLERS] = [
     "Ada", "Bram", "Cleo", "Dev", "Esme", "Finn", "Gus", "Hana", "Ivo", "Juno", "Kit", "Lux",
@@ -352,8 +355,10 @@ impl table::Io for Recorder {
 
     fn tell(&mut self, player: &player::Id, message: &info::Message) {
         // Several demons (Legion) all learn the same bluffs: keep the first.
+        // The Lunatic is shown bluffs too; the trace keeps the real Demon's.
         if let info::Message::Bluffs(characters) = message
             && self.bluffs.is_none()
+            && self.view.demons().contains(player)
         {
             self.bluffs = Some(Bluffs {
                 demon: player.to_string(),
@@ -534,6 +539,10 @@ impl table::Io for Recorder {
         yes
     }
 
+    fn is_mad_about(&mut self, _player: &player::Id, _about: &'static str) -> bool {
+        self.rng.random_bool(MAD_ABOUT)
+    }
+
     fn decided(&mut self, decision: &storyteller::Decision, picks: &[usize]) {
         let picked: Vec<String> = picks
             .iter()
@@ -601,15 +610,23 @@ pub fn simulate(seed: u64, players: usize, script: &script::Script) -> Trace {
 }
 
 /// A day: maybe day abilities (the Slayer's shot, also by a Drunk who
-/// believes they are the Slayer), then nominations and a majority vote.
+/// believes they are the Slayer; a Minion's guess of the Damsel), then
+/// nominations and a majority vote.
 fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
-    let holders: Vec<(player::Id, character::Ref)> = ctx
-        .active_abilities()
-        .into_iter()
-        .filter(|(_, ability)| ability.day_action().is_some())
-        .collect();
-    for (player, ability) in holders {
-        if ctx.state().is_alive(&player)
+    let mut users: Vec<(player::Id, character::Ref)> = Vec::new();
+    for (_, ability) in ctx.active_abilities() {
+        for user in narrator::day_action_users(ctx.state(), ability) {
+            if !users
+                .iter()
+                .any(|(p, a)| *p == user && character::same(*a, ability))
+            {
+                users.push((user, ability));
+            }
+        }
+    }
+    for (player, ability) in users {
+        if ctx.state().winner().is_none()
+            && ctx.state().is_alive(&player)
             && !ability::used(ctx.state(), &player, ability)
             && rng.random_bool(DAY_ACTION)
         {
@@ -625,7 +642,12 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
         // Only the storyteller nominates (the Bishop).
         Some(nominees) => nominees.into_iter().map(|n| (None, Some(n))).collect(),
         None => {
-            let mut nominators: Vec<player::Id> = ctx.state().alive_ids();
+            let mut nominators: Vec<player::Id> = ctx
+                .state()
+                .alive_ids()
+                .into_iter()
+                .filter(|p| narrator::can_nominate(ctx.state(), p))
+                .collect();
             nominators.shuffle(rng);
             let count = rng.random_range(1..=3);
             nominators
@@ -735,6 +757,9 @@ fn nominate_and_vote(
         || (!executed_before && ctx.state().executed_today().is_some());
     if ended {
         return None;
+    }
+    if !ctx.state().is_alive(nominee) || ctx.state().winner().is_some() {
+        return Some(0); // the Golem killed the nominee: no vote
     }
     let voters = voters(ctx.state(), nominee, rng);
     let needed = needed(ctx.state());

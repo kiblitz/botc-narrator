@@ -94,12 +94,18 @@ Override only the hooks the ability uses (the full list is in the README,
 | alternate demon / forced false info | hooks `counts_as_demon`, `forces_false_info` |
 | evil info / no Demon in the game | hooks `joins_evil_info` (Magician), `hides_evil_info` + `narrator::evil_info` (Poppy Grower), `demonless` (Atheist) |
 | survive a death | hook `intercept_death` returning `Prevent` (Fool, Sailor, Tea Lady, Pacifist, Innkeeper); the dying player's own abilities are asked last |
-| day ability | hook `day_action`; the simulator offers every unused one each day; a private visit to the storyteller is `ctx.wake(me)` ... `ctx.sleep(me)` (answers inside it are private) |
+| day ability | hook `day_action`; the simulator offers every unused one each day; a private visit to the storyteller is `ctx.wake(me)` ... `ctx.sleep(me)` (answers inside it are private); `day_action_users` lets others use it (Damsel guess) |
 | ask a player yes/no | `ctx.ask_yes_no` (the Harlot's visit) |
 | sober / acts twice / restored / execution-only | `game::Effect::Sober`, `ActsTwice`, `AbilityRestored`, `ExecutionOnly` with `mark`; hook `always_sober` |
 | votes and nominations | hooks `vote_weight`, `storyteller_nominations`, `nominates_again`; `ctx.remove_reminder`, `ctx.spend_ghost_vote` |
 | seats | `ctx.swap_seats` |
 | Fabled and Loric | hooks `fabled_setup`, `fabled_dusk`, `permits_alignment_change`, `lies_to`; storyteller tokens `ctx.mark_fabled` / `State::fabled_has`; `storyteller::Reason::Fabled` |
+| nomination limits | hook `can_nominate` (Golem) |
+| "when you learn that you died" | hook `on_learns_death` (Klutz, Moonchild) |
+| "the first player to choose you" / whom a player chose | hooks `on_chosen` (Goon) / `on_choose` (Lunatic) |
+| end-of-game judgement | hook `on_win` (Politician) |
+| judged claims | `ctx.is_mad_about(player, about)` (Mutant) |
+| a token for a later night | `ctx.place_reminder` + `wakes_tonight` checking it, then `ctx.remove_reminder` (Moonchild, Barber) |
 
 ## Worked examples
 

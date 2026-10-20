@@ -210,6 +210,7 @@ pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32)
                         let state = ctx.state();
                         if state.winner().is_none() && wakes(state, c, &id) {
                             f(ctx, &id, night);
+                            ctx.resolve_choices();
                         }
                     }
                 }
@@ -239,6 +240,7 @@ pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32)
                 }
                 for (id, f) in batch {
                     f(&mut ctx.read(), &id, night);
+                    ctx.resolve_choices();
                 }
                 if announce {
                     ctx.io().batch_ended();
@@ -271,13 +273,42 @@ fn add_turns(
     }
 }
 
-/// Players who have `c`'s ability now and wake for it tonight, in seat order.
+/// Players who have `c`'s ability now and wake for it tonight, in seat
+/// order, except that players who only believe they are `c` go first (the
+/// Lunatic wakes before the real Demon, who learns their choices).
 fn acting(state: &game::State, c: character::Ref) -> Vec<player::Id> {
-    state
+    let mut acting: Vec<player::Id> = state
         .seat_order()
         .into_iter()
         .filter(|id| wakes(state, c, id))
-        .collect()
+        .collect();
+    let believes = |id: &player::Id| {
+        state
+            .player(id)
+            .believes
+            .is_some_and(|b| character::same(b, c))
+    };
+    acting.sort_by_key(|id| !believes(id));
+    acting
+}
+
+/// Who may use `ability`'s day action now: for each player with the ability,
+/// its `day_action_users` (themself, or every Minion for the Damsel's guess).
+pub fn day_action_users(state: &game::State, ability: character::Ref) -> Vec<player::Id> {
+    if ability.day_action().is_none() {
+        return Vec::new();
+    }
+    let mut users: Vec<player::Id> = Vec::new();
+    for holder in state.seat_order() {
+        if state.has_ability(&holder, ability.id()) {
+            for user in ability.day_action_users(state, &holder) {
+                if !users.contains(&user) {
+                    users.push(user);
+                }
+            }
+        }
+    }
+    users
 }
 
 /// Whether `id` has `c`'s ability now and wakes for it tonight (not if a
@@ -289,14 +320,22 @@ fn wakes(state: &game::State, c: character::Ref, id: &player::Id) -> bool {
 }
 
 /// The player uses `ability`'s day action (the Slayer's shot), if it has one
-/// and they have the ability.
+/// and they may use it (see [`day_action_users`]).
 pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id, ability: character::Ref) {
-    if !ctx.state().has_ability(player, ability.id()) {
+    if !day_action_users(ctx.state(), ability).contains(player) {
         return;
     }
     if let Some(f) = ability.day_action() {
         f(ctx, player);
     }
+}
+
+/// Whether every ability of `player` lets them nominate (the Golem only once).
+pub fn can_nominate(state: &game::State, player: &player::Id) -> bool {
+    state
+        .abilities(player)
+        .iter()
+        .all(|c| c.can_nominate(state, player))
 }
 
 /// End of day: active players' day-end abilities (the Mayor) fire, then the
@@ -348,7 +387,13 @@ pub fn storyteller_nominates(ctx: &mut ctx::Write<'_>, nominee: &player::Id) {
 
 /// A nomination: the nominee's abilities react (the Virgin), then the
 /// nominator's.
+///
+/// A nomination the nominator may not make ([`can_nominate`]) is refused.
 pub fn nominate(ctx: &mut ctx::Write<'_>, nominator: &player::Id, nominee: &player::Id) {
+    if !can_nominate(ctx.state(), nominator) {
+        ctx.note(format!("{nominator} may not nominate"));
+        return;
+    }
     ctx.record(event::Event::Nominated {
         nominee: nominee.clone(),
         nominator: Some(nominator.clone()),

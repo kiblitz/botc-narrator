@@ -225,3 +225,51 @@ fn decisions_carry_the_players_and_characters_they_chose() {
         .expect("bluffs decision");
     assert_eq!(bluffs.characters.len(), 3);
 }
+
+/// Trouble Brewing's evil team with every Outsider the engine has.
+fn outsiders_script() -> script::Script {
+    let tb = common::trouble_brewing();
+    let mut chars: Vec<character::Ref> = tb
+        .characters
+        .iter()
+        .copied()
+        .filter(|c| c.kind() != character::Kind::Outsider)
+        .collect();
+    chars.extend(
+        botc_narrator::characters::all()
+            .iter()
+            .copied()
+            .filter(|c| c.kind() == character::Kind::Outsider),
+    );
+    script::Script::new("outsiders", "Outsiders", chars)
+}
+
+#[test]
+fn games_with_every_outsider_terminate_and_are_well_formed() {
+    let script = outsiders_script();
+    let mut seen: Vec<&'static str> = Vec::new();
+    let mut finished = 0;
+    for seed in 0..120 {
+        let players = sim::MIN_PLAYERS + (seed as usize % 11);
+        let trace = sim::simulate(seed, players, &script);
+        for step in &trace.steps {
+            assert!(step.snapshot < trace.snapshots.len());
+        }
+        if let Some(bluffs) = &trace.bluffs {
+            let demon = trace.players.iter().find(|s| s.name == bluffs.demon);
+            assert_eq!(demon.map(|s| s.kind), Some(character::Kind::Demon));
+        }
+        for seat in &trace.players {
+            if !seen.contains(&seat.character) {
+                seen.push(seat.character);
+            }
+        }
+        finished += usize::from(trace.winner.is_some());
+    }
+    for c in script.characters.iter() {
+        if c.kind() == character::Kind::Outsider {
+            assert!(seen.contains(&c.name()), "{} never set up", c.name());
+        }
+    }
+    assert!(finished >= 100, "only {finished} of 120 games finished");
+}

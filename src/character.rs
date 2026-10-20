@@ -159,6 +159,17 @@ pub trait Def: Sync {
         None
     }
 
+    /// Who may use this ability's `day_action` while `me` has it: `me` by
+    /// default; the Damsel lets every Minion guess it.
+    fn day_action_users(&self, _state: &game::State, me: &player::Id) -> Vec<player::Id> {
+        vec![me.clone()]
+    }
+
+    /// Whether this ability lets `me` nominate (the Golem nominates once).
+    fn can_nominate(&self, _state: &game::State, _me: &player::Id) -> bool {
+        true
+    }
+
     /// Legal setup counts with this character in play, given the counts so
     /// far (Baron: two more Outsiders). Several options leave the choice to
     /// whoever builds the setup.
@@ -232,6 +243,23 @@ pub trait Def: Sync {
         _cause: &event::Cause,
     ) {
     }
+
+    /// When `me` learns they died: at once for a day death, at dawn for a
+    /// night death (the Klutz, the Moonchild). Called for the dead player's
+    /// abilities.
+    fn on_learns_death(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id) {}
+
+    /// At night, `chooser` chose `me` with their ability (the Goon). Called
+    /// for each chosen player's abilities, after the chooser's `on_choose`.
+    fn on_chosen(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _chooser: &player::Id) {}
+
+    /// At night, `me` chose `chosen` with one of their abilities (the
+    /// Lunatic's Demon learns whom the Lunatic chose).
+    fn on_choose(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _chosen: &[player::Id]) {}
+
+    /// The game ended with `winner` winning; called for every player's
+    /// abilities, dead ones too (the Politician may change sides).
+    fn on_win(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _winner: Alignment) {}
 
     /// The ability that made `mad` mad (a `game::Effect::Mad` token placed by
     /// `me`) learns that they broke madness.

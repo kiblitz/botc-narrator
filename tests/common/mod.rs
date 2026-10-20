@@ -37,6 +37,9 @@ pub struct Recorder {
     pub breaks_madness: Vec<player::Id>,
     /// Answers to yes/no questions, in order; then "no".
     pub yes_no: VecDeque<bool>,
+    /// Players who try to convince the group they are what they must not be
+    /// mad about (the Mutant), whenever asked.
+    pub mad_about: Vec<player::Id>,
     pub log: String,
 }
 
@@ -122,6 +125,12 @@ impl table::Io for Recorder {
         let broke = self.breaks_madness.contains(player);
         self.line(format!("  {player} mad about {about}: broke = {broke}"));
         broke
+    }
+
+    fn is_mad_about(&mut self, player: &player::Id, about: &'static str) -> bool {
+        let mad = self.mad_about.contains(player);
+        self.line(format!("  {player} claims {about}: {mad}"));
+        mad
     }
 
     fn batch_started(&mut self, size: usize) {

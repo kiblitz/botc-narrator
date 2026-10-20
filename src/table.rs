@@ -67,6 +67,12 @@ pub trait Io {
         false
     }
 
+    /// Whether `player` tried to convince the group they are `about` (the
+    /// Mutant must not be mad about being an Outsider).
+    fn is_mad_about(&mut self, _player: &player::Id, _about: &'static str) -> bool {
+        false
+    }
+
     /// The next `size` night actions are independent reads (announced as a batch).
     fn batch_started(&mut self, _size: usize) {}
     fn batch_ended(&mut self) {}

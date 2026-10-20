@@ -72,13 +72,17 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 |---|---|
 | `night_order` | its official first-night / other-nights positions (clocktower.online numbering) |
 | `night_action`, `wakes_tonight` | what it does at its turn; whether it wakes tonight (default: alive), checked when the turn comes |
-| `day_action` | a public day ability (Slayer) |
+| `day_action`, `day_action_users` | a public day ability (Slayer); who may use it (default the holder; the Damsel lets every Minion guess) |
+| `can_nominate` | whether the holder may nominate (the Golem only once); `narrator::nominate` refuses otherwise |
 | `setup_counts`, `duplicates_in_setup` | how it changes the setup counts (Baron: +2 Outsiders; options for "+0 or +1"); copies filling extra slots (Legion, Riot) |
 | `requires` | characters that must be in play with it ("[+the Damsel]"): `setup::choose` swaps one in for a Townsfolk |
 | `on_setup` | storyteller setup choices before the first night (Drunk, Fortune Teller red herring); `game::State::script` is set by then |
 | `on_night_start`, `on_day_start`, `on_day_end` | phase changes, for living players |
 | `on_nominated`, `on_nominates`, `on_vote` | the nominee, the nominator, everyone after a vote |
 | `on_executed`, `intercept_death`, `on_death` | executions, preventing or redirecting any death, reacting to deaths |
+| `on_learns_death` | the dead player learns they died: at once by day, at dawn for a night death (Klutz, Moonchild) |
+| `on_choose`, `on_chosen` | at night, the chooser's abilities, then each chosen player's (Lunatic, Goon), whenever a player chooses players with `ctx.ask` |
+| `on_win` | the game was won; every player's abilities, dead ones too (Politician) |
 | `on_madness_broken` | a player this ability made mad broke madness (`narrator::check_madness`, judged by the table) |
 | `misregistration` | how it may register falsely |
 | `counts_as_demon` | whether a living holder keeps evil in the game (good wins when none lives; a Lil' Monsta-like carrier gains such an ability) |
@@ -91,6 +95,8 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `demonless` | the game has no Demon, so good does not win by the Demon dying (Atheist) |
 
 Extra deaths at other times are plain `ctx::Write::kill` calls from any hook.
+
+Night choices: `ctx::Write::ask` resolves `on_choose` / `on_chosen` at once; a read-only ability's choices are kept and resolved by the narrator right after its action (it cannot change the grimoire mid-action). When a character's turn comes, players who only believe they are it act first (the Lunatic before the real Demon). The table is asked `table::Io::is_mad_about` when an ability must judge whether a player tried to convince the group they are something (the Mutant, an Outsider); tokens can be removed again with `ctx::Write::remove_reminder`.
 
 A script is a JSON file in `data/scripts/<id>.json` in the standard script format (a `_meta` entry with the name, then official character ids, as strings or `{"id"}` objects), listed in `script::SCRIPTS`. Official ids are matched to `Def::id` ignoring underscores (`fortuneteller` is `fortune_teller`); unknown ids are an error listing them. Night orders are computed by sorting the script's characters by `night_order`; the minion and demon info sit at positions 6 and 9 of the first night.
 
@@ -117,6 +123,10 @@ Demons:
 - Lil' Monsta is not a player, so a poisoned or drunk babysitter still lets a player die (a deliberate reading of the rules).
 - Demon jinxes are not modelled.
 Free-form day abilities are narrowed to typed choices: the Gossip's statement and the Artist's question are "this player is this character" (the Artist is never told "I don't know"), the Savant's statements are about one other player's alignment or character (when malfunctioning, both true or both false is the opposite of one of the storyteller's two picks), and the Fisherman's advice is whom to trust. The Gossip's statement is judged at night, against the characters then. The Juggler guesses only on day 1 (not a later first day as the Juggler), always as many distinct players as they can, up to 5. The Professor and the Huntsman cannot decline while there is someone to choose. The Town Crier ignores Traveller exiles only because exiles are not modelled. The High Priestess sits at 50 / 69, right after the Spy, since the clocktower.online numbering lacks her. In the simulator's player view a revived player still looks dead.
+
+Outsiders:
+
+- the Barber's Demon cannot decline the swap, and a Barber who dies at night after its turn gives haircuts the next night. A Goon chosen by a read-only ability (Fortune Teller) makes the chooser drunk only after that ability's information. The Plague Doctor's Minion ability goes to a living Minion of the storyteller's choice (as the official jinxes do for several Minions), since the storyteller holds no abilities; with no living Minion, nothing happens. The Puzzlemaster's drunk player stays drunk while the Puzzlemaster is drunk or poisoned. The Damsel's Spy and Widow jinxes are not applied. The Lunatic's choices get no Chosen tokens (the Demon is told them). The Tinker dies only at night. The Mutant is judged once, at the end of the day. The Politician's "most responsible" is a storyteller yes/no at the end of the game.
 
 ## Simulator site
 

@@ -17,6 +17,8 @@ pub enum Message {
         character: &'static str,
     },
     Character(&'static str),
+    /// Some players, e.g. the Demon player, or whom someone chose.
+    Players(Vec<player::Id>),
     /// Several characters, e.g. which Outsiders are in play.
     Characters(Vec<&'static str>),
     /// "`count` of these players are `noun`", e.g. 1 of 3 is evil.
@@ -97,6 +99,7 @@ impl Message {
             Message::Statements(statements) => {
                 statements.iter().flat_map(Message::players).collect()
             }
+            Message::Players(players) => players.iter().collect(),
             Message::Count { .. }
             | Message::YesNo(_)
             | Message::Character(_)
@@ -128,6 +131,7 @@ impl Message {
             | Message::Player(_)
             | Message::Direction(_)
             | Message::Alignment(_)
+            | Message::Players(_)
             | Message::Winning(_)
             | Message::IsAligned { .. }
             | Message::Advice { .. } => Vec::new(),
@@ -149,6 +153,8 @@ impl fmt::Display for Message {
                 write!(f, "{a} and {b}: one is the {character}")
             }
             Message::Character(name) => f.write_str(name),
+            Message::Players(players) if players.is_empty() => f.write_str("Nobody"),
+            Message::Players(players) => f.write_str(&join(players)),
             Message::Characters(names) if names.is_empty() => f.write_str("None"),
             Message::Characters(names) => f.write_str(&join(names)),
             Message::Group {
