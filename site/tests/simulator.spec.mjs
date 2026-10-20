@@ -160,8 +160,14 @@ for (const [width, height] of [[1080, 1920], [1400, 900], [375, 667]]) {
     await page.locator("#next").click();
     await page.keyboard.press("End");
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
-    const area = page.locator("#log-area");
-    expect(await area.evaluate((e) => e.scrollTop)).toBeGreaterThan(0);
+    for (const steps of [0, 30]) {
+      for (let i = 0; i < steps; i++) await page.keyboard.press("ArrowLeft");
+      expect(await page.evaluate(() => window.scrollY)).toBe(0);
+      const area = await page.locator("#log-area").boundingBox();
+      const row = await page.locator("#log .current").boundingBox();
+      expect(row.y).toBeGreaterThanOrEqual(area.y);
+      expect(row.y + row.height).toBeLessThanOrEqual(area.y + area.height);
+    }
   });
 }
 

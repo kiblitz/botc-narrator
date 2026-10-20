@@ -231,7 +231,8 @@ function renderLog(steps) {
   // Scroll only the log panel, never the page.
   const current = log.querySelector(".current");
   const area = $("log-area");
-  if (current) area.scrollTop = current.offsetTop - area.offsetTop - area.clientHeight / 2;
+  // `#log-area` is the rows' offsetParent, so offsetTop is panel-relative.
+  if (current) area.scrollTop = current.offsetTop - area.clientHeight / 2 + current.offsetHeight / 2;
 }
 
 /** What the selected player has been told and asked so far. */
@@ -331,10 +332,12 @@ async function main() {
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
     if (e.key === "ArrowRight") e.shiftKey ? jumpPhase(1) : step(1);
     else if (e.key === "ArrowLeft") e.shiftKey ? jumpPhase(-1) : step(-1);
-    else if (e.key === " ") { e.preventDefault(); togglePlay(); }
+    else if (e.key === " ") togglePlay();
     else if (e.key === "Home") go(0);
     else if (e.key === "End") go(visibleSteps().length - 1);
     else return;
+    // These keys drive the game; don't let them also scroll the page.
+    e.preventDefault();
   });
   new ResizeObserver(sizeSeats).observe($("board"));
   const { seed, players } = fromHash();

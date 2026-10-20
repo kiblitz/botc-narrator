@@ -170,7 +170,8 @@ aside section {
   min-height: 0;
 }
 #knowledge { max-height: 40%; overflow: auto; }
-#log-area { flex: 1; overflow: auto; }
+/* position: relative makes this the log rows' offsetParent (app.js scroll math). */
+#log-area { flex: 1; overflow: auto; position: relative; }
 ol { list-style: none; margin: 0; padding: 0; }
 li { padding: 2px 4px; border-radius: 4px; cursor: pointer; }
 li:hover { background: #2a2638; }
@@ -221,4 +222,3 @@ li.future { opacity: 0.35; }
 #stepper svg { width: 18px; height: 18px; fill: currentColor; }
 #play .pause, #play.playing .play { display: none; }
 #play.playing .pause { display: inline; }
-#log-area { position: relative; }
