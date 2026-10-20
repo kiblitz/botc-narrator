@@ -1,0 +1,89 @@
+{
+  "id": "bountyhunter",
+  "name": "Bounty Hunter",
+  "kind": "townsfolk",
+  "ability": "You start knowing 1 evil player. If the player you know dies, you learn another evil player tonight. [1 Townsfolk is evil]",
+  "first_night": 46,
+  "other_nights": 64,
+  "reminders": [
+    "Known"
+  ],
+  "setup": "One Townsfolk (not the Bounty Hunter) is evil and learns so (token turned upside down). Not applied if only a Drunk believes they are the Bounty Hunter.",
+  "wakes": "First night; on other nights only if the player marked Known died since they were learned.",
+  "interaction": "The Storyteller marks an evil player with Known and points to them. The Bounty Hunter learns only that the player is evil, not their character. No choice.",
+  "drunk_or_poisoned": "May be shown a good player as Known; they then learn a new player on the night that shown player dies.",
+  "jinxes": [
+    {
+      "with": "philosopher",
+      "text": "If the Philosopher gains the Bounty Hunter ability, a Townsfolk might turn evil."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Learns only alignment, never character.",
+      "source": "https://wiki.bloodontheclocktower.com/Bounty_Hunter"
+    },
+    {
+      "text": "Can never learn the same evil player twice.",
+      "source": "https://wiki.bloodontheclocktower.com/Bounty_Hunter"
+    },
+    {
+      "text": "The evil Townsfolk created at setup may be the player the Bounty Hunter learns.",
+      "source": "https://wiki.bloodontheclocktower.com/Bounty_Hunter"
+    },
+    {
+      "text": "A Drunk-as-Bounty-Hunter gets info as normal but no evil Townsfolk is created.",
+      "source": "https://wiki.bloodontheclocktower.com/Bounty_Hunter"
+    },
+    {
+      "text": "Kazali jinx (Kazali not on these scripts): if the Kazali turns the Bounty Hunter into a Minion, no evil Townsfolk is created.",
+      "source": "https://wiki.bloodontheclocktower.com/Djinn"
+    }
+  ],
+  "building_blocks": [
+    "learn-player",
+    "setup-modifier",
+    "on-death",
+    "delayed-effect",
+    "false-info",
+    "alignment-change"
+  ],
+  "test_scenarios": [
+    {
+      "name": "first night",
+      "setup": "Alice Bounty Hunter, Bob Imp, Carol Poisoner, Dave Chef (evil Townsfolk from setup).",
+      "actions": "Night 1.",
+      "expected": "Alice is shown one of Bob, Carol, Dave; that player gets Known."
+    },
+    {
+      "name": "known dies",
+      "setup": "Alice Bounty Hunter, Known on Carol Poisoner; Dave evil Chef; Bob Imp.",
+      "actions": "Day 2: Carol executed; Night 2.",
+      "expected": "Alice wakes and learns a different evil player (Dave or Bob); never Carol again."
+    },
+    {
+      "name": "known alive, no wake",
+      "setup": "Alice Bounty Hunter, Known on Carol (alive).",
+      "actions": "Night 2.",
+      "expected": "Alice does not wake."
+    },
+    {
+      "name": "poisoned when relearning",
+      "setup": "Alice Bounty Hunter poisoned by Carol Poisoner; Known was Fred Baron who died; Gina Magician good.",
+      "actions": "Night 3.",
+      "expected": "Storyteller may show Gina; Alice next learns a player on the night Gina dies."
+    },
+    {
+      "name": "drunk bounty hunter",
+      "setup": "Eve is the Drunk believing she is the Bounty Hunter; Bob Imp.",
+      "actions": "Setup and Night 1.",
+      "expected": "No Townsfolk is made evil; Eve is shown a player (may be good)."
+    },
+    {
+      "name": "philosopher jinx",
+      "setup": "Phil Philosopher; Bob Imp; Dave Chef.",
+      "actions": "Night 1: Phil chooses Bounty Hunter.",
+      "expected": "A Townsfolk such as Dave may turn evil; Phil learns an evil player."
+    }
+  ]
+}

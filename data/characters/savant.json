@@ -1,0 +1,69 @@
+{
+  "id": "savant",
+  "name": "Savant",
+  "kind": "townsfolk",
+  "ability": "Each day, you may visit the Storyteller to learn 2 things in private: 1 is true & 1 is false.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [],
+  "setup": null,
+  "wakes": "Never at night. Each day the Savant may request one private visit.",
+  "interaction": "The Storyteller gives two statements, one true and one false, in an order that does not reveal which is which. The Savant chooses nothing.",
+  "drunk_or_poisoned": "Both statements may be true, or both false.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The Savant initiates the visit; the Storyteller does not offer it, and the Savant may skip any day.",
+      "source": "https://wiki.bloodontheclocktower.com/Savant"
+    },
+    {
+      "text": "At most one visit per day.",
+      "source": "https://wiki.bloodontheclocktower.com/Savant"
+    },
+    {
+      "text": "A drunk or poisoned Savant gets two true or two false statements.",
+      "source": "https://wiki.bloodontheclocktower.com/Savant"
+    },
+    {
+      "text": "Information should be relevant and should avoid naming the Demon outright; the Storyteller may ask the Savant to come back later.",
+      "source": "https://wiki.bloodontheclocktower.com/Savant"
+    }
+  ],
+  "building_blocks": [
+    "day-ability",
+    "false-info",
+    "storyteller-statements"
+  ],
+  "test_scenarios": [
+    {
+      "name": "one true one false",
+      "setup": "Alice Savant, Bob Imp, Carol Poisoner, Dave Chef.",
+      "actions": "Day 1: Alice visits.",
+      "expected": "Alice receives two statements, e.g. 'Carol is a Minion' (true) and 'Dave is evil' (false)."
+    },
+    {
+      "name": "skip a day",
+      "setup": "Alice Savant.",
+      "actions": "Day 1: Alice does not visit; Day 2: Alice visits.",
+      "expected": "No info on day 1; one pair of statements on day 2."
+    },
+    {
+      "name": "one visit per day",
+      "setup": "Alice Savant.",
+      "actions": "Day 1: Alice visits twice.",
+      "expected": "Second visit refused."
+    },
+    {
+      "name": "poisoned savant",
+      "setup": "Alice Savant poisoned by Carol Poisoner; Bob Imp.",
+      "actions": "Day 1: Alice visits.",
+      "expected": "Storyteller may give two false statements (or two true)."
+    },
+    {
+      "name": "drunk savant",
+      "setup": "Eve is the Drunk believing she is the Savant.",
+      "actions": "Day 2: Eve visits.",
+      "expected": "Statements need not be one true and one false."
+    }
+  ]
+}

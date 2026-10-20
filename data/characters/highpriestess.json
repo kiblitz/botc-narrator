@@ -1,0 +1,66 @@
+{
+  "id": "highpriestess",
+  "name": "High Priestess",
+  "kind": "townsfolk",
+  "ability": "Each night, learn which player the Storyteller believes you should talk to most.",
+  "first_night": 49.5,
+  "other_nights": 68.5,
+  "reminders": [],
+  "setup": null,
+  "wakes": "Every night, including the first.",
+  "interaction": "Storyteller points to one player (alive or dead, any alignment) of their own choosing. No choice by the player.",
+  "drunk_or_poisoned": "Storyteller may point to a player who would be unhelpful or misleading to talk to (any player is legal either way).",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The same player may be shown on consecutive nights, or a different one each night.",
+      "source": "https://wiki.bloodontheclocktower.com/High_Priestess"
+    },
+    {
+      "text": "Shown player may be alive or dead, good or evil.",
+      "source": "https://wiki.bloodontheclocktower.com/High_Priestess"
+    },
+    {
+      "text": "No fixed criteria: the Storyteller picks whoever would most help the High Priestess and the good team (unrevealed info, implausible evil bluff, trustworthy player needing trust, good player on the wrong track).",
+      "source": "https://wiki.bloodontheclocktower.com/High_Priestess"
+    },
+    {
+      "text": "Examples: shown a Chef with useful info, a Goblin early, a Drunk whose wrong info harms good, a Saint three nights in a row, an Imp whose story clashes.",
+      "source": "https://wiki.bloodontheclocktower.com/High_Priestess"
+    },
+    {
+      "text": "Night order: High Priestess is absent from the townsquare roles.json scale used for every other spec. The official botc-release nightsheet places her after the Spy and before the General on both nights; on the townsquare scale those are Spy 49 / General 50 (first night) and Spy 68 / General 69 (other nights), so she is given 49.5 and 68.5 to sort between them.",
+      "source": "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
+    }
+  ],
+  "building_blocks": [
+    "learn-player",
+    "false-info"
+  ],
+  "test_scenarios": [
+    {
+      "name": "first night shown",
+      "setup": "Alice High Priestess, Bob Chef, Carol Imp, Dan Baron.",
+      "actions": "Night 1: Storyteller decision picks Bob.",
+      "expected": "Alice wakes on night 1 and is shown Bob."
+    },
+    {
+      "name": "dead player legal",
+      "setup": "Alice High Priestess, Bob Saint (dead), Carol Imp.",
+      "actions": "Night 3: Storyteller decision picks Bob.",
+      "expected": "Alice is shown Bob; dead players are legal options."
+    },
+    {
+      "name": "evil player legal and repeat",
+      "setup": "Alice High Priestess, Carol Imp, Dan Chef.",
+      "actions": "Nights 2 and 3: Storyteller picks Carol both nights.",
+      "expected": "Alice is shown Carol both nights."
+    },
+    {
+      "name": "poisoned priestess",
+      "setup": "Alice High Priestess, Bob Poisoner, Carol Imp, Dan Drunk.",
+      "actions": "Night 2: Bob poisons Alice; Storyteller picks Dan.",
+      "expected": "Alice is shown Dan; every player remains a legal option."
+    }
+  ]
+}

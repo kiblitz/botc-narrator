@@ -1,0 +1,65 @@
+{
+  "id": "gambler",
+  "name": "Gambler",
+  "kind": "townsfolk",
+  "ability": "Each night*, choose a player & guess their character: if you guess wrong, you die.",
+  "first_night": null,
+  "other_nights": 10,
+  "reminders": [
+    "Dead"
+  ],
+  "setup": null,
+  "wakes": "Every night except the first.",
+  "interaction": "Points at any player (alive or dead, including themselves) and then at a character icon. Learns nothing.",
+  "drunk_or_poisoned": "A wrong guess does not kill the Gambler.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Any player may be chosen, alive or dead, including the Gambler.",
+      "source": "https://wiki.bloodontheclocktower.com/Gambler"
+    },
+    {
+      "text": "A correct guess does nothing; a wrong guess kills the Gambler. The Gambler is not told whether they were right.",
+      "source": "https://wiki.bloodontheclocktower.com/Gambler"
+    },
+    {
+      "text": "A correct guess gives no protection: the Demon may still kill the Gambler that night.",
+      "source": "https://wiki.bloodontheclocktower.com/Gambler"
+    },
+    {
+      "text": "Guesses are checked against the actual character, not a bluff: guessing Pacifist for a Devil's Advocate bluffing Pacifist is wrong.",
+      "source": "https://wiki.bloodontheclocktower.com/Gambler"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "choose-character",
+    "kill"
+  ],
+  "test_scenarios": [
+    {
+      "name": "correct guess",
+      "setup": "Alice Gambler, Bob Minstrel, Carol Imp.",
+      "actions": "Night 2: Alice chooses Bob and guesses Minstrel.",
+      "expected": "Alice survives her guess (Carol may still kill her)."
+    },
+    {
+      "name": "wrong guess",
+      "setup": "Alice Gambler, Bob Devil's Advocate (claims Pacifist), Carol Imp.",
+      "actions": "Night 2: Alice chooses Bob and guesses Pacifist.",
+      "expected": "Alice dies that night; her death is announced at dawn."
+    },
+    {
+      "name": "poisoned Gambler",
+      "setup": "Alice Gambler, Bob Poisoner, Carol Imp, Dave Chef.",
+      "actions": "Night 2: Bob poisons Alice; Alice chooses Dave and guesses Empath.",
+      "expected": "Alice does not die from the wrong guess."
+    },
+    {
+      "name": "no first-night wake",
+      "setup": "Alice Gambler, Bob Imp.",
+      "actions": "Night 1.",
+      "expected": "Alice is not woken."
+    }
+  ]
+}

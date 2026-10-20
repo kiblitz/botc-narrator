@@ -1,0 +1,81 @@
+{
+  "id": "gossip",
+  "name": "Gossip",
+  "kind": "townsfolk",
+  "ability": "Each day, you may make a public statement. Tonight, if it was true, a player dies.",
+  "first_night": null,
+  "other_nights": 38,
+  "reminders": [
+    "Dead"
+  ],
+  "setup": null,
+  "wakes": "Never; the Storyteller acts on the Gossip's behalf each night except the first.",
+  "interaction": "By day the Gossip publicly makes a definite statement. If true, that night the Storyteller chooses a player (not protected from dying) who dies.",
+  "drunk_or_poisoned": "If drunk or poisoned at night, no death. Sobriety at the time of the statement does not matter; what matters is health at night.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "A false statement causes no death.",
+      "source": "https://wiki.bloodontheclocktower.com/Gossip"
+    },
+    {
+      "text": "Mumbled, whispered or unverifiable statements do not count; it must be public and clearly the Gossip's ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Gossip"
+    },
+    {
+      "text": "A true statement made while drunk or poisoned still kills if the Gossip is sober and healthy that night.",
+      "source": "https://wiki.bloodontheclocktower.com/Gossip"
+    },
+    {
+      "text": "If the Gossip dies before night, no death occurs.",
+      "source": "https://wiki.bloodontheclocktower.com/Gossip"
+    },
+    {
+      "text": "Storyteller should prefer a target who will actually die (not protected e.g. by Fool or Tea Lady).",
+      "source": "https://wiki.bloodontheclocktower.com/Gossip"
+    }
+  ],
+  "building_blocks": [
+    "day-ability",
+    "kill",
+    "delayed-effect"
+  ],
+  "test_scenarios": [
+    {
+      "name": "true statement kills",
+      "setup": "Alice Gossip, Bob Imp, Carol Chef, Dan Empath.",
+      "actions": "Day 2: Alice says 'Bob is the Imp'. Night 2: Storyteller picks Dan.",
+      "expected": "Dan dies; announced at dawn without cause."
+    },
+    {
+      "name": "false statement",
+      "setup": "Alice Gossip, Bob Imp, Carol Chef.",
+      "actions": "Day 2: Alice says 'Carol is the Imp'. Night 2.",
+      "expected": "No Gossip death."
+    },
+    {
+      "name": "gossip executed",
+      "setup": "Alice Gossip, Bob Imp, Carol Chef.",
+      "actions": "Day 2: Alice says 'Bob is evil' (true); Alice is executed.",
+      "expected": "No Gossip death that night."
+    },
+    {
+      "name": "drunk at statement, sober at night",
+      "setup": "Alice Gossip, Bob Sailor, Carol Imp, Dan Chambermaid.",
+      "actions": "Day 2: Alice drunk via Sailor, says 'Carol is evil' (true). Sailor's drunkenness ends at dusk. Night 2: Storyteller picks Dan.",
+      "expected": "Dan dies."
+    },
+    {
+      "name": "poisoned at night",
+      "setup": "Alice Gossip, Bob Poisoner, Carol Imp.",
+      "actions": "Day 2: Alice says 'Carol is evil' (true). Night 2: Bob poisons Alice before the Gossip's turn.",
+      "expected": "No Gossip death."
+    },
+    {
+      "name": "protected target",
+      "setup": "Alice Gossip, Bob Imp, Carol Tea Lady, Dan Chef (Carol's good neighbour).",
+      "actions": "True statement; Storyteller chooses Dan, protected by Tea Lady.",
+      "expected": "Dan does not die; choosing protected players is legal but discouraged."
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "id": "huntsman",
+  "name": "Huntsman",
+  "kind": "townsfolk",
+  "ability": "Once per game, at night, choose a living player: the Damsel, if chosen, becomes a not-in-play Townsfolk. [+the Damsel]",
+  "first_night": 30,
+  "other_nights": 45,
+  "reminders": [
+    "No ability"
+  ],
+  "setup": "If the Damsel is not in play, replace one Townsfolk in the bag with the Damsel.",
+  "wakes": "Each night, including the first, until the ability is used.",
+  "interaction": "Shakes head or points to a living player. If the Damsel is chosen, the Damsel is woken and shown YOU ARE plus a not-in-play Townsfolk token of the Storyteller's choice.",
+  "drunk_or_poisoned": "Choosing the Damsel does nothing, but the ability is still spent.",
+  "jinxes": [
+    {
+      "with": "marionette",
+      "text": "If the Marionette thinks that they are the Huntsman, the Damsel was added during setup."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "If the Damsel is drunk or poisoned but the Huntsman is sober and healthy, the Damsel still becomes a Townsfolk.",
+      "source": "https://wiki.bloodontheclocktower.com/Huntsman"
+    },
+    {
+      "text": "Only one Damsel can be in play; the Damsel can be in play without the Huntsman.",
+      "source": "https://wiki.bloodontheclocktower.com/Huntsman"
+    },
+    {
+      "text": "Pointing at any player uses the ability (NO ABILITY, night token removed), whether or not it was the Damsel.",
+      "source": "https://wiki.bloodontheclocktower.com/Huntsman"
+    },
+    {
+      "text": "The new Townsfolk acts as that character from then on (e.g. becomes the Undertaker and learns who died today).",
+      "source": "https://wiki.bloodontheclocktower.com/Huntsman"
+    }
+  ],
+  "building_blocks": [
+    "setup-modifier",
+    "choose-players",
+    "once-per-game",
+    "character-change"
+  ],
+  "test_scenarios": [
+    {
+      "name": "finds the Damsel",
+      "setup": "Alice Huntsman, Bob Damsel, Carol Imp, Dave Poisoner, Eve Chef.",
+      "actions": "Night 2: Alice chooses Bob.",
+      "expected": "Bob becomes a not-in-play Townsfolk (e.g. Undertaker) and is shown YOU ARE Undertaker; Alice gets NO ABILITY."
+    },
+    {
+      "name": "wrong pick",
+      "setup": "Alice Huntsman, Bob Damsel, Carol General.",
+      "actions": "Night 2: Alice chooses Carol.",
+      "expected": "Nothing happens; Alice gets NO ABILITY and is no longer woken."
+    },
+    {
+      "name": "setup adds Damsel",
+      "setup": "7 players; bag has Huntsman but no Damsel.",
+      "actions": "Setup.",
+      "expected": "One Townsfolk token is replaced by the Damsel."
+    },
+    {
+      "name": "poisoned Huntsman",
+      "setup": "Alice Huntsman, Bob Damsel, Dave Poisoner, Carol Imp.",
+      "actions": "Night 1: Dave poisons Alice; Alice chooses Bob.",
+      "expected": "Bob stays the Damsel; Alice's ability is spent."
+    },
+    {
+      "name": "poisoned Damsel",
+      "setup": "Alice Huntsman, Bob Damsel, Dave Poisoner, Carol Imp.",
+      "actions": "Night 2: Dave poisons Bob; Alice chooses Bob.",
+      "expected": "Bob still becomes a not-in-play Townsfolk."
+    }
+  ]
+}

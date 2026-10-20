@@ -1,0 +1,66 @@
+{
+  "id": "fisherman",
+  "name": "Fisherman",
+  "kind": "townsfolk",
+  "ability": "Once per game, during the day, visit the Storyteller for some advice to help your team win.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "No ability"
+  ],
+  "setup": null,
+  "wakes": "Never at night. Once per game during the day the Fisherman may visit the Storyteller.",
+  "interaction": "The Storyteller privately gives one piece of advice (preferably what to do, e.g. 'execute X', 'trust Y') that would help the Fisherman's team win if followed. Then mark No ability.",
+  "drunk_or_poisoned": "The Storyteller may give bad advice; the ability is still spent.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The Fisherman chooses when to use it; the Storyteller chooses the advice.",
+      "source": "https://wiki.bloodontheclocktower.com/Fisherman"
+    },
+    {
+      "text": "Advice is strategy, not necessarily fact.",
+      "source": "https://wiki.bloodontheclocktower.com/Fisherman"
+    },
+    {
+      "text": "If drunk or poisoned, the Storyteller may give bad advice.",
+      "source": "https://wiki.bloodontheclocktower.com/Fisherman"
+    },
+    {
+      "text": "The Fisherman may ask for the advice to be repeated, but no extra context is added.",
+      "source": "https://wiki.bloodontheclocktower.com/Fisherman"
+    }
+  ],
+  "building_blocks": [
+    "day-ability",
+    "once-per-game",
+    "false-info",
+    "storyteller-advice"
+  ],
+  "test_scenarios": [
+    {
+      "name": "good advice",
+      "setup": "Alice Fisherman, Bob Imp, Carol Empath poisoned by Dan Poisoner.",
+      "actions": "Day 1: Alice visits.",
+      "expected": "Advice such as 'Don't trust Carol' or 'Execute Bob'; Alice gets No ability."
+    },
+    {
+      "name": "once per game",
+      "setup": "Alice Fisherman (used on day 1).",
+      "actions": "Day 3: Alice visits again.",
+      "expected": "Refused; no advice."
+    },
+    {
+      "name": "drunk fisherman",
+      "setup": "Eve is the Drunk believing she is the Fisherman; Lewis Chef (good).",
+      "actions": "Final day: Eve visits.",
+      "expected": "Storyteller may say 'Execute Lewis' (bad advice); Eve marked No ability."
+    },
+    {
+      "name": "poisoned fisherman",
+      "setup": "Alice Fisherman poisoned by Dan Poisoner; Bob Imp.",
+      "actions": "Day 2: Alice visits.",
+      "expected": "Storyteller may give advice that harms good, e.g. 'Trust Bob'."
+    }
+  ]
+}

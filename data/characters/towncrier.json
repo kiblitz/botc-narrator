@@ -1,0 +1,72 @@
+{
+  "id": "towncrier",
+  "name": "Town Crier",
+  "kind": "townsfolk",
+  "ability": "Each night*, you learn if a Minion nominated today.",
+  "first_night": null,
+  "other_nights": 58,
+  "reminders": [
+    "Minions not nominated",
+    "Minion nominated"
+  ],
+  "setup": null,
+  "wakes": "Each night except the first.",
+  "interaction": "Storyteller nods (yes) or shakes head (no) for whether any Minion nominated during the previous day. No choice is made.",
+  "drunk_or_poisoned": "May be given the wrong yes/no (misinformation), routed through the central inform mechanism.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Learns only yes/no: not which players or how many Minions nominated.",
+      "source": "https://wiki.bloodontheclocktower.com/Town_Crier"
+    },
+    {
+      "text": "Example: four players nominate, two of them Minions, nobody executed: Town Crier learns 'yes'.",
+      "source": "https://wiki.bloodontheclocktower.com/Town_Crier"
+    },
+    {
+      "text": "A Minion nominating a Traveller for exile does not count (exiles are not affected by abilities): Town Crier learns 'no'.",
+      "source": "https://wiki.bloodontheclocktower.com/Town_Crier"
+    },
+    {
+      "text": "Marker resets to 'Minions not nominated' at dawn; swapped to 'Minion nominated' when a Minion nominates. If unsure, the Storyteller may wake Minions with 'Did you nominate today?' and they must answer honestly.",
+      "source": "https://wiki.bloodontheclocktower.com/Town_Crier"
+    }
+  ],
+  "building_blocks": [
+    "learn-number",
+    "on-nominated",
+    "false-info"
+  ],
+  "test_scenarios": [
+    {
+      "name": "minion nominated",
+      "setup": "Alice Town Crier, Bob Poisoner, Carol Imp, Dan Chef, Eve Empath.",
+      "actions": "Day 1: Bob nominates Dan; Carol nominates nobody. Night 2.",
+      "expected": "Alice learns yes."
+    },
+    {
+      "name": "only demon nominated",
+      "setup": "Alice Town Crier, Bob Poisoner, Carol Imp, Dan Chef.",
+      "actions": "Day 1: Carol (Demon) and Dan nominate; Bob does not. Night 2.",
+      "expected": "Alice learns no; the Demon is not a Minion."
+    },
+    {
+      "name": "traveller exile ignored",
+      "setup": "Alice Town Crier, Bob Baron (Minion), Tom Scapegoat traveller.",
+      "actions": "Day 1: Bob calls for Tom's exile; no other nominations. Night 2.",
+      "expected": "Alice learns no."
+    },
+    {
+      "name": "first night no wake",
+      "setup": "Alice Town Crier, Bob Spy.",
+      "actions": "Night 1.",
+      "expected": "Alice does not wake."
+    },
+    {
+      "name": "poisoned gets wrong answer",
+      "setup": "Alice Town Crier, Bob Poisoner, Carol Imp.",
+      "actions": "Night 1: Bob poisons Alice. Day 1: Bob nominates. Night 2 (Alice still poisoned).",
+      "expected": "Storyteller may tell Alice no (misinformation); truthful yes also legal."
+    }
+  ]
+}

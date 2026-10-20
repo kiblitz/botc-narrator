@@ -1,0 +1,66 @@
+{
+  "id": "professor",
+  "name": "Professor",
+  "kind": "townsfolk",
+  "ability": "Once per game, at night*, choose a dead player: if they are a Townsfolk, they are resurrected.",
+  "first_night": null,
+  "other_nights": 43,
+  "reminders": [
+    "Alive",
+    "No ability"
+  ],
+  "setup": null,
+  "wakes": "Each night except the first, until the ability is used.",
+  "interaction": "Shakes head or points to a dead player. Learns nothing directly; at dawn, after deaths, the Storyteller announces any resurrected player without saying why.",
+  "drunk_or_poisoned": "No one is resurrected, and the ability is still spent.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Choosing an Outsider, Minion or Demon does nothing and still uses the ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Professor"
+    },
+    {
+      "text": "A resurrected Townsfolk regains their ability, even a used once-per-game one; they wake later that night if they act after the Professor, and a first-night-only ability is used immediately.",
+      "source": "https://wiki.bloodontheclocktower.com/Professor"
+    },
+    {
+      "text": "Actual character counts: a Lunatic who believes they are the Tea Lady is not resurrected.",
+      "source": "https://wiki.bloodontheclocktower.com/Professor"
+    },
+    {
+      "text": "A drunk Professor's ability fails and cannot be used again.",
+      "source": "https://wiki.bloodontheclocktower.com/Professor"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "once-per-game",
+    "ability-gain"
+  ],
+  "test_scenarios": [
+    {
+      "name": "resurrect Townsfolk",
+      "setup": "Alice Professor, Bob Grandmother (dead), Carol Imp.",
+      "actions": "Night 3: Alice chooses Bob.",
+      "expected": "Bob is alive again (ALIVE reminder) and wakes immediately to learn his grandchild; at dawn the town learns Bob is alive. Alice gets NO ABILITY."
+    },
+    {
+      "name": "non-Townsfolk wastes it",
+      "setup": "Alice Professor, Bob Lunatic believing Tea Lady (dead), Carol Imp.",
+      "actions": "Night 2: Alice chooses Bob.",
+      "expected": "No resurrection; Alice gets NO ABILITY and is no longer woken."
+    },
+    {
+      "name": "drunk Professor",
+      "setup": "Alice Professor drunk via Courtier, Carol Chef (dead), Dave Imp.",
+      "actions": "Night 3: Alice chooses Carol.",
+      "expected": "Carol stays dead; Alice's ability is spent."
+    },
+    {
+      "name": "decline",
+      "setup": "Alice Professor, Bob Imp.",
+      "actions": "Night 2: Alice shakes her head.",
+      "expected": "Nothing happens; Alice keeps her ability and is woken the next night."
+    }
+  ]
+}

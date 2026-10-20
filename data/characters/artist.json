@@ -1,0 +1,72 @@
+{
+  "id": "artist",
+  "name": "Artist",
+  "kind": "townsfolk",
+  "ability": "Once per game, during the day, privately ask the Storyteller any yes/no question.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "No ability"
+  ],
+  "setup": null,
+  "wakes": "Never at night. During the day the Artist may request a private conversation with the Storyteller, once per game.",
+  "interaction": "The Artist asks any question; the Storyteller answers truthfully with exactly one of yes, no or I don't know. A question that cannot be answered that way must be rephrased (does not spend the ability). Afterwards mark No ability.",
+  "drunk_or_poisoned": "The Storyteller may answer falsely (any of yes / no / I don't know); the ability is still spent.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The answer is truthful: yes, no, or I don't know.",
+      "source": "https://wiki.bloodontheclocktower.com/Artist"
+    },
+    {
+      "text": "Questions not answerable by yes/no/I don't know (e.g. 'How many Minions are alive?') must be rephrased.",
+      "source": "https://wiki.bloodontheclocktower.com/Artist"
+    },
+    {
+      "text": "'I don't know' is allowed when the answer is genuinely uncertain, e.g. 'Are we winning?' even when all Minions are dead.",
+      "source": "https://wiki.bloodontheclocktower.com/Artist"
+    },
+    {
+      "text": "The Artist initiates the conversation and it is private; afterwards the ability is gone (No ability reminder).",
+      "source": "https://wiki.bloodontheclocktower.com/Artist"
+    }
+  ],
+  "building_blocks": [
+    "day-ability",
+    "once-per-game",
+    "false-info",
+    "storyteller-answer"
+  ],
+  "test_scenarios": [
+    {
+      "name": "truthful yes",
+      "setup": "Alice Artist, Bob Imp, Carol Empath.",
+      "actions": "Day 1: Alice asks 'Is Bob the Demon?'.",
+      "expected": "Storyteller answers yes; Alice gets No ability."
+    },
+    {
+      "name": "unanswerable question",
+      "setup": "Alice Artist, Bob Imp.",
+      "actions": "Day 1: Alice asks 'How many Minions are alive?', then rephrases to 'Is exactly one Minion alive?'.",
+      "expected": "First question is rejected without spending the ability; the rephrased one is answered truthfully and the ability is spent."
+    },
+    {
+      "name": "once per game",
+      "setup": "Alice Artist (ability used on day 1).",
+      "actions": "Day 2: Alice requests another question.",
+      "expected": "Request refused; no answer given."
+    },
+    {
+      "name": "poisoned artist",
+      "setup": "Alice Artist poisoned by Dan Poisoner; Bob Imp.",
+      "actions": "Day 1: Alice asks 'Is Bob the Demon?'.",
+      "expected": "Storyteller may answer no; the ability is spent."
+    },
+    {
+      "name": "drunk artist",
+      "setup": "Eve is the Drunk believing she is the Artist; Bob Imp.",
+      "actions": "Day 1: Eve asks 'Is Bob evil?'.",
+      "expected": "Storyteller may answer any of yes/no/I don't know; Eve is marked No ability."
+    }
+  ]
+}

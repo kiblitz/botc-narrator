@@ -1,0 +1,71 @@
+{
+  "id": "snakecharmer",
+  "name": "Snake Charmer",
+  "kind": "townsfolk",
+  "ability": "Each night, choose an alive player: a chosen Demon swaps characters & alignments with you & is then poisoned.",
+  "first_night": 20,
+  "other_nights": 11,
+  "reminders": [
+    "Poisoned"
+  ],
+  "setup": null,
+  "wakes": "Every night, including the first.",
+  "interaction": "Chooses one alive player. If that player is the Demon, both are woken and shown YOU ARE with their new character token and their new alignment (thumbs up/down); otherwise nothing is learned.",
+  "drunk_or_poisoned": "Choosing the Demon does nothing: no swap occurs and the Demon is not poisoned. The Snake Charmer is not told.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "Choosing a non-Demon (e.g. the Pit-Hag) does nothing.",
+      "source": "https://wiki.bloodontheclocktower.com/Snake_Charmer"
+    },
+    {
+      "text": "On a swap, the Snake Charmer becomes the evil Demon and the old Demon becomes a good Snake Charmer marked POISONED; the poisoning persists (the token stays).",
+      "source": "https://wiki.bloodontheclocktower.com/Snake_Charmer"
+    },
+    {
+      "text": "Alignments swap to match: an evil Snake Charmer (e.g. created by the Pit-Hag) that charms the Fang Gu swaps characters and both remain evil.",
+      "source": "https://wiki.bloodontheclocktower.com/Snake_Charmer"
+    },
+    {
+      "text": "A Philosopher who gained the Snake Charmer ability and charms the Demon becomes the Demon; the old Demon becomes a poisoned Philosopher.",
+      "source": "https://wiki.bloodontheclocktower.com/Snake_Charmer"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "character-change",
+    "poison"
+  ],
+  "test_scenarios": [
+    {
+      "name": "charm the Imp",
+      "setup": "Alice Snake Charmer, Bob Imp, Carol Empath, Dave Poisoner, Eve Chef.",
+      "actions": "Night 2: Alice chooses Bob.",
+      "expected": "Alice becomes the evil Imp and Bob the good Snake Charmer with the POISONED reminder; both are shown YOU ARE and their alignment. Alice, as Imp, chooses the kill later that night."
+    },
+    {
+      "name": "miss",
+      "setup": "Alice Snake Charmer, Bob Imp, Carol Empath, Dave Poisoner.",
+      "actions": "Night 1: Alice chooses Carol.",
+      "expected": "Nothing happens; no swap and Alice learns nothing."
+    },
+    {
+      "name": "poisoned Snake Charmer",
+      "setup": "Alice Snake Charmer, Bob Imp, Dave Poisoner, Carol Empath.",
+      "actions": "Night 2: Dave poisons Alice; Alice chooses Bob.",
+      "expected": "No swap; Bob remains the healthy Imp and Alice the Snake Charmer."
+    },
+    {
+      "name": "old Demon cannot swap back",
+      "setup": "Alice Snake Charmer, Bob Imp, Carol Empath.",
+      "actions": "Night 2: Alice charms Bob. Night 3: Bob (now poisoned Snake Charmer) chooses Alice (now Imp).",
+      "expected": "Bob is poisoned, so no swap; Alice stays the Imp."
+    },
+    {
+      "name": "Vigormortis swap",
+      "setup": "Alice Snake Charmer, Bob Vigormortis, Carol Mathematician.",
+      "actions": "Night 2: Alice chooses Bob.",
+      "expected": "Alice becomes the evil Vigormortis; Bob becomes a good, poisoned Snake Charmer."
+    }
+  ]
+}

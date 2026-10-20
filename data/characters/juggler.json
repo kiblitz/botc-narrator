@@ -1,0 +1,89 @@
+{
+  "id": "juggler",
+  "name": "Juggler",
+  "kind": "townsfolk",
+  "ability": "On your 1st day, publicly guess up to 5 players' characters. That night, you learn how many you got correct.",
+  "first_night": null,
+  "other_nights": 61,
+  "reminders": [
+    "Correct"
+  ],
+  "setup": null,
+  "wakes": "Only on the night after their first day, if they made guesses.",
+  "interaction": "Day: publicly pairs up to 5 players with characters (repeats allowed). That night, the Storyteller shows the number of correct guesses with fingers.",
+  "drunk_or_poisoned": "If drunk or poisoned at night, may receive a false number. If drunk/poisoned while guessing but sober and healthy at night, gets the true count.",
+  "jinxes": [
+    {
+      "with": "cannibal",
+      "text": "If the Juggler guesses on their first day and dies by execution, tonight the living Cannibal learns how many guesses the Juggler got correct."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Learns the count that night unless they died before then.",
+      "source": "https://wiki.bloodontheclocktower.com/Juggler"
+    },
+    {
+      "text": "0 to 5 guesses; players and characters may be repeated.",
+      "source": "https://wiki.bloodontheclocktower.com/Juggler"
+    },
+    {
+      "text": "Drunk/poisoned while guessing but sober and healthy at night: true information.",
+      "source": "https://wiki.bloodontheclocktower.com/Juggler"
+    },
+    {
+      "text": "'1st day' is the Juggler's own first day: a character who becomes the Juggler later guesses on their first day as Juggler (wiki example: Savant turned Juggler by Pit-Hag).",
+      "source": "https://wiki.bloodontheclocktower.com/Juggler"
+    },
+    {
+      "text": "A guess is correct per the player's character, subject to registration (e.g. Recluse/Spy).",
+      "source": "https://wiki.bloodontheclocktower.com/Juggler"
+    }
+  ],
+  "building_blocks": [
+    "day-ability",
+    "once-per-game",
+    "learn-number",
+    "delayed-effect",
+    "false-info",
+    "registers-as"
+  ],
+  "test_scenarios": [
+    {
+      "name": "two of three",
+      "setup": "Alice Juggler, Bob Imp, Carol Chef, Dan Baron.",
+      "actions": "Day 1: Alice guesses Bob=Imp, Carol=Empath, Dan=Baron. Night 2.",
+      "expected": "Alice learns 2."
+    },
+    {
+      "name": "no guesses",
+      "setup": "Alice Juggler, Bob Imp.",
+      "actions": "Day 1: Alice makes no guesses. Night 2.",
+      "expected": "Alice does not wake."
+    },
+    {
+      "name": "juggler executed",
+      "setup": "Alice Juggler, Bob Imp, Carol Chef.",
+      "actions": "Day 1: Alice guesses Bob=Imp; Alice is executed.",
+      "expected": "Alice learns nothing."
+    },
+    {
+      "name": "cannibal jinx",
+      "setup": "Alice Juggler, Bob Cannibal, Carol Imp, Dan Chef.",
+      "actions": "Day 1: Alice guesses Carol=Imp, Dan=Chef; Alice is executed. Night 2.",
+      "expected": "Bob (alive) learns 2."
+    },
+    {
+      "name": "poisoned at night",
+      "setup": "Alice Juggler, Bob Poisoner, Carol Imp.",
+      "actions": "Day 1: Alice guesses Carol=Imp, Bob=Poisoner. Night 2: Bob poisons Alice.",
+      "expected": "Storyteller may show a false count (e.g. 0); the true 2 is also legal."
+    },
+    {
+      "name": "repeat guesses",
+      "setup": "Alice Juggler, Bob Imp.",
+      "actions": "Day 1: Alice guesses Bob=Imp twice. Night 2.",
+      "expected": "Alice learns 2."
+    }
+  ]
+}
