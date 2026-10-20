@@ -79,9 +79,9 @@ fn poisoned_chef_and_three_phases() {
 
     g.answers(&[&["Ivy"]]).run(|ctx| {
         ctx.advance_phase();
-        narrator::day_action(ctx, &p("Buffy"));
+        narrator::day_action(ctx, &p("Buffy"), &slayer::Def);
         // A second shot is ignored: the ability is used up.
-        narrator::day_action(ctx, &p("Buffy"));
+        narrator::day_action(ctx, &p("Buffy"), &slayer::Def);
     });
     expect![[r#"
         * === Day 1 ===
@@ -323,7 +323,7 @@ fn scarlet_woman_catches_the_demon_with_five_alive() {
     g.answers(&[&["Imp"]]).run(|ctx| {
         ctx.advance_phase();
         ctx.advance_phase();
-        narrator::day_action(ctx, &p("Slayer"));
+        narrator::day_action(ctx, &p("Slayer"), &slayer::Def);
     });
     expect![[r#"
         * === Night 1 ===
@@ -346,7 +346,7 @@ fn scarlet_woman_catches_the_demon_with_five_alive() {
     g.answers(&[&["Imp"]]).run(|ctx| {
         ctx.advance_phase();
         ctx.advance_phase();
-        narrator::day_action(ctx, &p("Slayer"));
+        narrator::day_action(ctx, &p("Slayer"), &slayer::Def);
     });
     assert_eq!(g.state.winner(), Some(character::Alignment::Good));
     assert_eq!(g.state.character(&p("Scarlet")).id(), "scarlet_woman");
@@ -623,7 +623,7 @@ fn poisoned_slayer_and_virgin_use_up_their_abilities_for_nothing() {
     g.answers(&[&["Slayer"]]).run(night);
     g.answers(&[&["Imp"]]).run(|ctx| {
         ctx.advance_phase();
-        narrator::day_action(ctx, &p("Slayer"));
+        narrator::day_action(ctx, &p("Slayer"), &slayer::Def);
     });
     assert!(g.state.is_alive(&p("Imp")));
     assert!(g.state.has_effect(&p("Slayer"), game::Effect::AbilityUsed));

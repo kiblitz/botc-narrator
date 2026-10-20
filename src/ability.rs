@@ -307,10 +307,15 @@ pub fn has_mark(
         .any(|r| &r.placed_by == me && r.source == source.id() && r.effect == effect)
 }
 
-/// A once-per-game ability: if `me` has not used it, mark it used (even when
-/// malfunctioning, as the rules say) and return true.
+/// Whether `me` has used `source`'s once-per-game ability.
+pub fn used(state: &game::State, me: &player::Id, source: character::Ref) -> bool {
+    has_mark(state, me, source, me, game::Effect::AbilityUsed)
+}
+
+/// A once-per-game ability: if `me` has not used `source`'s ability, mark it
+/// used (even when malfunctioning, as the rules say) and return true.
 pub fn use_once(ctx: &mut ctx::Write<'_>, me: &player::Id, source: character::Ref) -> bool {
-    if ctx.state().has_effect(me, game::Effect::AbilityUsed) {
+    if used(ctx.state(), me, source) {
         return false;
     }
     let reminder = game::Reminder::new(source, me, game::Effect::AbilityUsed, game::Expiry::Never);

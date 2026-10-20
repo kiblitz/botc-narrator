@@ -32,6 +32,7 @@ impl character::Def for Def {
         if me != dead
             && state.is_alive(me)
             && demon.kind() == character::Kind::Demon
+            && !state.demon_alive()
             && alive_before_death >= 5
             && !state.is_malfunctioning(me)
         {

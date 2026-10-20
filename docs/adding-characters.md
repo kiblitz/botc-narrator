@@ -65,7 +65,7 @@ Override only the hooks the ability uses (the full list is in the README,
 | how many are evil | `count_evil`, `alive_neighbours`, `groups` |
 | choose players / a character | `ctx.ask`, `ctx.ask_one`, `ctx.ask_character` |
 | protect / poison / any token | `mark(ctx, me, &Def, target, effect, expiry)`, `has_mark` |
-| once per game | `use_once(ctx, me, &Def)` |
+| once per game | `use_once(ctx, me, &Def)`, `used` |
 | kill | `kill(ctx, me, target)`; the demon's attack: `demon_attack` |
 | storyteller choices | `storyteller_agrees`, `storyteller_picks_player`, `storyteller_picks_character` |
 | setup modifier | `setup_counts` with `setup::Counts::shift_outsiders` / `with` |
@@ -73,7 +73,9 @@ Override only the hooks the ability uses (the full list is in the README,
 | madness | `game::Effect::Mad(name)` + `on_madness_broken` |
 | "died today" | `died_today` |
 | becomes another character / alignment | `ctx.transform`, `ctx.set_alignment`, `ctx.set_believed` |
-| gains or loses an ability | `ctx.gain_ability`, `ctx.lose_ability` |
+| gains or loses an ability | `ctx.gain_ability`, `ctx.lose_ability` (acts the same night if its turn is still to come) |
+| alternate demon / forced false info | hooks `counts_as_demon`, `forces_false_info` |
+| day ability | hook `day_action`; the simulator offers every unused one each day |
 
 ## Worked examples
 

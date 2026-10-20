@@ -215,6 +215,24 @@ pub trait Def: Sync {
     fn misregistration(&self) -> Option<Misregistration> {
         None
     }
+
+    /// Whether a living holder of this ability keeps evil in the game: good
+    /// wins when no living player has one. Demons by default; a character
+    /// that carries the demon (Lil' Monsta) gains such an ability.
+    fn counts_as_demon(&self) -> bool {
+        self.kind() == Kind::Demon
+    }
+
+    /// Whether `receiver`'s information must be false while `me` (living and
+    /// functioning) has this ability (the Vortox: Townsfolk get false info).
+    fn forces_false_info(
+        &self,
+        _state: &game::State,
+        _me: &player::Id,
+        _receiver: &player::Id,
+    ) -> bool {
+        false
+    }
 }
 
 pub type Ref = &'static dyn Def;

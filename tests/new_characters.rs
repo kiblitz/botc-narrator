@@ -288,3 +288,76 @@ fn poisoned_godfather_may_learn_false_outsiders_and_kills_nobody() {
     });
     assert!(g.state.is_alive(&p("Chef")));
 }
+
+#[test]
+fn the_scarlet_woman_does_not_catch_a_jumping_fang_gu() {
+    let mut g = common::Game::new(&[
+        ("Fang", &characters::fang_gu::Def),
+        ("Scarlet", &characters::scarlet_woman::Def),
+        ("Saint", &characters::saint::Def),
+        ("Chef", &characters::chef::Def),
+        ("Monk", &characters::monk::Def),
+        ("Mayor", &characters::mayor::Def),
+    ]);
+    g.run(|ctx| {
+        ctx.advance_phase();
+        ctx.advance_phase();
+        ctx.advance_phase();
+    })
+    .answers(&[&["Saint"]])
+    .run(|ctx| narrator::run_order(ctx, &[&characters::fang_gu::Def], 2));
+    assert_eq!(g.state.character(&p("Saint")).id(), "fang_gu");
+    assert_eq!(g.state.character(&p("Scarlet")).id(), "scarlet_woman");
+}
+
+#[test]
+fn a_monk_protected_outsider_stops_the_jump() {
+    let mut g = fang_gu_game();
+    g.run(|ctx| {
+        ctx.advance_phase();
+        ctx.advance_phase();
+        ctx.advance_phase();
+    })
+    .answers(&[&["Saint"], &["Saint"]])
+    .run(|ctx| narrator::run_order(ctx, &[&characters::monk::Def, &characters::fang_gu::Def], 2));
+    assert_eq!(g.state.character(&p("Saint")).id(), "saint");
+    assert!(g.state.is_alive(&p("Saint")) && g.state.is_alive(&p("Fang")));
+}
+
+#[test]
+fn the_godfather_never_removes_missing_outsiders() {
+    for players in [5, 7, 10, 13] {
+        let counts = setup::Counts::base(players);
+        let options = character::Def::setup_counts(&characters::godfather::Def, counts);
+        assert_eq!(
+            options,
+            vec![counts.shift_outsiders(1)],
+            "{players} players"
+        );
+    }
+}
+
+#[test]
+fn fang_gu_jumps_into_a_recluse_only_if_it_registers_as_an_outsider() {
+    let mut g = common::Game::new(&[
+        ("Fang", &characters::fang_gu::Def),
+        ("Baron", &characters::baron::Def),
+        ("Recluse", &characters::recluse::Def),
+        ("Chef", &characters::chef::Def),
+        ("Monk", &characters::monk::Def),
+        ("Mayor", &characters::mayor::Def),
+    ]);
+    g.run(|ctx| {
+        narrator::setup(ctx, &script());
+        ctx.advance_phase();
+        ctx.advance_phase();
+        ctx.advance_phase();
+    })
+    .quiet()
+    // The Recluse's options: Outsider (true), then "not an Outsider".
+    .picks(&[&[1]])
+    .answers(&[&["Recluse"]])
+    .run(|ctx| narrator::run_order(ctx, &[&characters::fang_gu::Def], 2));
+    assert_eq!(g.state.character(&p("Recluse")).id(), "recluse");
+    assert!(!g.state.is_alive(&p("Recluse")), "{}", g.transcript());
+}

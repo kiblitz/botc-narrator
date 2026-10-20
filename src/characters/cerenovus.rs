@@ -60,9 +60,6 @@ fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
     let (Some(target), Some(about)) = (target, about) else {
         return;
     };
-    if ctx.state().is_malfunctioning(me) {
-        return;
-    }
     let mad = game::Effect::Mad(about.name());
     ability::mark(ctx, me, &Def, &target, mad, game::Expiry::Dusk);
     ctx.wake(&target);

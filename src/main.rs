@@ -55,7 +55,7 @@ fn main() {
                 if day == 1
                     && let Some(slayer) = ctx.state().find("slayer").cloned()
                 {
-                    narrator::day_action(&mut ctx, &slayer);
+                    narrator::day_action(&mut ctx, &slayer, &slayer::Def);
                 }
                 let alive = ctx.state().alive_ids();
                 if let (Some(nominator), Some(nominee)) =

@@ -200,7 +200,7 @@ fn a_drunk_soldier_dies_to_the_demon_and_a_drunk_slayer_shoots_blanks() {
     g.run(|ctx| ctx.set_believed(&p("Drunk"), Some(&characters::slayer::Def)))
         .answers(&[&["Imp"]])
         .quiet()
-        .run(|ctx| narrator::day_action(ctx, &p("Drunk")));
+        .run(|ctx| narrator::day_action(ctx, &p("Drunk"), &characters::slayer::Def));
     expect![[r#"
         * Drunk (slayer) marks Drunk: AbilityUsed
           Drunk? Who do you want to slay? => Imp
@@ -270,7 +270,7 @@ fn the_slayer_kills_a_recluse_registering_as_the_demon() {
     // Options: not a Demon (true), then the in-play Imp.
     g.picks(&[&[1]])
         .answers(&[&["Recluse"]])
-        .run(|ctx| narrator::day_action(ctx, &p("Slayer")));
+        .run(|ctx| narrator::day_action(ctx, &p("Slayer"), &characters::slayer::Def));
     expect![[r#"
         * Slayer (slayer) marks Slayer: AbilityUsed
           Slayer? Who do you want to slay? => Recluse
@@ -1015,4 +1015,151 @@ fn registry_ids_are_unique() {
             );
         }
     }
+}
+
+/// Gives the Monk the Empath ability when it acts (a Philosopher-like gain
+/// in the middle of the night).
+struct Gifter;
+
+impl character::Def for Gifter {
+    fn id(&self) -> &'static str {
+        "test_gifter"
+    }
+    fn name(&self) -> &'static str {
+        "Gifter"
+    }
+    fn kind(&self) -> character::Kind {
+        character::Kind::Townsfolk
+    }
+    fn night_action(&self) -> Option<character::NightAction> {
+        Some(character::NightAction::ReadWrite(|ctx, _me, _night| {
+            ctx.gain_ability(&p("Monk"), &characters::empath::Def);
+        }))
+    }
+}
+
+#[test]
+fn an_ability_gained_earlier_tonight_acts_at_its_turn() {
+    let mut g = common::Game::new(&[
+        ("Imp", &characters::imp::Def),
+        ("Gifter", &Gifter),
+        ("Monk", &characters::monk::Def),
+    ]);
+    g.run(|ctx| narrator::run_order(ctx, &[&Gifter, &characters::empath::Def], 1));
+    assert!(g.transcript().contains("wake Monk"));
+}
+
+/// Vortox-like: Townsfolk information is always false.
+struct Liar;
+
+impl character::Def for Liar {
+    fn id(&self) -> &'static str {
+        "test_liar"
+    }
+    fn name(&self) -> &'static str {
+        "Liar"
+    }
+    fn kind(&self) -> character::Kind {
+        character::Kind::Demon
+    }
+    fn forces_false_info(
+        &self,
+        state: &game::State,
+        _me: &player::Id,
+        receiver: &player::Id,
+    ) -> bool {
+        state.kind(receiver) == character::Kind::Townsfolk
+    }
+}
+
+#[test]
+fn an_ability_can_force_false_information() {
+    let mut g = common::Game::new(&[
+        ("Liar", &Liar),
+        ("Empath", &characters::empath::Def),
+        ("Chef", &characters::chef::Def),
+    ]);
+    g.run(|ctx| narrator::run_order(ctx, &[&characters::empath::Def], 1));
+    let log = g.transcript();
+    assert!(log.contains("(false)"), "{log}");
+    assert!(!log.contains("-> Empath: 1 evil"), "{log}");
+}
+
+/// Carries the demon without being one (Lil' Monsta-like).
+struct Carrier;
+
+impl character::Def for Carrier {
+    fn id(&self) -> &'static str {
+        "test_carrier"
+    }
+    fn name(&self) -> &'static str {
+        "Carrier"
+    }
+    fn kind(&self) -> character::Kind {
+        character::Kind::Minion
+    }
+    fn counts_as_demon(&self) -> bool {
+        true
+    }
+}
+
+#[test]
+fn a_living_demon_carrier_keeps_the_game_going() {
+    let mut g = common::Game::new(&[
+        ("Baron", &characters::baron::Def),
+        ("Chef", &characters::chef::Def),
+        ("Monk", &characters::monk::Def),
+        ("Mayor", &characters::mayor::Def),
+    ]);
+    g.run(|ctx| {
+        ctx.gain_ability(&p("Baron"), &Carrier);
+        ctx.execute(&p("Chef"));
+    });
+    assert_eq!(g.state.winner(), None);
+    g.run(|ctx| {
+        ctx.execute(&p("Baron"));
+    });
+    assert_eq!(g.state.winner(), Some(character::Alignment::Good));
+}
+
+#[test]
+fn every_demon_learns_the_team_and_the_same_bluffs() {
+    let mut g = common::Game::new(&[
+        ("Imp", &characters::imp::Def),
+        ("Imp2", &characters::imp::Def),
+        ("Chef", &characters::chef::Def),
+        ("Monk", &characters::monk::Def),
+        ("Mayor", &characters::mayor::Def),
+        ("Empath", &characters::empath::Def),
+        ("Slayer", &characters::slayer::Def),
+    ]);
+    g.run(|ctx| narrator::demon_info(ctx, &common::trouble_brewing()));
+    let log = g.transcript();
+    assert_eq!(
+        log.matches("-> Imp2: Bluffs: Washerwoman, Librarian, Investigator")
+            .count(),
+        1,
+        "{log}"
+    );
+    assert_eq!(log.matches("demon bluffs").count(), 1, "{log}");
+}
+
+#[test]
+fn the_spy_may_misregister_as_any_script_character() {
+    let mut g = common::Game::new(&[
+        ("Imp", &characters::imp::Def),
+        ("Spy", &characters::spy::Def),
+        ("Wash", &characters::washerwoman::Def),
+        ("Chef", &characters::chef::Def),
+    ]);
+    g.run(|ctx| ctx.set_script(common::trouble_brewing().characters))
+        .run(|ctx| {
+            let as_townsfolk = ctx.registers_as(&p("Wash"), &p("Spy"), character::Kind::Townsfolk);
+            assert!(as_townsfolk.is_none());
+        });
+    // 13 Townsfolk on the script, plus "not a Townsfolk".
+    assert!(
+        g.transcript()
+            .contains("[1 of 14 options] how Spy registers to Wash")
+    );
 }

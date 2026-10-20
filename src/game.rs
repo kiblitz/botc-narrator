@@ -346,6 +346,14 @@ impl State {
             || self.has_effect(id, Effect::Drunk)
     }
 
+    /// Whether a living player has an ability that counts as the demon
+    /// (`character::Def::counts_as_demon`): good wins when none does.
+    pub fn demon_alive(&self) -> bool {
+        self.seats
+            .iter()
+            .any(|p| p.alive && self.abilities(&p.id).iter().any(|c| c.counts_as_demon()))
+    }
+
     /// The first seated player with this character.
     pub fn find(&self, character_id: &str) -> Option<&player::Id> {
         self.seats
@@ -422,7 +430,9 @@ impl State {
     pub(crate) fn place_reminder(&mut self, target: &player::Id, reminder: Reminder) {
         for p in &mut self.seats {
             p.reminders.retain(|r| {
-                r.placed_by != reminder.placed_by || !r.effect.same_token(reminder.effect)
+                r.placed_by != reminder.placed_by
+                    || r.source != reminder.source
+                    || !r.effect.same_token(reminder.effect)
             });
         }
         self.player_mut(target).reminders.push(reminder);

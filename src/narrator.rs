@@ -101,14 +101,10 @@ pub fn minion_info(ctx: &mut ctx::Write<'_>) {
 
 /// The demon learns who is evil and three not-in-play good characters to bluff.
 pub fn demon_info(ctx: &mut ctx::Write<'_>, script: &script::Script) {
-    let Some(demon) = ctx
-        .state()
-        .alive_of_kind(character::Kind::Demon)
-        .into_iter()
-        .next()
-    else {
+    let demons = ctx.state().alive_of_kind(character::Kind::Demon);
+    if demons.is_empty() {
         return;
-    };
+    }
     let not_in_play: Vec<&'static str> = script
         .characters
         .iter()
@@ -122,64 +118,69 @@ pub fn demon_info(ctx: &mut ctx::Write<'_>, script: &script::Script) {
         .collect();
     let team = evil_team(ctx.state());
     let mut read = ctx.read();
-    read.wake(&demon);
-    read.tell(&demon, &team);
-    let bluffs = read.choose(storyteller::Reason::DemonBluffs, not_in_play, 3, |name| {
-        storyteller::Choice::Character(name)
-    });
-    read.tell(&demon, &info::Message::Bluffs(bluffs));
-    read.sleep(&demon);
+    // Every demon learns the same bluffs, chosen once.
+    let mut bluffs: Option<Vec<&'static str>> = None;
+    for demon in &demons {
+        read.wake(demon);
+        read.tell(demon, &team);
+        let shown = bluffs.get_or_insert_with(|| {
+            read.choose(
+                storyteller::Reason::DemonBluffs,
+                not_in_play.clone(),
+                3,
+                |name| storyteller::Choice::Character(name),
+            )
+        });
+        read.tell(demon, &info::Message::Bluffs(shown.clone()));
+        read.sleep(demon);
+    }
 }
 
 /// Runs night actions in order. Consecutive read-only actions are announced
-/// to the table as one batch; read-write actions are sync points. Every
-/// player with the ability acts (`game::State::abilities`) if it
-/// `wakes_tonight` when their turn comes.
+/// to the table as one batch; read-write actions are sync points. When a
+/// character's turn comes, every player who has its ability then
+/// (`game::State::abilities`, so abilities gained or lost earlier tonight
+/// count) acts if it `wakes_tonight`.
 pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32) {
-    let mut steps: Vec<Step> = Vec::new();
-    for c in order {
-        let Some(action) = c.night_action() else {
-            continue;
-        };
-        let holders: Vec<player::Id> = ctx
-            .state()
-            .players()
-            .iter()
-            .filter(|p| ctx.state().has_ability(&p.id, c.id()))
-            .map(|p| p.id.clone())
-            .collect();
-        for id in holders {
-            match (action, steps.last_mut()) {
-                (character::NightAction::ReadOnly(f), Some(Step::Reads(batch))) => {
-                    batch.push((*c, id, f))
-                }
-                (character::NightAction::ReadOnly(f), _) => {
-                    steps.push(Step::Reads(vec![(*c, id, f)]))
-                }
-                (character::NightAction::ReadWrite(f), _) => steps.push(Step::Write(*c, id, f)),
-            }
-        }
-    }
-    for step in steps {
+    let mut i = 0;
+    while i < order.len() {
         if ctx.state().winner().is_some() {
             return;
         }
-        match step {
-            Step::Write(c, id, f) => {
-                if c.wakes_tonight(ctx.state(), &id) {
-                    f(ctx, &id, night);
+        let c = order[i];
+        i += 1;
+        match c.night_action() {
+            None => {}
+            Some(character::NightAction::ReadWrite(f)) => {
+                for id in acting(ctx.state(), c) {
+                    if ctx.state().winner().is_none() && ctx.state().has_ability(&id, c.id()) {
+                        f(ctx, &id, night);
+                    }
                 }
             }
-            Step::Reads(batch) => {
-                let batch: Vec<_> = batch
+            Some(character::NightAction::ReadOnly(f)) => {
+                // Read-only actions cannot change who acts: gather the run.
+                let mut batch: Vec<(player::Id, character::ReadOnlyFn)> = acting(ctx.state(), c)
                     .into_iter()
-                    .filter(|(c, id, _)| c.wakes_tonight(ctx.state(), id))
+                    .map(|id| (id, f))
                     .collect();
+                // Characters nobody acts for do not interrupt the run.
+                while let Some(next) = order.get(i) {
+                    let actors = acting(ctx.state(), *next);
+                    match next.night_action() {
+                        Some(character::NightAction::ReadOnly(g)) => {
+                            batch.extend(actors.into_iter().map(|id| (id, g)))
+                        }
+                        Some(character::NightAction::ReadWrite(_)) if !actors.is_empty() => break,
+                        _ => {}
+                    }
+                    i += 1;
+                }
                 let announce = batch.len() > 1;
                 if announce {
                     ctx.io().batch_started(batch.len());
                 }
-                for (_, id, f) in batch {
+                for (id, f) in batch {
                     f(&mut ctx.read(), &id, night);
                 }
                 if announce {
@@ -190,19 +191,22 @@ pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32)
     }
 }
 
-enum Step {
-    Write(character::Ref, player::Id, character::ReadWriteFn),
-    Reads(Vec<(character::Ref, player::Id, character::ReadOnlyFn)>),
+/// Players who have `c`'s ability now and wake for it tonight, in seat order.
+fn acting(state: &game::State, c: character::Ref) -> Vec<player::Id> {
+    state
+        .seat_order()
+        .into_iter()
+        .filter(|id| state.has_ability(id, c.id()) && c.wakes_tonight(state, id))
+        .collect()
 }
 
-/// The player uses their day ability (the Slayer's shot), if they have one.
-pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id) {
-    let action = ctx
-        .state()
-        .abilities(player)
-        .into_iter()
-        .find_map(|c| c.day_action());
-    if let Some(f) = action {
+/// The player uses `ability`'s day action (the Slayer's shot), if it has one
+/// and they have the ability.
+pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id, ability: character::Ref) {
+    if !ctx.state().has_ability(player, ability.id()) {
+        return;
+    }
+    if let Some(f) = ability.day_action() {
         f(ctx, player);
     }
 }

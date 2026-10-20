@@ -142,11 +142,15 @@ impl<'a> Read<'a> {
         misinformation: Vec<info::Message>,
     ) {
         let malfunctioning = self.state.is_malfunctioning(player);
-        let mut options: Vec<(info::Message, bool)> =
-            truthful.into_iter().map(|m| (m, true)).collect();
-        if malfunctioning {
+        let must_lie = !misinformation.is_empty() && self.forced_false(player);
+        let mut options: Vec<(info::Message, bool)> = if must_lie {
+            Vec::new()
+        } else {
+            truthful.iter().cloned().map(|m| (m, true)).collect()
+        };
+        if malfunctioning || must_lie {
             for message in misinformation {
-                if !options.iter().any(|(m, _)| *m == message) {
+                if !options.iter().any(|(m, _)| *m == message) && !truthful.contains(&message) {
                     options.push((message, false));
                 }
             }
@@ -253,6 +257,19 @@ impl<'a> Read<'a> {
         })
     }
 
+    /// Whether a living, functioning player's ability forces `receiver`'s
+    /// information to be false (`character::Def::forces_false_info`).
+    fn forced_false(&self, receiver: &player::Id) -> bool {
+        self.state.alive_ids().iter().any(|id| {
+            !self.state.is_malfunctioning(id)
+                && self
+                    .state
+                    .abilities(id)
+                    .iter()
+                    .any(|c| c.forces_false_info(self.state, id, receiver))
+        })
+    }
+
     /// How `target` may misregister: never while malfunctioning.
     fn misregistration(&self, target: &player::Id) -> Option<character::Misregistration> {
         if self.state.is_malfunctioning(target) {
@@ -261,8 +278,18 @@ impl<'a> Read<'a> {
         self.state.character(target).misregistration()
     }
 
-    /// Distinct in-play characters of `kind`, in seat order.
+    /// Characters of `kind` a player may misregister as: those on the script,
+    /// or the in-play ones when no script is recorded.
     fn in_play(&self, kind: character::Kind) -> Vec<character::Ref> {
+        if !self.state.script().is_empty() {
+            return self
+                .state
+                .script()
+                .iter()
+                .copied()
+                .filter(|c| c.kind() == kind)
+                .collect();
+        }
         let mut characters: Vec<character::Ref> = Vec::new();
         for p in self.state.players() {
             if p.character.kind() == kind
@@ -525,12 +552,7 @@ impl<'a> Write<'a> {
 
     /// Good wins when no demon lives; evil wins when two players remain.
     pub fn check_win(&mut self) {
-        if !self
-            .state
-            .players()
-            .iter()
-            .any(|p| p.alive && p.character.kind() == character::Kind::Demon)
-        {
+        if !self.state.demon_alive() {
             self.win(character::Alignment::Good);
         } else if self.state.alive_ids().len() <= 2 {
             self.win(character::Alignment::Evil);

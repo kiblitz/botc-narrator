@@ -14,6 +14,7 @@ use rand::seq::SliceRandom;
 use rand::seq::index;
 use serde::Serialize;
 
+use crate::ability;
 use crate::character;
 use crate::ctx;
 use crate::event;
@@ -29,8 +30,8 @@ use crate::table;
 pub const MIN_PLAYERS: usize = setup::MIN_PLAYERS;
 pub const MAX_PLAYERS: usize = setup::MAX_PLAYERS;
 const MAX_DAYS: u32 = 12;
-/// Chance the Slayer shoots on a given day.
-const SLAYER_SHOOTS: f64 = 0.35;
+/// Chance a player uses an unused day ability (the Slayer's shot) on a given day.
+const DAY_ACTION: f64 = 0.35;
 /// Chance the demon picks any player (possibly themself: a starpass) instead of
 /// a good player.
 const DEMON_WILD_PICK: f64 = 0.05;
@@ -478,21 +479,20 @@ pub fn simulate(seed: u64, players: usize, script: &script::Script) -> Trace {
     }
 }
 
-/// A day: maybe a Slayer shot (by anyone who believes they are the Slayer),
-/// then nominations and a majority vote.
+/// A day: maybe day abilities (the Slayer's shot, also by a Drunk who
+/// believes they are the Slayer), then nominations and a majority vote.
 fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
-    let slayers: Vec<player::Id> = ctx
-        .state()
-        .alive_ids()
+    let holders: Vec<(player::Id, character::Ref)> = ctx
+        .living_abilities()
         .into_iter()
-        .filter(|p| ctx.state().has_ability(p, "slayer"))
+        .filter(|(_, ability)| ability.day_action().is_some())
         .collect();
-    for slayer in slayers {
-        if ctx.state().is_alive(&slayer)
-            && !ctx.state().has_effect(&slayer, game::Effect::AbilityUsed)
-            && rng.random_bool(SLAYER_SHOOTS)
+    for (player, ability) in holders {
+        if ctx.state().is_alive(&player)
+            && !ability::used(ctx.state(), &player, ability)
+            && rng.random_bool(DAY_ACTION)
         {
-            narrator::day_action(ctx, &slayer);
+            narrator::day_action(ctx, &player, ability);
         }
     }
     let mut best: Option<(player::Id, usize)> = None;

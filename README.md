@@ -34,7 +34,7 @@ Info abilities don't handle poisoning themselves. They call `ctx::Read::inform(p
 
 ### Registration
 
-Info abilities never read other players' alignment or character from the grimoire directly: they ask `ctx::Read::registers_evil` / `registered_alignment`, `registered_character` and `registers_as(asker, target, kind)`. A character that may register falsely says so with `character::Def::misregistration` (the Recluse as an evil Minion or Demon, the Spy as a good Townsfolk or Outsider). The storyteller decides each query (`Reason::Registration`, the truthful answer first), and is only asked when a misregistration would change the answer; a malfunctioning character registers truly. The Fortune Teller's red herring is a reminder token chosen at setup.
+Info abilities never read other players' alignment or character from the grimoire directly: they ask `ctx::Read::registers_evil` / `registered_alignment`, `registered_character` and `registers_as(asker, target, kind)`. A character that may register falsely says so with `character::Def::misregistration` (the Recluse as an evil Minion or Demon, the Spy as a good Townsfolk or Outsider). The storyteller decides each query (`Reason::Registration`, the truthful answer first), and is only asked when a misregistration would change the answer; a malfunctioning character registers truly. Misregistration may be as any script character of the allowed kinds. The Fortune Teller's red herring is a reminder token chosen at setup.
 
 ### Read vs write
 
@@ -56,7 +56,7 @@ Night actions are tagged `NightAction::ReadOnly` (gets `ctx::Read`, which cannot
 Each player also has:
 
 - a **believed character** (`Player::believes`): what they were told they are, when it is not their real character. The Drunk is told a not-in-play Townsfolk at setup; they wake and act as it, but a player who believes a character they are not is malfunctioning, so its ability never works and their information may be false.
-- **abilities** (`State::abilities`): their own character's (unless lost), the believed character's and any gained ones (`ctx::Write::gain_ability` / `lose_ability`). Night actions and every player hook run for each ability, so a gained ability wakes in its own place in the night order.
+- **abilities** (`State::abilities`): their own character's (unless lost), the believed character's and any gained ones (`ctx::Write::gain_ability` / `lose_ability`). Night actions and every player hook run for each ability; who acts is decided when each character's turn comes, so an ability gained earlier that night wakes in its own place in the night order. Once-per-game and other tokens are kept per ability (`source`).
 - an **alignment** set at seating (`game::Seat`): the character's, or chosen for a Traveller.
 
 Character kinds are Townsfolk, Outsider, Minion, Demon, **Traveller** (seated, chosen alignment, outside the setup counts) and **Fabled** (storyteller-side: `ctx::Write::add_fabled`, never seated).
@@ -77,6 +77,8 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `on_executed`, `intercept_death`, `on_death` | executions, preventing or redirecting any death, reacting to deaths |
 | `on_madness_broken` | a player this ability made mad broke madness (`narrator::check_madness`, judged by the table) |
 | `misregistration` | how it may register falsely |
+| `counts_as_demon` | whether a living holder keeps evil in the game (good wins when none lives; a Lil' Monsta-like carrier gains such an ability) |
+| `forces_false_info` | makes other players' information false (Vortox) |
 
 Extra deaths at other times are plain `ctx::Write::kill` calls from any hook.
 
@@ -86,7 +88,7 @@ A script is a JSON file in `data/scripts/<id>.json` in the standard script forma
 
 ### Not yet modelled
 
-Butler voting restriction, nomination/voting rules, and reminder tokens in the Spy's grimoire view. Misinformation for "one of these two is the X", and misregistration, only offer characters in play, not the whole script. The Saint's loss fires on execution before any ability can prevent the death. The simulator's player view shows a Drunk their real character (it does not read `believes` yet). The Fang Gu's jump only notices Monk protection (other ways an Outsider would survive still let it jump). A Cerenovus execution is judged once, at the end of the day.
+Butler voting restriction, nomination/voting rules, and reminder tokens in the Spy's grimoire view. Misinformation for "one of these two is the X" only offers characters in play, not the whole script. Abilities cannot yet modify votes (vote weight, dead votes, Butler); a believed character makes every ability of that player malfunction (right for the Drunk, not for a Lunatic who gains another ability); nothing can veto a win. The Saint's loss fires on execution before any ability can prevent the death. The simulator's player view shows a Drunk their real character (it does not read `believes` yet). The Fang Gu's jump only notices Monk protection (other ways an Outsider would survive still let it jump). A Cerenovus execution is judged once, at the end of the day.
 
 ## Simulator site
 

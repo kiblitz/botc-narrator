@@ -209,10 +209,15 @@ fn decisions_carry_the_players_and_characters_they_chose() {
     let step = trace
         .steps
         .iter()
-        .find(|s| s.kind == sim::Kind::Decision && s.text.contains("one is the Spy"))
+        .find(|s| s.kind == sim::Kind::Decision && s.text.contains("(Investigator)"))
         .expect("investigator decision");
-    assert_eq!(step.players, ["Dev", "Esme"]);
-    assert_eq!(step.characters, ["Spy"]);
+    // "A and B: one is the X": both players and the character are carried.
+    assert_eq!(step.players.len(), 2, "{}", step.text);
+    assert_eq!(step.characters.len(), 1, "{}", step.text);
+    for name in &step.players {
+        assert!(step.text.contains(name.as_str()), "{}", step.text);
+    }
+    assert!(step.text.contains(step.characters[0]), "{}", step.text);
     let bluffs = trace
         .steps
         .iter()

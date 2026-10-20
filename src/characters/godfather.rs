@@ -43,7 +43,11 @@ impl character::Def for Def {
 
     /// [-1 or +1 Outsider]
     fn setup_counts(&self, counts: setup::Counts) -> Vec<setup::Counts> {
-        vec![counts.shift_outsiders(-1), counts.shift_outsiders(1)]
+        let mut options = vec![counts.shift_outsiders(1)];
+        if counts.outsiders > 0 {
+            options.push(counts.shift_outsiders(-1));
+        }
+        options
     }
 }
 
@@ -51,16 +55,18 @@ impl character::Def for Def {
 /// player tonight: they die.
 fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, night: u32) {
     if night == 1 {
-        let state = ctx.state();
-        let names = |cs: Vec<character::Ref>| cs.iter().map(|c| c.name()).collect::<Vec<_>>();
-        let in_play: Vec<character::Ref> = state
-            .players()
-            .iter()
-            .map(|p| p.character)
-            .filter(|c| c.kind() == character::Kind::Outsider)
-            .collect();
-        let truthful = vec![info::Message::Characters(names(in_play))];
-        let misinformation: Vec<info::Message> = state
+        let others = ability::others(ctx.state(), me);
+        let mut in_play: Vec<&'static str> = Vec::new();
+        for p in &others {
+            if let Some(c) = ctx.registers_as(me, p, character::Kind::Outsider)
+                && !in_play.contains(&c.name())
+            {
+                in_play.push(c.name());
+            }
+        }
+        let truthful = vec![info::Message::Characters(in_play)];
+        let misinformation: Vec<info::Message> = ctx
+            .state()
             .script()
             .iter()
             .filter(|c| c.kind() == character::Kind::Outsider)
