@@ -279,6 +279,13 @@ fn imp_starpass_passes_to_chosen_minion() {
     "#]]
     .assert_eq(&g.transcript());
     assert_eq!(g.state.winner(), None);
+
+    // The new Imp (seated after the dead one) kills on the following night.
+    g.run(|ctx| {
+        ctx.advance_phase();
+    });
+    g.answers(&[&["Chef"], &["Empath"]]).quiet().run(night);
+    assert!(!g.state.is_alive(&p("Empath")), "{}", g.transcript());
 }
 
 #[test]
@@ -475,15 +482,15 @@ fn mayor_kill_can_bounce() {
         ctx.advance_phase();
         ctx.advance_phase();
     });
-    // Options: Mayor, then the other living players. Bounce to the Soldier,
+    // Options: Mayor, then the other living non-demons. Bounce to the Soldier,
     // who is safe from the demon.
-    g.answers(&[&["Mayor"]]).picks(&[&[3]]).quiet().run(night);
+    g.answers(&[&["Mayor"]]).picks(&[&[2]]).quiet().run(night);
     expect![[r#"
         * === Night 2 ===
         wake Imp
           Imp? Who do you want to kill? => Mayor
         sleep Imp
-          storyteller [1 of 5 options] the demon attacked Mayor Mayor: who dies instead: Soldier
+          storyteller [1 of 4 options] the demon attacked Mayor Mayor: who dies instead: Soldier
         * kill on Mayor redirected to Soldier
         * Soldier survives (soldier)
         wake Empath
@@ -530,18 +537,11 @@ fn first_night_info_characters_get_truthful_options() {
         ("Inv", &investigator::Def),
         ("Butler", &butler::Def),
     ]);
-    // Bluffs, then the Washerwoman sees option 1, the others the first option.
-    g.picks(&[&[0, 1, 2], &[1]]).answers(&[&["Imp"]]).run(night);
+    // Six players: no evil info. The Washerwoman sees option 1, the others
+    // the first option.
+    g.picks(&[&[1]]).answers(&[&["Imp"]]).run(night);
     expect![[r#"
         * === Night 1 ===
-        wake Spy
-          -> Spy: Evil: Imp, Spy
-        sleep Spy
-        wake Imp
-          -> Imp: Evil: Imp, Spy
-          storyteller [3 of 13 options] demon bluffs (not-in-play good characters): Chef, Empath, Fortune Teller
-          -> Imp: Bluffs: Chef, Empath, Fortune Teller
-        sleep Imp
         === parallel (3) ===
         wake Wash
           storyteller [1 of 16 options] information for Wash (Washerwoman): "Imp and Lib: one is the Librarian"
@@ -576,16 +576,80 @@ fn first_night_info_characters_get_truthful_options() {
 
 #[test]
 fn invalid_storyteller_pick_falls_back_to_first_option() {
-    let mut g = common::Game::new(&[
-        ("Imp", &imp::Def),
-        ("Chef", &chef::Def),
-        ("Empath", &empath::Def),
-        ("Monk", &monk::Def),
-    ]);
+    let mut g = seven();
     // Out of range and duplicate picks are both rejected.
     g.picks(&[&[0, 0, 99]]).run(night);
     assert!(
         g.transcript()
             .contains("Bluffs: Washerwoman, Librarian, Investigator")
     );
+}
+
+#[test]
+fn poison_ends_when_the_poisoner_dies() {
+    let mut g = seven();
+    g.answers(&[&["Gordon"]]).run(night);
+    assert!(g.state.has_effect(&p("Gordon"), game::Effect::Poisoned));
+    g.run(|ctx| {
+        ctx.advance_phase();
+        ctx.execute(&p("Ivy"));
+    });
+    assert!(!g.state.has_effect(&p("Gordon"), game::Effect::Poisoned));
+}
+
+#[test]
+fn poisoned_slayer_and_virgin_use_up_their_abilities_for_nothing() {
+    let mut g = common::Game::new(&[
+        ("Imp", &imp::Def),
+        ("Poisoner", &poisoner::Def),
+        ("Slayer", &slayer::Def),
+        ("Virgin", &virgin::Def),
+        ("Chef", &chef::Def),
+    ]);
+    g.answers(&[&["Slayer"]]).run(night);
+    g.answers(&[&["Imp"]]).run(|ctx| {
+        ctx.advance_phase();
+        narrator::day_action(ctx, &p("Slayer"));
+    });
+    assert!(g.state.is_alive(&p("Imp")));
+    assert!(g.state.has_effect(&p("Slayer"), game::Effect::AbilityUsed));
+
+    g.answers(&[&["Virgin"], &["Chef"]]).run(night);
+    g.run(|ctx| {
+        ctx.advance_phase();
+        narrator::nominate(ctx, &p("Slayer"), &p("Virgin"));
+    });
+    assert!(g.state.is_alive(&p("Slayer")));
+    assert!(g.state.has_effect(&p("Virgin"), game::Effect::AbilityUsed));
+}
+
+#[test]
+fn evil_wins_when_two_players_remain() {
+    let mut g = common::Game::new(&[
+        ("Imp", &imp::Def),
+        ("Chef", &chef::Def),
+        ("Empath", &empath::Def),
+    ]);
+    g.run(|ctx| {
+        ctx.advance_phase();
+        ctx.advance_phase();
+    });
+    g.answers(&[&["Chef"]]).run(night);
+    assert_eq!(g.state.winner(), Some(character::Alignment::Evil));
+}
+
+#[test]
+fn small_games_skip_minion_and_demon_info() {
+    let mut g = common::Game::new(&[
+        ("Imp", &imp::Def),
+        ("Poisoner", &poisoner::Def),
+        ("Chef", &chef::Def),
+        ("Empath", &empath::Def),
+        ("Monk", &monk::Def),
+        ("Slayer", &slayer::Def),
+    ]);
+    g.answers(&[&["Chef"]]).run(night);
+    let transcript = g.transcript();
+    assert!(!transcript.contains("Evil:"), "{transcript}");
+    assert!(!transcript.contains("Bluffs:"), "{transcript}");
 }

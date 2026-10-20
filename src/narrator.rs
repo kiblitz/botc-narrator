@@ -9,6 +9,9 @@ use crate::player;
 use crate::script;
 use crate::storyteller;
 
+/// Below this many players, the minions and demon do not learn each other.
+pub const EVIL_INFO_MIN_PLAYERS: usize = 7;
+
 pub fn setup(ctx: &mut ctx::Write<'_>) {
     let players: Vec<(player::Id, character::Ref)> = ctx
         .state()
@@ -24,8 +27,10 @@ pub fn setup(ctx: &mut ctx::Write<'_>) {
 pub fn run_night(ctx: &mut ctx::Write<'_>, script: &script::Script) {
     match ctx.state().phase() {
         game::Phase::Night(1) => {
-            minion_info(ctx);
-            demon_info(ctx, script);
+            if ctx.state().players().len() >= EVIL_INFO_MIN_PLAYERS {
+                minion_info(ctx);
+                demon_info(ctx, script);
+            }
             run_order(ctx, &script.first_night, 1);
         }
         game::Phase::Night(night) => run_order(ctx, &script.other_nights, night),
@@ -57,13 +62,13 @@ pub fn demon_info(ctx: &mut ctx::Write<'_>, script: &script::Script) {
     else {
         return;
     };
-    let not_in_play: Vec<storyteller::Choice> = script
+    let not_in_play: Vec<&'static str> = script
         .characters
         .iter()
         .filter(|c| {
             c.kind().alignment() == character::Alignment::Good && ctx.state().find(c.id()).is_none()
         })
-        .map(|c| storyteller::Choice::Character(c.name()))
+        .map(|c| c.name())
         .collect();
     let team = info::Message::Team {
         evil: ctx.state().evil_ids(),
@@ -71,55 +76,66 @@ pub fn demon_info(ctx: &mut ctx::Write<'_>, script: &script::Script) {
     let mut read = ctx.read();
     read.wake(&demon);
     read.tell(&demon, &team);
-    let bluffs = read
-        .decide(storyteller::Reason::DemonBluffs, not_in_play, 3)
-        .into_iter()
-        .filter_map(|c| match c {
-            storyteller::Choice::Character(name) => Some(name),
-            _ => None,
-        })
-        .collect();
+    let bluffs = read.choose(storyteller::Reason::DemonBluffs, not_in_play, 3, |name| {
+        storyteller::Choice::Character(name)
+    });
     read.tell(&demon, &info::Message::Bluffs(bluffs));
     read.sleep(&demon);
 }
 
-/// Runs night actions in order. Consecutive read-only actions are announced as
-/// one batch; read-write actions are sync points.
+/// Runs night actions in order. Consecutive read-only actions are announced
+/// to the table as one batch; read-write actions are sync points.
 pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32) {
-    let actions: Vec<(player::Id, character::NightAction)> = order
-        .iter()
-        .filter_map(|c| {
-            let id = ctx.state().find(c.id())?.clone();
-            c.night_action(night).map(|action| (id, action))
-        })
-        .collect();
-    let mut i = 0;
-    while i < actions.len() && ctx.state().winner().is_none() {
-        let end = actions[i..]
-            .iter()
-            .position(|(_, a)| matches!(a, character::NightAction::ReadWrite(_)))
-            .map_or(actions.len(), |offset| i + offset);
-        if end == i {
-            if let (id, character::NightAction::ReadWrite(f)) = &actions[i] {
-                f(ctx, id, night);
-            }
-            i += 1;
+    let mut steps: Vec<Step> = Vec::new();
+    for c in order {
+        let Some(action) = c.night_action(night) else {
             continue;
-        }
-        let batch = &actions[i..end];
-        if batch.len() > 1 {
-            ctx.io().batch_started(batch.len());
-        }
-        for (id, action) in batch {
-            if let character::NightAction::ReadOnly(f) = action {
-                f(&mut ctx.read(), id, night);
+        };
+        // Every holder acts (dead ones too: the action decides whether a dead
+        // player wakes), so a demon that moved seats is not shadowed by the
+        // dead original.
+        let holders: Vec<player::Id> = ctx
+            .state()
+            .players()
+            .iter()
+            .filter(|p| p.character.id() == c.id())
+            .map(|p| p.id.clone())
+            .collect();
+        for id in holders {
+            match (action, steps.last_mut()) {
+                (character::NightAction::ReadOnly(f), Some(Step::Reads(batch))) => {
+                    batch.push((id, f))
+                }
+                (character::NightAction::ReadOnly(f), _) => steps.push(Step::Reads(vec![(id, f)])),
+                (character::NightAction::ReadWrite(f), _) => steps.push(Step::Write(id, f)),
             }
         }
-        if batch.len() > 1 {
-            ctx.io().batch_ended();
-        }
-        i = end;
     }
+    for step in steps {
+        if ctx.state().winner().is_some() {
+            return;
+        }
+        match step {
+            Step::Write(id, f) => f(ctx, &id, night),
+            Step::Reads(batch) => {
+                let announce = batch.len() > 1;
+                if announce {
+                    ctx.io().batch_started(batch.len());
+                }
+                for (id, f) in batch {
+                    f(&mut ctx.read(), &id, night);
+                }
+                if announce {
+                    ctx.io().batch_ended();
+                }
+            }
+        }
+    }
+}
+
+enum Step {
+    Write(player::Id, character::ReadWriteFn),
+    Reads(Vec<(player::Id, character::ReadOnlyFn)>),
 }
 
 pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id) {

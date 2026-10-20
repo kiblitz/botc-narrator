@@ -29,7 +29,7 @@ pub trait Io {
     /// The storyteller made a decision (for logging; players never see this).
     fn decided(&mut self, _decision: &storyteller::Decision, _picks: &[usize]) {}
 
-    /// The next `size` night actions are independent reads that may run concurrently.
+    /// The next `size` night actions are independent reads (announced as a batch).
     fn batch_started(&mut self, _size: usize) {}
     fn batch_ended(&mut self) {}
 }

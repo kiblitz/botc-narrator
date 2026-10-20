@@ -58,10 +58,7 @@ impl<'a> Read<'a> {
             return Vec::new();
         }
         let answer = self.io.ask(player, prompt, candidates, count);
-        let valid = answer.len() == count
-            && answer.iter().all(|a| candidates.contains(a))
-            && (1..answer.len()).all(|i| !answer[..i].contains(&answer[i]));
-        if valid {
+        if storyteller::is_selection(&answer, count, |a| candidates.contains(a)) {
             answer
         } else {
             candidates[..count].to_vec()
@@ -77,24 +74,26 @@ impl<'a> Read<'a> {
         self.ask(player, prompt, candidates, 1).into_iter().next()
     }
 
-    /// Let the storyteller choose `count` of `options`. When there is no real
-    /// choice (as many options as picks) the storyteller is not consulted.
-    pub fn decide(
+    /// Let the storyteller choose `count` of `options`; `describe` says how
+    /// each option is presented. When there is no real choice (as many options
+    /// as picks) the storyteller is not consulted.
+    pub fn choose<T: Clone>(
         &mut self,
         reason: storyteller::Reason,
-        options: Vec<storyteller::Choice>,
+        options: Vec<T>,
         count: usize,
-    ) -> Vec<storyteller::Choice> {
+        describe: impl Fn(&T) -> storyteller::Choice,
+    ) -> Vec<T> {
         let count = count.min(options.len());
         if count == 0 {
             return Vec::new();
         }
         let decision = storyteller::Decision {
             reason,
-            options,
+            options: options.iter().map(describe).collect(),
             count,
         };
-        let picks = if decision.options.len() == count {
+        let picks = if options.len() == count {
             (0..count).collect()
         } else {
             let picks = self.storyteller.decide(&decision, self.state);
@@ -105,10 +104,19 @@ impl<'a> Read<'a> {
             }
         };
         self.io.decided(&decision, &picks);
-        picks
-            .into_iter()
-            .map(|i| decision.options[i].clone())
-            .collect()
+        picks.into_iter().map(|i| options[i].clone()).collect()
+    }
+
+    pub fn choose_player(
+        &mut self,
+        reason: storyteller::Reason,
+        options: Vec<player::Id>,
+    ) -> Option<player::Id> {
+        self.choose(reason, options, 1, |p| {
+            storyteller::Choice::Player(p.clone())
+        })
+        .into_iter()
+        .next()
     }
 
     /// Give `player` information. The storyteller picks one of the `truthful`
@@ -120,23 +128,12 @@ impl<'a> Read<'a> {
         misinformation: Vec<info::Message>,
     ) {
         let malfunctioning = self.state.is_malfunctioning(player);
-        let mut options: Vec<storyteller::Choice> = truthful
-            .into_iter()
-            .map(|message| storyteller::Choice::Info {
-                message,
-                truthful: true,
-            })
-            .collect();
+        let mut options: Vec<(info::Message, bool)> =
+            truthful.into_iter().map(|m| (m, true)).collect();
         if malfunctioning {
             for message in misinformation {
-                let duplicate = options.iter().any(
-                    |o| matches!(o, storyteller::Choice::Info { message: m, .. } if *m == message),
-                );
-                if !duplicate {
-                    options.push(storyteller::Choice::Info {
-                        message,
-                        truthful: false,
-                    });
+                if !options.iter().any(|(m, _)| *m == message) {
+                    options.push((message, false));
                 }
             }
         }
@@ -145,9 +142,13 @@ impl<'a> Read<'a> {
             character: self.state.character(player).name(),
             malfunctioning,
         };
-        if let Some(storyteller::Choice::Info { message, .. }) =
-            self.decide(reason, options, 1).into_iter().next()
-        {
+        let chosen = self.choose(reason, options, 1, |(message, truthful)| {
+            storyteller::Choice::Info {
+                message: message.clone(),
+                truthful: *truthful,
+            }
+        });
+        if let Some((message, _)) = chosen.into_iter().next() {
             self.tell(player, &message);
         }
     }
@@ -245,6 +246,9 @@ impl<'a> Write<'a> {
 
     fn die(&mut self, target: &player::Id, cause: event::Cause) {
         self.state.mark_dead(target);
+        // A dead player's ability stops: tokens it placed until dusk are removed.
+        let source = self.state.character(target).id();
+        self.state.remove_reminders(source, game::Expiry::Dusk);
         self.record(event::Event::Died {
             player: target.clone(),
             cause: cause.clone(),
@@ -303,7 +307,7 @@ impl<'a> Write<'a> {
         }
     }
 
-    // Read conveniences, so read-write abilities need not reborrow.
+    // Everything `Read` can do, so read-write abilities need not reborrow.
 
     pub fn wake(&mut self, player: &player::Id) {
         self.read().wake(player);
@@ -311,6 +315,20 @@ impl<'a> Write<'a> {
 
     pub fn sleep(&mut self, player: &player::Id) {
         self.read().sleep(player);
+    }
+
+    pub fn tell(&mut self, player: &player::Id, message: &info::Message) {
+        self.read().tell(player, message);
+    }
+
+    pub fn ask(
+        &mut self,
+        player: &player::Id,
+        prompt: &str,
+        candidates: &[player::Id],
+        count: usize,
+    ) -> Vec<player::Id> {
+        self.read().ask(player, prompt, candidates, count)
     }
 
     pub fn ask_one(
@@ -322,12 +340,30 @@ impl<'a> Write<'a> {
         self.read().ask_one(player, prompt, candidates)
     }
 
-    pub fn decide(
+    pub fn choose<T: Clone>(
         &mut self,
         reason: storyteller::Reason,
-        options: Vec<storyteller::Choice>,
+        options: Vec<T>,
         count: usize,
-    ) -> Vec<storyteller::Choice> {
-        self.read().decide(reason, options, count)
+        describe: impl Fn(&T) -> storyteller::Choice,
+    ) -> Vec<T> {
+        self.read().choose(reason, options, count, describe)
+    }
+
+    pub fn choose_player(
+        &mut self,
+        reason: storyteller::Reason,
+        options: Vec<player::Id>,
+    ) -> Option<player::Id> {
+        self.read().choose_player(reason, options)
+    }
+
+    pub fn inform(
+        &mut self,
+        player: &player::Id,
+        truthful: Vec<info::Message>,
+        misinformation: Vec<info::Message>,
+    ) {
+        self.read().inform(player, truthful, misinformation);
     }
 }

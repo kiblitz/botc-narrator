@@ -91,10 +91,15 @@ pub struct Decision {
 
 impl Decision {
     pub fn is_valid(&self, picks: &[usize]) -> bool {
-        picks.len() == self.count
-            && picks.iter().all(|&i| i < self.options.len())
-            && (1..picks.len()).all(|i| !picks[..i].contains(&picks[i]))
+        is_selection(picks, self.count, |&i| i < self.options.len())
     }
+}
+
+/// Exactly `count` distinct items, each `allowed`.
+pub fn is_selection<T: PartialEq>(items: &[T], count: usize, allowed: impl Fn(&T) -> bool) -> bool {
+    items.len() == count
+        && items.iter().all(allowed)
+        && (1..items.len()).all(|i| !items[..i].contains(&items[i]))
 }
 
 /// Makes storyteller decisions. Answers are validated by the engine; an

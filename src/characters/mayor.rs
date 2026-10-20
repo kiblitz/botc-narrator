@@ -18,19 +18,18 @@ impl character::Def for Def {
         character::Kind::Townsfolk
     }
 
-    /// The storyteller may have another player die instead (or the Mayor).
+    /// The storyteller may have another player die instead (or the Mayor),
+    /// but never the demon.
     fn redirect_demon_kill(&self, ctx: &mut ctx::Write<'_>, me: &player::Id) -> Option<player::Id> {
-        let mut options = vec![storyteller::Choice::Player(me.clone())];
+        let state = ctx.state();
+        let mut options = vec![me.clone()];
         options.extend(
-            ctx.state()
+            state
                 .alive_except(me)
                 .into_iter()
-                .map(storyteller::Choice::Player),
+                .filter(|p| state.kind(p) != character::Kind::Demon),
         );
         let reason = storyteller::Reason::MayorRedirect { mayor: me.clone() };
-        match ctx.decide(reason, options, 1).into_iter().next() {
-            Some(storyteller::Choice::Player(p)) => Some(p),
-            _ => None,
-        }
+        ctx.choose_player(reason, options)
     }
 }

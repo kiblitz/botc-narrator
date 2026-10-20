@@ -30,11 +30,7 @@ fn slay(ctx: &mut ctx::Write<'_>, me: &player::Id) {
     if !state.is_alive(me) || state.has_effect(me, game::Effect::AbilityUsed) {
         return;
     }
-    let reminder = game::Reminder {
-        source: "slayer",
-        effect: game::Effect::AbilityUsed,
-        expiry: game::Expiry::Never,
-    };
+    let reminder = game::Reminder::new(&Def, game::Effect::AbilityUsed, game::Expiry::Never);
     ctx.place_reminder(me, reminder);
     let candidates = ctx.state().alive_ids();
     if let Some(target) = ctx.ask_one(me, "Who do you want to slay?", &candidates)

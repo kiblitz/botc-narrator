@@ -33,11 +33,7 @@ fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
     let candidates = ctx.state().alive_except(me);
     ctx.wake(me);
     if let Some(master) = ctx.ask_one(me, "Choose your master", &candidates) {
-        let reminder = game::Reminder {
-            source: "butler",
-            effect: MASTER,
-            expiry: game::Expiry::Dusk,
-        };
+        let reminder = game::Reminder::new(&Def, MASTER, game::Expiry::Dusk);
         ctx.place_reminder(&master, reminder);
     }
     ctx.sleep(me);

@@ -23,11 +23,7 @@ impl character::Def for Def {
         if ctx.state().has_effect(me, game::Effect::AbilityUsed) {
             return;
         }
-        let reminder = game::Reminder {
-            source: "virgin",
-            effect: game::Effect::AbilityUsed,
-            expiry: game::Expiry::Never,
-        };
+        let reminder = game::Reminder::new(&Def, game::Effect::AbilityUsed, game::Expiry::Never);
         ctx.place_reminder(me, reminder);
         if !ctx.state().is_malfunctioning(me)
             && ctx.state().kind(nominator) == character::Kind::Townsfolk

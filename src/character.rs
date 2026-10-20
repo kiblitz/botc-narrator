@@ -44,7 +44,7 @@ pub type ReadWriteFn = fn(&mut ctx::Write<'_>, &player::Id, u32);
 pub type DayFn = fn(&mut ctx::Write<'_>, &player::Id);
 
 /// A night ability, tagged with the access it needs. Consecutive read-only
-/// actions in the night order form a batch the engine may run concurrently;
+/// actions in the night order are independent and announced as one batch;
 /// read-write actions are sequential sync points.
 #[derive(Clone, Copy)]
 pub enum NightAction {

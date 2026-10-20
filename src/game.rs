@@ -50,6 +50,16 @@ pub struct Reminder {
     pub expiry: Expiry,
 }
 
+impl Reminder {
+    pub fn new(source: character::Ref, effect: Effect, expiry: Expiry) -> Self {
+        Self {
+            source: source.id(),
+            effect,
+            expiry,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Player {
     pub id: player::Id,
@@ -251,6 +261,13 @@ impl State {
                 .retain(|r| (r.source, r.effect) != (reminder.source, reminder.effect));
         }
         self.player_mut(target).reminders.push(reminder);
+    }
+
+    pub(crate) fn remove_reminders(&mut self, source: &str, expiry: Expiry) {
+        for p in &mut self.seats {
+            p.reminders
+                .retain(|r| r.source != source || r.expiry != expiry);
+        }
     }
 
     pub(crate) fn mark_dead(&mut self, id: &player::Id) {

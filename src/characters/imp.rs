@@ -39,16 +39,8 @@ impl character::Def for Def {
         if !state.alive_of_kind(character::Kind::Demon).is_empty() {
             return;
         }
-        let minions = state
-            .alive_of_kind(character::Kind::Minion)
-            .into_iter()
-            .map(storyteller::Choice::Player)
-            .collect();
-        if let Some(storyteller::Choice::Player(heir)) = ctx
-            .decide(storyteller::Reason::StarpassTarget, minions, 1)
-            .into_iter()
-            .next()
-        {
+        let minions = state.alive_of_kind(character::Kind::Minion);
+        if let Some(heir) = ctx.choose_player(storyteller::Reason::StarpassTarget, minions) {
             ctx.transform(&heir, &Def);
         }
     }

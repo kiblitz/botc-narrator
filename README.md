@@ -34,19 +34,20 @@ Info abilities don't handle poisoning themselves. They call `ctx::Read::inform(p
 
 ### Read vs write
 
-Night actions are tagged `NightAction::ReadOnly` (gets `ctx::Read`, which cannot change the grimoire) or `NightAction::ReadWrite` (gets `ctx::Write`). The narrator groups consecutive read-only actions into a batch the table may run concurrently, and treats read-write actions as sync points.
+Night actions are tagged `NightAction::ReadOnly` (gets `ctx::Read`, which cannot change the grimoire) or `NightAction::ReadWrite` (gets `ctx::Write`). The narrator groups consecutive read-only actions into a batch and announces it to the table (`batch_started` / `batch_ended`), since those actions are independent; read-write actions are sync points. Batches currently run one after another.
 
 ### Rule interactions
 
 `ctx::Write` resolves interactions centrally, so characters do not know about each other:
 
-- `kill` with `Cause::Demon` checks Monk protection (a reminder), `safe_from_demon` (Soldier) and `redirect_demon_kill` (Mayor). A malfunctioning player's protection doesn't apply.
+- `kill` with `Cause::Demon` checks Monk protection (a reminder), `safe_from_demon` (Soldier) and `redirect_demon_kill` (Mayor; never onto the demon). Soldier and Mayor abilities do nothing while malfunctioning.
+- Minions and demon learn each other on the first night only with 7 or more players.
 - `die` calls every living player's `on_death` hook, then the dead player's own (Scarlet Woman, Imp starpass), then checks win conditions.
 - `execute` calls `on_executed` (Saint), then `die`.
 
 ### Grimoire state
 
-`game::State` keeps players in seat order with **reminder tokens** (`game::Reminder { source, effect, expiry }`) instead of hardcoded flags. Poisoned, Drunk, Protected and AbilityUsed have rules meaning; `Effect::Custom` covers tokens only their character interprets (Butler's master). Placing a token moves it, like a physical token. `Expiry::Dusk` tokens are removed when the next night begins. The game keeps a typed `event::Event` history.
+`game::State` keeps players in seat order with **reminder tokens** (`game::Reminder { source, effect, expiry }`) instead of hardcoded flags. Poisoned, Protected and AbilityUsed have rules meaning (Drunk is checked like Poisoned, but nothing places it yet); `Effect::Custom` covers tokens only their character interprets (Butler's master). Placing a token moves it, like a physical token. `Expiry::Dusk` tokens are removed when the next night begins, or when the player whose ability placed them dies. The game keeps a typed `event::Event` history.
 
 ### Adding characters and scripts
 
@@ -54,7 +55,7 @@ A character is a unit struct implementing `character::Def`. It overrides only th
 
 ### Not yet modelled
 
-Drunk (thinks they are a Townsfolk), Recluse/Spy misregistration, Fortune Teller red herring, Butler voting restriction, and nomination/voting rules.
+Drunk (thinks they are a Townsfolk), Recluse/Spy misregistration, Fortune Teller red herring, Butler voting restriction, nomination/voting rules, and reminder tokens in the Spy's grimoire view. Misinformation for "one of these two is the X" only offers characters in play, not the whole script.
 
 ## Running
 
