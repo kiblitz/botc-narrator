@@ -136,8 +136,13 @@ function render() {
     const isVote = step.kind === "vote";
     div.classList.toggle("nominee", isVote && step.player === seat.name);
     div.classList.toggle("voted", isVote && (step.voters ?? []).includes(seat.name));
-    // Players named in the information (or chosen) are marked on the board.
-    div.classList.toggle("mentioned", (step.players ?? []).includes(seat.name));
+    // Players named in the information (or chosen) are marked on the board;
+    // information naming everyone (the Spy's grimoire) would only add noise.
+    const mentioned = step.players ?? [];
+    div.classList.toggle(
+      "mentioned",
+      mentioned.length < snapshot.length && mentioned.includes(seat.name),
+    );
     div.classList.toggle("selected", selected === seat.name);
     renderToken(div.querySelector(".token"), known ? seat.character : null);
     const reminders = div.querySelector(".reminders");
