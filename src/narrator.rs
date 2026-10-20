@@ -114,8 +114,13 @@ fn evil_info_hidden(state: &game::State) -> bool {
 }
 
 /// The Minions and Demon learn each other now, as on the first night (after
-/// the Poppy Grower dies).
+/// the Poppy Grower dies): only with enough players, and not while another
+/// ability still hides it.
 pub fn evil_info(ctx: &mut ctx::Write<'_>) {
+    let state = ctx.state();
+    if state.resident_count() < EVIL_INFO_MIN_PLAYERS || evil_info_hidden(state) {
+        return;
+    }
     minion_info(ctx);
     let demons = ctx.state().demons();
     let team = evil_team(ctx.state());

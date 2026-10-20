@@ -48,8 +48,7 @@ fn execute_storyteller(ctx: &mut ctx::Write<'_>, me: &player::Id) {
         return;
     }
     ctx.note(format!("{me} has the Storyteller executed"));
-    let demonless = ctx.state().players().iter().any(|p| p.character.demonless());
-    let winner = if demonless {
+    let winner = if ctx.state().demonless() {
         character::Alignment::Good
     } else {
         character::Alignment::Evil

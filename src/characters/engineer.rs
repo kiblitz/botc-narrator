@@ -54,6 +54,7 @@ fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
         return;
     };
     let kind = first.kind();
+    // Dead Minions and Demons are still in play, so they change too.
     let holders: Vec<player::Id> = ctx
         .state()
         .seat_order()

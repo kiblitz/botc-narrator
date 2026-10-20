@@ -715,8 +715,7 @@ impl<'a> Write<'a> {
     /// Good wins when no demon lives (unless the game has none, see
     /// `character::Def::demonless`); evil wins when two players remain.
     pub fn check_win(&mut self) {
-        let demonless = self.state.players().iter().any(|p| p.character.demonless());
-        if !demonless && !self.state.demon_alive() {
+        if !self.state.demonless() && !self.state.demon_alive() {
             self.win(character::Alignment::Good);
         } else if self.state.alive_ids().len() <= 2 {
             self.win(character::Alignment::Evil);

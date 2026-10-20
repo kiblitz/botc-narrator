@@ -757,6 +757,22 @@ fn poppy_grower_hides_evil_until_they_die() {
 }
 
 #[test]
+fn poppy_grower_dying_poisoned_reveals_nothing() {
+    let mut g = evil_info_game(&characters::poppy_grower::Def);
+    g.run(|ctx| narrator::run_night(ctx, &script())).quiet();
+    to_night(&mut g, 2);
+    g.run(|ctx| {
+        poison(ctx, "Special");
+        ctx.kill(&p("Special"), botc_narrator::event::Cause::Demon);
+        ctx.advance_phase();
+        ctx.advance_phase();
+    })
+    .quiet()
+    .run(|ctx| narrator::run_order(ctx, &[&characters::poppy_grower::Def], 3));
+    assert!(!g.transcript().contains("Evil:"));
+}
+
+#[test]
 fn poisoned_poppy_grower_hides_nothing() {
     let mut g = evil_info_game(&characters::poppy_grower::Def);
     g.run(|ctx| poison(ctx, "Special"))

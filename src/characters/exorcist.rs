@@ -52,7 +52,7 @@ fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
     ctx.sleep(me);
     let Some(target) = target else { return };
     // Placed even when malfunctioning: the choice still happened.
-    let chosen = game::Reminder::new(&Def, me, CHOSEN, game::Expiry::Never);
+    let chosen = game::Reminder::new(&Def, me, CHOSEN, game::Expiry::Death);
     ctx.place_reminder(&target, chosen);
     if ctx.state().is_malfunctioning(me) || !ctx.state().demons().contains(&target) {
         return;

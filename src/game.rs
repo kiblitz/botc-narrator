@@ -69,7 +69,8 @@ pub enum Expiry {
     Dusk,
     /// Removed when night `n` begins ("drunk for 3 nights & 3 days").
     Night(u32),
-    /// Kept until the player whose ability placed it dies.
+    /// Kept while the ability that placed it lasts (see
+    /// [`Expiry::ends_with_ability`]).
     Death,
     Never,
 }
@@ -77,7 +78,7 @@ pub enum Expiry {
 impl Expiry {
     /// Whether the token lasts only while the ability that placed it does:
     /// it is removed when that player dies or changes character.
-    pub fn lingers(self) -> bool {
+    pub fn ends_with_ability(self) -> bool {
         self != Expiry::Never
     }
 
@@ -439,6 +440,8 @@ impl State {
         let impaired = p.reminders.iter().any(|r| {
             matches!(r.effect, Effect::Poisoned | Effect::Drunk)
                 && (&r.placed_by == id
+                    // A token placed by no seated player (the storyteller's,
+                    // or a test's) always works.
                     || !self.seats.iter().any(|s| s.id == r.placed_by)
                     || !self.malfunctioning(&r.placed_by, checking))
         });
@@ -456,6 +459,13 @@ impl State {
     /// Living players with an ability that counts as the demon
     /// (`character::Def::counts_as_demon`): their own (unless lost) or a
     /// gained one, never one they only believe they have.
+    /// Whether a seated player's real character means the game has no Demon
+    /// (`character::Def::demonless`: the Atheist). A setup fact, so dead or
+    /// malfunctioning players count and believed characters do not.
+    pub fn demonless(&self) -> bool {
+        self.seats.iter().any(|p| p.character.demonless())
+    }
+
     pub fn demons(&self) -> Vec<player::Id> {
         self.seats
             .iter()
@@ -600,11 +610,11 @@ impl State {
     }
 
     /// Removes the tokens that last only while `placed_by`'s ability does
-    /// (see [`Expiry::lingers`]).
+    /// (see [`Expiry::ends_with_ability`]).
     pub(crate) fn remove_lingering(&mut self, placed_by: &player::Id) {
         for p in &mut self.seats {
             p.reminders
-                .retain(|r| &r.placed_by != placed_by || !r.expiry.lingers());
+                .retain(|r| &r.placed_by != placed_by || !r.expiry.ends_with_ability());
         }
     }
 
