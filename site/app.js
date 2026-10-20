@@ -100,7 +100,7 @@ function sizeSeats() {
   const circumference = Math.PI * 2 * 0.39 * board.clientWidth;
   // Each seat is 1.35 tokens wide; keep a little gap between neighbours.
   const fit = circumference / game.trace.players.length / 1.35 / 1.1;
-  board.style.setProperty("--token", `${Math.max(36, Math.min(84, fit))}px`);
+  board.style.setProperty("--token", `${Math.max(24, Math.min(84, fit))}px`);
 }
 
 function render() {
@@ -150,10 +150,6 @@ function render() {
       ...(pov === "" ? seat.reminders : []).map((r) => el("span", `reminder ${r}`, r)),
     );
     renderBluffs(div, index);
-    div.querySelector(".bubble")?.remove();
-    if (step.player === seat.name && (step.kind === "tell" || step.kind === "ask")) {
-      div.append(el("div", "bubble", step.text));
-    }
   }
 
   renderArrow(step);

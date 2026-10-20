@@ -18,7 +18,7 @@ test("stepping reveals private information to the right player", async ({ page }
   await page.locator("#next").click();
   await expect(page.locator('.seat[data-name="Cleo"]')).toHaveClass(/awake/);
   await page.locator("#next").click();
-  await expect(page.locator('.seat[data-name="Cleo"] .bubble')).toHaveText("Evil: Cleo, Dev");
+  await expect(page.locator("#caption")).toHaveText("Storyteller → Cleo: Evil: Cleo, Dev");
   await page.locator('.seat[data-name="Cleo"]').click();
   await expect(page.locator("#knowledge-title")).toHaveText("What Cleo knows — Spy");
   await expect(page.locator("#knowledge-list")).toContainText("Evil: Cleo, Dev");
@@ -251,7 +251,7 @@ test("the arrow is drawn above the centre text", async ({ page }) => {
   for (let i = 0; i < 11; i++) await page.keyboard.press("ArrowRight");
   const z = (selector) => page.locator(selector).evaluate((e) => Number(getComputedStyle(e).zIndex));
   expect(await z("#arrows")).toBeGreaterThan(await z("#center"));
-  expect(await z(".seat >> nth=0")).toBeGreaterThan(await z("#arrows"));
+  expect(await z("#arrows")).toBeGreaterThan(await z(".seat >> nth=0"));
   // Whatever is at the arrow's midpoint is the arrow, not the caption.
   const hit = await page.evaluate(() => {
     const line = document.querySelector("#arrows .flow-arrow");
@@ -263,4 +263,33 @@ test("the arrow is drawn above the centre text", async ({ page }) => {
     return document.elementFromPoint(x, y)?.getAttribute("class");
   });
   expect(hit).toContain("flow-arrow");
+});
+
+test("no text overlaps the communication arrow", async ({ page }) => {
+  await open(page, "#seed=7&players=15");
+  // Check every tell/ask/nomination step of the first night and day.
+  for (let i = 0; i < 60; i++) {
+    await page.keyboard.press("ArrowRight");
+    if ((await page.locator("#arrows .flow-arrow").count()) === 0) continue;
+    const blocked = await page.evaluate(() => {
+      const line = document.querySelector("#arrows .flow-arrow");
+      const svg = document.getElementById("arrows").getBoundingClientRect();
+      const [x1, y1, x2, y2] = ["x1", "y1", "x2", "y2"].map((a) => +line.getAttribute(a));
+      // Make the arrow hit-testable, then sample along it: the topmost thing
+      // must be the arrow itself, never text or a seat.
+      document.getElementById("arrows").style.pointerEvents = "auto";
+      line.style.pointerEvents = "stroke";
+      try {
+        for (let t = 0.1; t <= 0.9; t += 0.1) {
+          const el = document.elementFromPoint(svg.left + x1 + (x2 - x1) * t, svg.top + y1 + (y2 - y1) * t);
+          if (el && !el.closest("#arrows")) return el.textContent || el.tagName;
+        }
+        return null;
+      } finally {
+        document.getElementById("arrows").style.pointerEvents = "";
+        line.style.pointerEvents = "";
+      }
+    });
+    expect(blocked, `step ${i + 2}`).toBeNull();
+  }
 });
