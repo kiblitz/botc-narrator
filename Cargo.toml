@@ -1,0 +1,11 @@
+[package]
+name = "botc_narrator"
+version = "0.1.0"
+edition = "2024"
+description = "A Blood on the Clocktower storyteller engine"
+
+[dependencies]
+rand = "0.9"
+
+[dev-dependencies]
+expect-test = "1"
