@@ -244,3 +244,23 @@ test("arrows show which way communication goes", async ({ page }) => {
   await expect(page.locator("#arrows .flow-arrow.event")).toHaveCount(1);
   await expect(page.locator("#caption .who")).toHaveText("Bram → Esme: ");
 });
+
+test("the arrow is drawn above the centre text", async ({ page }) => {
+  await open(page);
+  // Step 12: the storyteller tells Ada (top seat), so the arrow crosses the caption.
+  for (let i = 0; i < 11; i++) await page.keyboard.press("ArrowRight");
+  const z = (selector) => page.locator(selector).evaluate((e) => Number(getComputedStyle(e).zIndex));
+  expect(await z("#arrows")).toBeGreaterThan(await z("#center"));
+  expect(await z(".seat >> nth=0")).toBeGreaterThan(await z("#arrows"));
+  // Whatever is at the arrow's midpoint is the arrow, not the caption.
+  const hit = await page.evaluate(() => {
+    const line = document.querySelector("#arrows .flow-arrow");
+    const svg = document.getElementById("arrows").getBoundingClientRect();
+    const x = svg.left + (+line.getAttribute("x1") + +line.getAttribute("x2")) / 2;
+    const y = svg.top + (+line.getAttribute("y1") + +line.getAttribute("y2")) / 2;
+    document.getElementById("arrows").style.pointerEvents = "auto";
+    line.style.pointerEvents = "stroke";
+    return document.elementFromPoint(x, y)?.getAttribute("class");
+  });
+  expect(hit).toContain("flow-arrow");
+});

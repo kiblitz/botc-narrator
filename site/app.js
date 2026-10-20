@@ -286,7 +286,7 @@ function endpointCentre(endpoint) {
 /** An arrow across the board showing which way the current step's communication goes. */
 function renderArrow(step) {
   const svg = $("arrows");
-  svg.querySelector(".flow-arrow")?.remove();
+  svg.querySelectorAll(".flow-arrow, .flow-halo").forEach((e) => e.remove());
   if (!step.flow) return;
   const a = endpointCentre(step.flow.from);
   const b = endpointCentre(step.flow.to);
@@ -303,7 +303,10 @@ function renderArrow(step) {
   line.setAttribute("x2", b.x - ux * (b.r + pad));
   line.setAttribute("y2", b.y - uy * (b.r + pad));
   line.setAttribute("marker-end", "url(#arrowhead)");
-  svg.append(line);
+  const halo = line.cloneNode();
+  halo.setAttribute("class", "flow-halo");
+  halo.removeAttribute("marker-end");
+  svg.append(halo, line);
 }
 
 function logItem(step, current) {
