@@ -117,7 +117,7 @@ function render() {
   const caption = $("caption");
   caption.className = step.audience === "storyteller" ? "storyteller" : "";
   caption.replaceChildren();
-  if (step.player && hasSpeaker(step)) caption.append(el("span", "who", `${step.player}: `));
+  caption.append(...speaker(step));
   caption.append(annotate(step, describe(step)));
 
   for (const div of board.querySelectorAll(".seat")) {
@@ -156,6 +156,7 @@ function render() {
     }
   }
 
+  renderArrow(step);
   renderLog(steps);
   renderKnowledge(index);
   const scrub = $("scrub");
@@ -258,11 +259,56 @@ function hasSpeaker(step) {
   return ["wake", "sleep", "tell", "ask"].includes(step.kind);
 }
 
+const endpointName = (endpoint) => (endpoint.kind === "storyteller" ? "Storyteller" : endpoint.name);
+
+/** "From → To: " for communication, "Name: " for other player steps. */
+function speaker(step) {
+  if (step.flow) {
+    const span = el("span", `who flow ${step.kind}`);
+    span.append(endpointName(step.flow.from), el("span", "arrow", " → "), endpointName(step.flow.to), ": ");
+    return [span];
+  }
+  if (step.player && hasSpeaker(step)) return [el("span", "who", `${step.player}: `)];
+  return [];
+}
+
+/** Centre of an endpoint in board coordinates: a seat's token, or the storyteller badge. */
+function endpointCentre(endpoint) {
+  const board = $("board").getBoundingClientRect();
+  const target = endpoint.kind === "storyteller"
+    ? $("storyteller")
+    : $("board").querySelector(`.seat[data-name="${CSS.escape(endpoint.name)}"] .token`);
+  const box = target.getBoundingClientRect();
+  return { x: box.left + box.width / 2 - board.left, y: box.top + box.height / 2 - board.top, r: box.height / 2 };
+}
+
+/** An arrow across the board showing which way the current step's communication goes. */
+function renderArrow(step) {
+  const svg = $("arrows");
+  svg.querySelector(".flow-arrow")?.remove();
+  if (!step.flow) return;
+  const a = endpointCentre(step.flow.from);
+  const b = endpointCentre(step.flow.to);
+  const length = Math.hypot(b.x - a.x, b.y - a.y);
+  if (length === 0) return;
+  // Start and end just outside each endpoint.
+  const [ux, uy] = [(b.x - a.x) / length, (b.y - a.y) / length];
+  const pad = 6;
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  line.setAttribute("class", `flow-arrow ${step.kind}`);
+  line.setAttribute("x1", a.x + ux * (a.r + pad));
+  line.setAttribute("y1", a.y + uy * (a.r + pad));
+  line.setAttribute("x2", b.x - ux * (b.r + pad));
+  line.setAttribute("y2", b.y - uy * (b.r + pad));
+  line.setAttribute("marker-end", "url(#arrowhead)");
+  svg.append(line);
+}
+
 function logItem(step, current) {
   const li = el("li", step.audience);
   if (isPhase(step)) li.classList.add("phase");
   if (current) li.classList.add("current");
-  if (step.player && hasSpeaker(step)) li.append(el("span", "who", `${step.player}: `));
+  li.append(...speaker(step));
   li.append(annotate(step, describe(step)));
   return li;
 }
@@ -395,7 +441,11 @@ async function main() {
     // These keys drive the game; don't let them also scroll the page.
     e.preventDefault();
   });
-  new ResizeObserver(sizeSeats).observe($("board"));
+  // Seat sizes and arrow endpoints depend on the board size.
+  new ResizeObserver(() => {
+    sizeSeats();
+    if (game) render();
+  }).observe($("board"));
   const { script, seed, players } = fromHash();
   load(seed, players, script);
   document.body.dataset.ready = "true";

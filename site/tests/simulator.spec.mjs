@@ -219,3 +219,28 @@ test("a script can be chosen and is kept in the URL", async ({ page }) => {
   await open(page, "#script=nope&seed=7&players=8");
   await expect(page.locator("#script")).toHaveValue("trouble_brewing");
 });
+
+test("arrows show which way communication goes", async ({ page }) => {
+  await open(page);
+  // Step 3: the storyteller tells Cleo the evil team.
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#arrows .flow-arrow.tell")).toHaveCount(1);
+  await expect(page.locator("#caption .who")).toHaveText("Storyteller → Cleo: ");
+  const tell = await page.locator("#arrows .flow-arrow").evaluate((l) => ({
+    x1: +l.getAttribute("x1"), y1: +l.getAttribute("y1"), x2: +l.getAttribute("x2"), y2: +l.getAttribute("y2"),
+  }));
+  const board = await page.locator("#board").boundingBox();
+  const cleo = await page.locator('.seat[data-name="Cleo"] .token').boundingBox();
+  const cleoX = cleo.x + cleo.width / 2 - board.x;
+  // The arrow starts near the centre and ends near Cleo.
+  expect(Math.abs(tell.x2 - cleoX)).toBeLessThan(Math.abs(tell.x1 - cleoX));
+  // A wake step has no arrow.
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#arrows .flow-arrow")).toHaveCount(0);
+  // Day 1: Bram nominates Esme, player to player.
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#arrows .flow-arrow.event")).toHaveCount(1);
+  await expect(page.locator("#caption .who")).toHaveText("Bram → Esme: ");
+});

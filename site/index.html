@@ -30,7 +30,15 @@
   <main>
     <section id="table-area">
       <div id="board" aria-label="Seating circle">
+        <svg id="arrows" aria-hidden="true">
+          <defs>
+            <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+              <path d="M0 0 10 5 0 10z" fill="context-stroke"/>
+            </marker>
+          </defs>
+        </svg>
         <div id="center">
+          <div id="storyteller" title="Storyteller">📖 Storyteller</div>
           <div id="phase"></div>
           <div id="caption"></div>
         </div>

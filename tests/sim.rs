@@ -169,3 +169,33 @@ fn scripts_are_listed_and_unknown_ones_rejected() {
     let trace: serde_json::Value = serde_json::from_str(&simulate_json(1, 8)).unwrap();
     assert_eq!(trace["script"], "trouble_brewing");
 }
+
+#[test]
+fn communication_steps_say_which_way_they_go() {
+    let trace = simulate(7, 8);
+    for step in &trace.steps {
+        let me = || sim::Endpoint::Player(step.player.clone().unwrap());
+        match step.kind {
+            sim::Kind::Tell => {
+                let flow = step.flow.as_ref().expect("tell has a flow");
+                assert_eq!((&flow.from, &flow.to), (&sim::Endpoint::Storyteller, &me()));
+            }
+            sim::Kind::Ask => {
+                let flow = step.flow.as_ref().expect("ask has a flow");
+                assert_eq!((&flow.from, &flow.to), (&me(), &sim::Endpoint::Storyteller));
+            }
+            sim::Kind::Wake | sim::Kind::Sleep | sim::Kind::Decision => {
+                assert!(step.flow.is_none())
+            }
+            _ => {}
+        }
+    }
+    let nomination = trace
+        .steps
+        .iter()
+        .find(|s| s.text == "Bram nominates Esme")
+        .expect("nomination");
+    let flow = nomination.flow.as_ref().expect("nomination flow");
+    assert_eq!(flow.from, sim::Endpoint::Player("Bram".into()));
+    assert_eq!(flow.to, sim::Endpoint::Player("Esme".into()));
+}

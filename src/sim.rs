@@ -163,6 +163,37 @@ pub enum Kind {
     Decision,
 }
 
+/// One end of a communication.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", content = "name", rename_all = "snake_case")]
+pub enum Endpoint {
+    Storyteller,
+    Player(String),
+}
+
+/// Who a step's communication goes from and to.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Flow {
+    pub from: Endpoint,
+    pub to: Endpoint,
+}
+
+impl Flow {
+    fn to_player(player: &player::Id) -> Self {
+        Self {
+            from: Endpoint::Storyteller,
+            to: Endpoint::Player(player.to_string()),
+        }
+    }
+
+    fn from_player(player: &player::Id) -> Self {
+        Self {
+            from: Endpoint::Player(player.to_string()),
+            to: Endpoint::Storyteller,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct Step {
     pub phase: game::Phase,
@@ -180,6 +211,9 @@ pub struct Step {
     /// Characters named by the step's information.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub characters: Vec<&'static str>,
+    /// Which way the communication goes, for steps that are communication.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub flow: Option<Flow>,
 }
 
 fn seats(view: &game::State) -> Vec<Seat> {
@@ -230,6 +264,7 @@ impl Recorder {
             voters: Vec::new(),
             players: Vec::new(),
             characters: Vec::new(),
+            flow: None,
         });
         self.steps.last_mut().expect("just pushed")
     }
@@ -318,6 +353,7 @@ impl table::Io for Recorder {
         );
         step.players = message.players().iter().map(ToString::to_string).collect();
         step.characters = message.characters();
+        step.flow = Some(Flow::to_player(player));
     }
 
     fn ask(
@@ -335,8 +371,9 @@ impl table::Io for Recorder {
             game::Phase::Day(_) => Audience::Public,
             _ => Audience::Player,
         };
-        self.push(Kind::Ask, Some(player), text, audience).players =
-            answer.iter().map(ToString::to_string).collect();
+        let step = self.push(Kind::Ask, Some(player), text, audience);
+        step.players = answer.iter().map(ToString::to_string).collect();
+        step.flow = Some(Flow::from_player(player));
         answer
     }
 
@@ -360,7 +397,14 @@ impl table::Io for Recorder {
                     self.push(Kind::Death, Some(player), text, Audience::Public);
                 }
             }
-            event::Event::Nominated { .. } | event::Event::Executed(_) => {
+            event::Event::Nominated { nominee, nominator } => {
+                let step = self.push(Kind::Event, Some(nominator), text, Audience::Public);
+                step.flow = Some(Flow {
+                    from: Endpoint::Player(nominator.to_string()),
+                    to: Endpoint::Player(nominee.to_string()),
+                });
+            }
+            event::Event::Executed(_) => {
                 self.push(Kind::Event, None, text, Audience::Public);
             }
             event::Event::Voted {
