@@ -18,7 +18,14 @@ impl character::Def for Def {
         character::Kind::Outsider
     }
 
-    fn night_action(&self, _night: u32) -> Option<character::NightAction> {
+    fn night_order(&self) -> character::NightOrder {
+        character::NightOrder {
+            first: Some(39),
+            other: Some(67),
+        }
+    }
+
+    fn night_action(&self) -> Option<character::NightAction> {
         Some(character::NightAction::ReadWrite(act))
     }
 }
@@ -27,9 +34,6 @@ pub const MASTER: game::Effect = game::Effect::Custom("master");
 
 /// Chooses a master (whose vote they must follow tomorrow).
 fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
-    if !ctx.state().is_alive(me) {
-        return;
-    }
     let candidates = ctx.state().alive_except(me);
     ctx.wake(me);
     if let Some(master) = ctx.ask_one(me, "Choose your master", &candidates) {

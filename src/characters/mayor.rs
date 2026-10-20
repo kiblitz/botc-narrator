@@ -1,5 +1,6 @@
 use crate::character;
 use crate::ctx;
+use crate::event;
 use crate::player;
 use crate::storyteller;
 
@@ -31,7 +32,16 @@ impl character::Def for Def {
 
     /// The storyteller may have another player die instead (or the Mayor),
     /// but never the demon.
-    fn redirect_demon_kill(&self, ctx: &mut ctx::Write<'_>, me: &player::Id) -> Option<player::Id> {
+    fn intercept_death(
+        &self,
+        ctx: &mut ctx::Write<'_>,
+        me: &player::Id,
+        target: &player::Id,
+        cause: &event::Cause,
+    ) -> character::Interception {
+        if target != me || *cause != event::Cause::Demon {
+            return character::Interception::Pass;
+        }
         let state = ctx.state();
         let mut options = vec![me.clone()];
         options.extend(
@@ -41,6 +51,9 @@ impl character::Def for Def {
                 .filter(|p| state.kind(p) != character::Kind::Demon),
         );
         let reason = storyteller::Reason::MayorRedirect { mayor: me.clone() };
-        ctx.choose_player(reason, options)
+        match ctx.choose_player(reason, options) {
+            Some(other) => character::Interception::Redirect(other),
+            None => character::Interception::Pass,
+        }
     }
 }

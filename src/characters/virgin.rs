@@ -27,7 +27,9 @@ impl character::Def for Def {
             game::Reminder::new(&Def, me, game::Effect::AbilityUsed, game::Expiry::Never);
         ctx.place_reminder(me, reminder);
         if !ctx.state().is_malfunctioning(me)
-            && ctx.state().kind(nominator) == character::Kind::Townsfolk
+            && ctx
+                .registers_as(me, nominator, character::Kind::Townsfolk)
+                .is_some()
         {
             ctx.execute(nominator);
         }

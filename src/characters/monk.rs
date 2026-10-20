@@ -18,16 +18,20 @@ impl character::Def for Def {
         character::Kind::Townsfolk
     }
 
-    fn night_action(&self, night: u32) -> Option<character::NightAction> {
-        (night > 1).then_some(character::NightAction::ReadWrite(act))
+    fn night_order(&self) -> character::NightOrder {
+        character::NightOrder {
+            first: None,
+            other: Some(12),
+        }
+    }
+
+    fn night_action(&self) -> Option<character::NightAction> {
+        Some(character::NightAction::ReadWrite(act))
     }
 }
 
 /// Protects another player from the demon tonight.
 fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
-    if !ctx.state().is_alive(me) {
-        return;
-    }
     let candidates = ctx.state().alive_except(me);
     ctx.wake(me);
     if let Some(target) = ctx.ask_one(me, "Who do you want to protect?", &candidates)

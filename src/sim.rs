@@ -1,6 +1,7 @@
 //! Random but plausible games, recorded step by step for the web simulator.
 //!
-//! Setup follows the Trouble Brewing character counts. Players act on simple
+//! Setups follow the standard character counts, adjusted by the characters
+//! chosen (`setup::choose`). Players act on simple
 //! heuristics (evil targets good players, everyone else chooses at random), the
 //! storyteller is [`storyteller::Random`], and days run nominations and a
 //! majority vote. Every interaction is recorded as a [`Step`] with the
@@ -21,13 +22,12 @@ use crate::info;
 use crate::narrator;
 use crate::player;
 use crate::script;
+use crate::setup;
 use crate::storyteller;
 use crate::table;
 
-use crate::characters;
-
-pub const MIN_PLAYERS: usize = 5;
-pub const MAX_PLAYERS: usize = 15;
+pub const MIN_PLAYERS: usize = setup::MIN_PLAYERS;
+pub const MAX_PLAYERS: usize = setup::MAX_PLAYERS;
 const MAX_DAYS: u32 = 12;
 /// Chance the Slayer shoots on a given day.
 const SLAYER_SHOOTS: f64 = 0.35;
@@ -38,63 +38,21 @@ const DEMON_WILD_PICK: f64 = 0.05;
 const EVIL_VOTES_GOOD: f64 = 0.8;
 const EVIL_VOTES_EVIL: f64 = 0.1;
 const GOOD_VOTES: f64 = 0.45;
+/// Chance a mad player breaks their madness on a given day.
+const BREAKS_MADNESS: f64 = 0.3;
 
 const NAMES: [&str; MAX_PLAYERS] = [
     "Ada", "Bram", "Cleo", "Dev", "Esme", "Finn", "Gus", "Hana", "Ivo", "Juno", "Kit", "Lux",
     "Mira", "Nico", "Oona",
 ];
 
-/// (townsfolk, outsiders, minions) for a player count; there is always one demon.
-fn distribution(players: usize) -> (usize, usize, usize) {
-    match players {
-        5 => (3, 0, 1),
-        6 => (3, 1, 1),
-        n => {
-            let extra = n - 7;
-            (5 + 2 * (extra / 3), extra % 3, 1 + extra / 3)
-        }
-    }
-}
-
-/// A legal setup from `script` in random seat order, using the standard
-/// character counts. The Drunk is left out because it is not modelled yet, so
-/// with only three Trouble Brewing Outsiders available the Baron adds fewer
-/// than two when the base count already has two.
+/// A legal setup from `script` (see `setup::choose`) in random seat order.
 pub fn setup(
     rng: &mut impl Rng,
     players: usize,
     script: &script::Script,
 ) -> Vec<(player::Id, character::Ref)> {
-    let players = players.clamp(MIN_PLAYERS, MAX_PLAYERS);
-    let of_kind = |kind: character::Kind| -> Vec<character::Ref> {
-        script
-            .characters
-            .iter()
-            .copied()
-            .filter(|c| c.kind() == kind && c.id() != character::Def::id(&characters::drunk::Def))
-            .collect()
-    };
-    let pick = |rng: &mut dyn rand::RngCore, pool: &[character::Ref], n: usize| {
-        index::sample(rng, pool.len(), n.min(pool.len()))
-            .into_iter()
-            .map(|i| pool[i])
-            .collect::<Vec<_>>()
-    };
-    let (mut townsfolk, mut outsiders, minions) = distribution(players);
-    let minions = pick(rng, &of_kind(character::Kind::Minion), minions);
-    let outsider_pool = of_kind(character::Kind::Outsider);
-    if minions
-        .iter()
-        .any(|m| m.id() == character::Def::id(&characters::baron::Def))
-    {
-        let added = 2.min(outsider_pool.len() - outsiders);
-        outsiders += added;
-        townsfolk -= added;
-    }
-    let mut characters = minions;
-    characters.extend(pick(rng, &of_kind(character::Kind::Demon), 1));
-    characters.extend(pick(rng, &outsider_pool, outsiders));
-    characters.extend(pick(rng, &of_kind(character::Kind::Townsfolk), townsfolk));
+    let mut characters = setup::choose(rng, players, script);
     characters.shuffle(rng);
     NAMES
         .iter()
@@ -129,6 +87,9 @@ pub struct Bluffs {
 pub struct Seat {
     pub name: String,
     pub character: &'static str,
+    /// The character the player believes they are, if not their own.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub believes: Option<&'static str>,
     pub kind: character::Kind,
     pub alignment: character::Alignment,
     pub alive: bool,
@@ -222,6 +183,7 @@ fn seats(view: &game::State) -> Vec<Seat> {
         .map(|p| Seat {
             name: p.id.to_string(),
             character: p.character.name(),
+            believes: p.believes.map(|c| c.name()),
             kind: p.character.kind(),
             alignment: p.alignment,
             alive: p.alive,
@@ -294,7 +256,7 @@ impl Recorder {
         count: usize,
     ) -> Vec<player::Id> {
         let view = &self.view;
-        let me = view.character(player);
+        let me = view.believed(player);
         let targets_good = if me.kind() == character::Kind::Demon {
             !self.rng.random_bool(DEMON_WILD_PICK)
         } else {
@@ -420,16 +382,24 @@ impl table::Io for Recorder {
             }
             event::Event::KillPrevented { player, .. }
             | event::Event::Transformed { player, .. }
+            | event::Event::Believes { player, .. }
+            | event::Event::AbilityGained { player, .. }
+            | event::Event::AbilityLost { player, .. }
+            | event::Event::MadnessBroken { player, .. }
             | event::Event::ReminderPlaced { player, .. } => {
                 self.push(Kind::Event, Some(player), text, Audience::Storyteller);
             }
             event::Event::KillRedirected { to, .. } => {
                 self.push(Kind::Event, Some(to), text, Audience::Storyteller);
             }
-            event::Event::Note(_) => {
+            event::Event::Note(_) | event::Event::FabledAdded(_) => {
                 self.push(Kind::Event, None, text, Audience::Storyteller);
             }
         }
+    }
+
+    fn broke_madness(&mut self, _player: &player::Id, _about: &'static str) -> bool {
+        self.rng.random_bool(BREAKS_MADNESS)
     }
 
     fn decided(&mut self, decision: &storyteller::Decision, picks: &[usize]) {
@@ -468,10 +438,11 @@ pub fn simulate(seed: u64, players: usize, script: &script::Script) -> Trace {
         steps: Vec::new(),
     };
     table.sync(&state);
-    let initial = seats(&state);
 
     let mut ctx = ctx::Write::new(&mut state, &mut table, &mut storyteller);
-    narrator::setup(&mut ctx);
+    narrator::setup(&mut ctx, script);
+    // After setup, so the Drunk's believed character is known.
+    let initial = seats(ctx.state());
     while ctx.state().winner().is_none() {
         match ctx.advance_phase() {
             game::Phase::Night(_) => narrator::run_night(&mut ctx, script),
@@ -491,17 +462,22 @@ pub fn simulate(seed: u64, players: usize, script: &script::Script) -> Trace {
     }
 }
 
-/// A day: maybe a Slayer shot, then nominations and a majority vote.
+/// A day: maybe a Slayer shot (by anyone who believes they are the Slayer),
+/// then nominations and a majority vote.
 fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
-    if let Some(slayer) = ctx
+    let slayers: Vec<player::Id> = ctx
         .state()
-        .find(character::Def::id(&characters::slayer::Def))
-        .cloned()
-        && ctx.state().is_alive(&slayer)
-        && !ctx.state().has_effect(&slayer, game::Effect::AbilityUsed)
-        && rng.random_bool(SLAYER_SHOOTS)
-    {
-        narrator::day_action(ctx, &slayer);
+        .alive_ids()
+        .into_iter()
+        .filter(|p| ctx.state().has_ability(p, "slayer"))
+        .collect();
+    for slayer in slayers {
+        if ctx.state().is_alive(&slayer)
+            && !ctx.state().has_effect(&slayer, game::Effect::AbilityUsed)
+            && rng.random_bool(SLAYER_SHOOTS)
+        {
+            narrator::day_action(ctx, &slayer);
+        }
     }
     let mut best: Option<(player::Id, usize)> = None;
     let mut tied = false;
@@ -530,11 +506,7 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
         let voters = voters(ctx.state(), &nominee, rng);
         let votes = voters.len();
         let needed = ctx.state().alive_ids().len().div_ceil(2);
-        ctx.record(event::Event::Voted {
-            nominee: nominee.clone(),
-            voters,
-            needed,
-        });
+        narrator::vote(ctx, &nominee, voters, needed);
         if votes >= needed {
             match &best {
                 Some((_, top)) if votes < *top => {}
@@ -551,6 +523,9 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
         && ctx.state().winner().is_none()
     {
         ctx.execute(&nominee);
+    }
+    if ctx.state().winner().is_none() {
+        narrator::check_madness(ctx);
     }
     if ctx.state().winner().is_none() {
         narrator::end_day(ctx);
@@ -584,7 +559,7 @@ pub fn simulate_json(seed: u64, players: usize, script_id: &str) -> Result<Strin
 #[derive(Serialize)]
 struct ScriptInfo {
     id: &'static str,
-    name: &'static str,
+    name: String,
 }
 
 /// The available scripts as JSON: `[{ "id", "name" }]`.
@@ -593,7 +568,7 @@ pub fn scripts_json() -> String {
         .iter()
         .map(|s| ScriptInfo {
             id: s.id,
-            name: s.name,
+            name: s.name.clone(),
         })
         .collect();
     serde_json::to_string(&scripts).expect("scripts serialize")

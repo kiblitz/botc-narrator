@@ -13,9 +13,9 @@ use botc_narrator::ctx;
 use botc_narrator::game;
 use botc_narrator::narrator;
 use botc_narrator::player;
+use botc_narrator::script;
 use botc_narrator::storyteller;
 use botc_narrator::table;
-use botc_narrator::trouble_brewing;
 
 const MAX_DAYS: u32 = 10;
 
@@ -31,7 +31,7 @@ fn main() {
             std::process::exit(2);
         }
     };
-    let script = trouble_brewing::script();
+    let script = script::by_id("trouble_brewing").expect("Trouble Brewing is registered");
     let mut state = game::State::new(vec![
         (player::Id::new("Lucius"), &imp::Def),
         (player::Id::new("Ivy"), &poisoner::Def),
@@ -45,7 +45,7 @@ fn main() {
     let mut ctx = ctx::Write::new(&mut state, &mut io, storyteller.as_mut());
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
-    narrator::setup(&mut ctx);
+    narrator::setup(&mut ctx, &script);
     while ctx.state().winner().is_none() {
         ctx.advance_phase();
         match ctx.state().phase() {

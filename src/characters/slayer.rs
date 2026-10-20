@@ -35,7 +35,9 @@ fn slay(ctx: &mut ctx::Write<'_>, me: &player::Id) {
     let candidates = ctx.state().alive_ids();
     if let Some(target) = ctx.ask_one(me, "Who do you want to slay?", &candidates)
         && !ctx.state().is_malfunctioning(me)
-        && ctx.state().kind(&target) == character::Kind::Demon
+        && ctx
+            .registers_as(me, &target, character::Kind::Demon)
+            .is_some()
     {
         ctx.kill(&target, event::Cause::Ability { by: me.clone() });
     }

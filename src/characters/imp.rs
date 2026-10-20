@@ -19,8 +19,15 @@ impl character::Def for Def {
         character::Kind::Demon
     }
 
-    fn night_action(&self, night: u32) -> Option<character::NightAction> {
-        (night > 1).then_some(character::NightAction::ReadWrite(act))
+    fn night_order(&self) -> character::NightOrder {
+        character::NightOrder {
+            first: None,
+            other: Some(24),
+        }
+    }
+
+    fn night_action(&self) -> Option<character::NightAction> {
+        Some(character::NightAction::ReadWrite(act))
     }
 
     /// Starpass: if the Imp killed themself and no Scarlet Woman caught the
@@ -49,9 +56,6 @@ impl character::Def for Def {
 /// Kills a player each night after the first; killing themself passes the
 /// demon to a minion.
 fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
-    if !ctx.state().is_alive(me) {
-        return;
-    }
     let candidates = ctx.state().alive_ids();
     ctx.wake(me);
     let target = ctx.ask_one(me, "Who do you want to kill?", &candidates);

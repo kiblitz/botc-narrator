@@ -13,7 +13,7 @@ pub mod info;
 pub mod narrator;
 pub mod player;
 pub mod script;
+pub mod setup;
 pub mod sim;
 pub mod storyteller;
 pub mod table;
-pub mod trouble_brewing;

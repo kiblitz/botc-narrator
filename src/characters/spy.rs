@@ -18,17 +18,29 @@ impl character::Def for Def {
         character::Kind::Minion
     }
 
-    fn night_action(&self, _night: u32) -> Option<character::NightAction> {
+    fn night_order(&self) -> character::NightOrder {
+        character::NightOrder {
+            first: Some(49),
+            other: Some(68),
+        }
+    }
+
+    fn night_action(&self) -> Option<character::NightAction> {
         Some(character::NightAction::ReadOnly(act))
+    }
+
+    /// Might register as good and as a Townsfolk or Outsider, even if dead.
+    fn misregistration(&self) -> Option<character::Misregistration> {
+        Some(character::Misregistration {
+            alignment: character::Alignment::Good,
+            kinds: &[character::Kind::Townsfolk, character::Kind::Outsider],
+        })
     }
 }
 
 /// Sees the grimoire.
 fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
     let state = ctx.state();
-    if !state.is_alive(me) {
-        return;
-    }
     let grimoire = state
         .players()
         .iter()

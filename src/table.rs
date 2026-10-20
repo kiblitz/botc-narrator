@@ -30,6 +30,12 @@ pub trait Io {
     /// The storyteller made a decision (for logging; players never see this).
     fn decided(&mut self, _decision: &storyteller::Decision, _picks: &[usize]) {}
 
+    /// Whether `player`, mad about being the `about` character, broke their
+    /// madness (did not try to convince the group of it).
+    fn broke_madness(&mut self, _player: &player::Id, _about: &'static str) -> bool {
+        false
+    }
+
     /// The next `size` night actions are independent reads (announced as a batch).
     fn batch_started(&mut self, _size: usize) {}
     fn batch_ended(&mut self) {}

@@ -1,4 +1,5 @@
-//! The Trouble Brewing characters, one module per character.
+//! Every character, one module per character, and the registry scripts
+//! load them from.
 
 pub mod baron;
 pub mod butler;
@@ -29,13 +30,58 @@ use crate::game;
 use crate::info;
 use crate::player;
 
+/// Every character the engine has, in one registry: scripts load their
+/// characters from it by id.
+pub fn all() -> &'static [character::Ref] {
+    &[
+        &baron::Def,
+        &butler::Def,
+        &chef::Def,
+        &drunk::Def,
+        &empath::Def,
+        &fortune_teller::Def,
+        &imp::Def,
+        &investigator::Def,
+        &librarian::Def,
+        &mayor::Def,
+        &monk::Def,
+        &poisoner::Def,
+        &ravenkeeper::Def,
+        &recluse::Def,
+        &saint::Def,
+        &scarlet_woman::Def,
+        &slayer::Def,
+        &soldier::Def,
+        &spy::Def,
+        &undertaker::Def,
+        &virgin::Def,
+        &washerwoman::Def,
+    ]
+}
+
+/// The character with this id. Official script ids have no underscores
+/// (`fortuneteller`), so underscores are ignored when matching.
+pub fn find(id: &str) -> Option<character::Ref> {
+    let key = |s: &str| s.replace('_', "");
+    all().iter().copied().find(|c| key(c.id()) == key(id))
+}
+
 /// Washerwoman-style information: "one of these two players is the X", where
-/// X is a `kind` character. Shown in both seat orders so the storyteller also
-/// picks the order. Misinformation is any two other players and any in-play
-/// character of that kind.
+/// X is a `kind` character (as they register to `me`). Shown in both seat
+/// orders so the storyteller also picks the order. Misinformation is any two
+/// other players and any in-play character of that kind.
 pub(crate) fn inform_one_of(ctx: &mut ctx::Read<'_>, me: &player::Id, kind: character::Kind) {
+    let others: Vec<player::Id> = ctx
+        .state()
+        .seat_order()
+        .into_iter()
+        .filter(|p| p != me)
+        .collect();
+    let registered: Vec<(player::Id, character::Ref)> = others
+        .iter()
+        .filter_map(|p| ctx.registers_as(me, p, kind).map(|c| (p.clone(), c)))
+        .collect();
     let state = ctx.state();
-    let others: Vec<player::Id> = state.seat_order().into_iter().filter(|p| p != me).collect();
     let pairs_with = |a: &player::Id| -> Vec<[player::Id; 2]> {
         others
             .iter()
@@ -44,8 +90,8 @@ pub(crate) fn inform_one_of(ctx: &mut ctx::Read<'_>, me: &player::Id, kind: char
             .collect()
     };
     let mut truthful = Vec::new();
-    for target in others.iter().filter(|p| state.kind(p) == kind) {
-        let character = state.character(target).name();
+    for (target, character) in &registered {
+        let character = character.name();
         for players in pairs_with(target) {
             truthful.push(info::Message::OneOf { players, character });
         }
@@ -85,6 +131,8 @@ fn noun(kind: character::Kind) -> &'static str {
         character::Kind::Outsider => "outsiders",
         character::Kind::Minion => "minions",
         character::Kind::Demon => "demons",
+        character::Kind::Traveller => "travellers",
+        character::Kind::Fabled => "fabled",
     }
 }
 

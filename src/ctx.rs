@@ -139,7 +139,7 @@ impl<'a> Read<'a> {
         }
         let reason = storyteller::Reason::Information {
             player: player.clone(),
-            character: self.state.character(player).name(),
+            character: self.state.believed(player).name(),
             malfunctioning,
         };
         let chosen = self.choose(reason, options, 1, |(message, truthful)| {
@@ -151,6 +151,134 @@ impl<'a> Read<'a> {
         if let Some((message, _)) = chosen.into_iter().next() {
             self.tell(player, &message);
         }
+    }
+
+    // Registration: information abilities learn about other players through
+    // these, never from the grimoire directly, so a character that may
+    // misregister (`character::Def::misregistration`) is handled centrally.
+    // The truthful answer is always the first option; the storyteller is only
+    // asked when a misregistration would change the answer.
+
+    /// The alignment `target` registers as to `asker`'s ability.
+    pub fn registered_alignment(
+        &mut self,
+        asker: &player::Id,
+        target: &player::Id,
+    ) -> character::Alignment {
+        let truth = self.state.alignment(target);
+        let mut options = vec![truth];
+        if let Some(m) = self.misregistration(target)
+            && m.alignment != truth
+        {
+            options.push(m.alignment);
+        }
+        self.register(asker, target, options, |a| {
+            storyteller::Choice::Alignment(*a)
+        })
+    }
+
+    pub fn registers_evil(&mut self, asker: &player::Id, target: &player::Id) -> bool {
+        self.registered_alignment(asker, target) == character::Alignment::Evil
+    }
+
+    /// The character `target` registers as to `asker`'s ability: their own,
+    /// or an in-play character of a kind they may misregister as.
+    pub fn registered_character(
+        &mut self,
+        asker: &player::Id,
+        target: &player::Id,
+    ) -> character::Ref {
+        let mut options = vec![self.state.character(target)];
+        if let Some(m) = self.misregistration(target) {
+            for kind in m.kinds {
+                for c in self.in_play(*kind) {
+                    if !options.iter().any(|o| character::same(*o, c)) {
+                        options.push(c);
+                    }
+                }
+            }
+        }
+        self.register(asker, target, options, |c| {
+            storyteller::Choice::Character(c.name())
+        })
+    }
+
+    /// Whether `target` registers as a `kind` character to `asker`'s ability,
+    /// and as which.
+    pub fn registers_as(
+        &mut self,
+        asker: &player::Id,
+        target: &player::Id,
+        kind: character::Kind,
+    ) -> Option<character::Ref> {
+        let real = self.state.character(target);
+        let truth = (real.kind() == kind).then_some(real);
+        let mut options = vec![truth];
+        if let Some(m) = self.misregistration(target) {
+            for misregistered in m.kinds {
+                let answers: Vec<Option<character::Ref>> = if *misregistered == kind {
+                    self.in_play(kind).into_iter().map(Some).collect()
+                } else {
+                    vec![None]
+                };
+                for answer in answers {
+                    let known = options.iter().any(|o| match (o, answer) {
+                        (Some(a), Some(b)) => character::same(*a, b),
+                        (None, None) => true,
+                        _ => false,
+                    });
+                    if !known {
+                        options.push(answer);
+                    }
+                }
+            }
+        }
+        self.register(asker, target, options, |answer| match answer {
+            Some(c) => storyteller::Choice::Character(c.name()),
+            None => storyteller::Choice::NotOfKind(kind),
+        })
+    }
+
+    /// How `target` may misregister: never while malfunctioning.
+    fn misregistration(&self, target: &player::Id) -> Option<character::Misregistration> {
+        if self.state.is_malfunctioning(target) {
+            return None;
+        }
+        self.state.character(target).misregistration()
+    }
+
+    /// Distinct in-play characters of `kind`, in seat order.
+    fn in_play(&self, kind: character::Kind) -> Vec<character::Ref> {
+        let mut characters: Vec<character::Ref> = Vec::new();
+        for p in self.state.players() {
+            if p.character.kind() == kind
+                && !characters.iter().any(|c| character::same(*c, p.character))
+            {
+                characters.push(p.character);
+            }
+        }
+        characters
+    }
+
+    fn register<T: Clone>(
+        &mut self,
+        asker: &player::Id,
+        target: &player::Id,
+        options: Vec<T>,
+        describe: impl Fn(&T) -> storyteller::Choice,
+    ) -> T {
+        if options.len() == 1 {
+            return options[0].clone();
+        }
+        let reason = storyteller::Reason::Registration {
+            asker: asker.clone(),
+            target: target.clone(),
+        };
+        let first = options[0].clone();
+        self.choose(reason, options, 1, describe)
+            .into_iter()
+            .next()
+            .unwrap_or(first)
     }
 }
 
@@ -196,10 +324,37 @@ impl<'a> Write<'a> {
         self.record(event::Event::Note(text.into()));
     }
 
+    /// Moves to the next phase; living players' night-start or day-start
+    /// abilities fire.
     pub fn advance_phase(&mut self) -> game::Phase {
         let phase = self.state.advance_phase();
         self.record(event::Event::PhaseBegan(phase));
+        for (id, ability) in self.living_abilities() {
+            match phase {
+                game::Phase::Night(_) => ability.on_night_start(self, &id),
+                game::Phase::Day(_) => ability.on_day_start(self, &id),
+                game::Phase::Setup => {}
+            }
+        }
         phase
+    }
+
+    /// Every living player's abilities, in seat order.
+    pub fn living_abilities(&self) -> Vec<(player::Id, character::Ref)> {
+        self.abilities_of(&self.state.alive_ids())
+    }
+
+    /// The abilities of `players`, in the given order.
+    pub fn abilities_of(&self, players: &[player::Id]) -> Vec<(player::Id, character::Ref)> {
+        players
+            .iter()
+            .flat_map(|id| {
+                self.state
+                    .abilities(id)
+                    .into_iter()
+                    .map(move |ability| (id.clone(), ability))
+            })
+            .collect()
     }
 
     pub fn place_reminder(&mut self, target: &player::Id, reminder: game::Reminder) {
@@ -210,38 +365,81 @@ impl<'a> Write<'a> {
         });
     }
 
-    /// Attempt to kill `target`. Demon kills respect protection, demon-proof
-    /// characters and redirects. Returns whether someone died.
+    /// Tell `target` they are `character`, which they are not (or, with
+    /// `None`, that they are their real character again).
+    pub fn set_believed(&mut self, target: &player::Id, character: Option<character::Ref>) {
+        self.state.set_believed(target, character);
+        self.record(event::Event::Believes {
+            player: target.clone(),
+            character: self.state.believed(target).name(),
+        });
+    }
+
+    pub fn gain_ability(&mut self, target: &player::Id, ability: character::Ref) {
+        self.state.gain_ability(target, ability);
+        self.record(event::Event::AbilityGained {
+            player: target.clone(),
+            ability: ability.name(),
+        });
+    }
+
+    pub fn lose_ability(&mut self, target: &player::Id, ability: character::Ref) {
+        self.state.lose_ability(target, ability);
+        self.record(event::Event::AbilityLost {
+            player: target.clone(),
+            ability: ability.name(),
+        });
+    }
+
+    /// Put a Fabled character in play (it is never seated).
+    pub fn add_fabled(&mut self, fabled: character::Ref) {
+        assert_eq!(
+            fabled.kind(),
+            character::Kind::Fabled,
+            "{} is not Fabled",
+            fabled.name()
+        );
+        self.state.add_fabled(fabled);
+        self.record(event::Event::FabledAdded(fabled.name()));
+    }
+
+    /// Attempt to kill `target`. Monk protection stops demon kills; then every
+    /// functioning living player's abilities may prevent or redirect the
+    /// death (`character::Def::intercept_death`). Returns whether someone died.
     pub fn kill(&mut self, target: &player::Id, cause: event::Cause) -> bool {
         if !self.state.is_alive(target) {
             return false;
         }
-        if cause == event::Cause::Demon {
-            if let Some(by) = self.state.effect_source(target, game::Effect::Protected) {
-                self.record(event::Event::KillPrevented {
-                    player: target.clone(),
-                    by,
-                });
-                return false;
+        if cause == event::Cause::Demon
+            && let Some(by) = self.state.effect_source(target, game::Effect::Protected)
+        {
+            self.record(event::Event::KillPrevented {
+                player: target.clone(),
+                by,
+            });
+            return false;
+        }
+        for (id, ability) in self.living_abilities() {
+            if self.state.is_malfunctioning(&id) {
+                continue;
             }
-            let character = self.state.character(target);
-            if !self.state.is_malfunctioning(target) {
-                if character.safe_from_demon() {
+            match ability.intercept_death(self, &id, target, &cause) {
+                character::Interception::Pass => {}
+                character::Interception::Prevent => {
                     self.record(event::Event::KillPrevented {
                         player: target.clone(),
-                        by: character.id(),
+                        by: ability.id(),
                     });
                     return false;
                 }
-                if let Some(redirect) = character.redirect_demon_kill(self, target)
-                    && &redirect != target
-                {
+                character::Interception::Redirect(to) if &to != target => {
                     self.record(event::Event::KillRedirected {
                         from: target.clone(),
-                        to: redirect.clone(),
+                        to: to.clone(),
                     });
-                    return self.kill(&redirect, cause);
+                    return self.kill(&to, cause);
                 }
+                character::Interception::Redirect(_) => break,
             }
         }
         self.die(target, cause);
@@ -256,35 +454,34 @@ impl<'a> Write<'a> {
             player: target.clone(),
             cause: cause.clone(),
         });
-        let mut watchers: Vec<(player::Id, character::Ref)> = self
-            .state
-            .players()
-            .iter()
-            .filter(|p| p.alive)
-            .map(|p| (p.id.clone(), p.character))
-            .collect();
-        watchers.push((target.clone(), self.state.character(target)));
-        for (id, character) in watchers {
-            character.on_death(self, &id, target, &cause);
+        let mut watchers = self.living_abilities();
+        watchers.extend(self.abilities_of(std::slice::from_ref(target)));
+        for (id, ability) in watchers {
+            ability.on_death(self, &id, target, &cause);
         }
         self.check_win();
     }
 
-    /// Execute `target`: their execution triggers fire, then they die.
-    pub fn execute(&mut self, target: &player::Id) {
+    /// Execute `target`: their execution triggers fire, then they die unless
+    /// an ability prevents it. Returns whether they died.
+    pub fn execute(&mut self, target: &player::Id) -> bool {
         if !self.state.is_alive(target) {
-            return;
+            return false;
         }
         self.state.mark_executed(target);
         self.record(event::Event::Executed(target.clone()));
-        self.state.character(target).on_executed(self, target);
-        self.die(target, event::Cause::Execution);
+        for (id, ability) in self.abilities_of(std::slice::from_ref(target)) {
+            ability.on_executed(self, &id);
+        }
+        self.kill(target, event::Cause::Execution)
     }
 
-    /// `target` becomes `into`; their old ability's lingering tokens are removed.
+    /// `target` becomes `into`; their old ability's lingering tokens are
+    /// removed, and they now know their character.
     pub fn transform(&mut self, target: &player::Id, into: character::Ref) {
         self.state.remove_reminders(target, game::Expiry::Dusk);
         self.state.set_character(target, into);
+        self.state.set_believed(target, None);
         self.record(event::Event::Transformed {
             player: target.clone(),
             into: into.name(),
@@ -370,5 +567,34 @@ impl<'a> Write<'a> {
         misinformation: Vec<info::Message>,
     ) {
         self.read().inform(player, truthful, misinformation);
+    }
+
+    pub fn registered_alignment(
+        &mut self,
+        asker: &player::Id,
+        target: &player::Id,
+    ) -> character::Alignment {
+        self.read().registered_alignment(asker, target)
+    }
+
+    pub fn registers_evil(&mut self, asker: &player::Id, target: &player::Id) -> bool {
+        self.read().registers_evil(asker, target)
+    }
+
+    pub fn registered_character(
+        &mut self,
+        asker: &player::Id,
+        target: &player::Id,
+    ) -> character::Ref {
+        self.read().registered_character(asker, target)
+    }
+
+    pub fn registers_as(
+        &mut self,
+        asker: &player::Id,
+        target: &player::Id,
+        kind: character::Kind,
+    ) -> Option<character::Ref> {
+        self.read().registers_as(asker, target, kind)
     }
 }

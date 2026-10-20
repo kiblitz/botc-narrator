@@ -10,13 +10,12 @@ use botc_narrator::characters::{
 };
 use botc_narrator::game;
 use botc_narrator::narrator;
-use botc_narrator::trouble_brewing;
 
 use common::p;
 
 fn night(ctx: &mut botc_narrator::ctx::Write<'_>) {
     ctx.advance_phase();
-    narrator::run_night(ctx, &trouble_brewing::script());
+    narrator::run_night(ctx, &common::trouble_brewing());
 }
 
 fn seven() -> common::Game {
@@ -253,7 +252,7 @@ fn imp_starpass_passes_to_chosen_minion() {
         ("Saint", &saint::Def),
     ]);
     g.run(|ctx| {
-        narrator::setup(ctx);
+        narrator::setup(ctx, &common::trouble_brewing());
         ctx.advance_phase();
         ctx.advance_phase();
     });
@@ -376,6 +375,7 @@ fn ravenkeeper_learns_a_character_when_killed() {
         === parallel (3) ===
         wake Raven
           Raven? Choose a player to learn about => Spy
+          storyteller [1 of 4 options] how Spy registers to Raven (first option is true): Spy
           storyteller [1 of 1 options] information for Raven (Ravenkeeper): "Spy"
           -> Raven: Spy
         sleep Raven
@@ -547,20 +547,23 @@ fn first_night_info_characters_get_truthful_options() {
         ("Inv", &investigator::Def),
         ("Butler", &butler::Def),
     ]);
-    // Six players: no evil info. The Washerwoman sees option 1, the others
-    // the first option.
-    g.picks(&[&[1]]).answers(&[&["Imp"]]).run(night);
+    // Six players: no evil info. The Spy registers truly to the Washerwoman,
+    // who sees option 1; the others get the first option.
+    g.picks(&[&[0], &[1]]).answers(&[&["Imp"]]).run(night);
     expect![[r#"
         * === Night 1 ===
         === parallel (3) ===
+          storyteller [1 of 4 options] how Spy registers to Wash (first option is true): not a Townsfolk
         wake Wash
           storyteller [1 of 16 options] information for Wash (Washerwoman): "Imp and Lib: one is the Librarian"
           -> Wash: Imp and Lib: one is the Librarian
         sleep Wash
+          storyteller [1 of 2 options] how Spy registers to Lib (first option is true): not an Outsider
         wake Lib
           storyteller [1 of 8 options] information for Lib (Librarian): "Butler and Imp: one is the Butler"
           -> Lib: Butler and Imp: one is the Butler
         sleep Lib
+          storyteller [1 of 2 options] how Spy registers to Inv (first option is true): Spy
         wake Inv
           storyteller [1 of 8 options] information for Inv (Investigator): "Spy and Imp: one is the Spy"
           -> Inv: Spy and Imp: one is the Spy

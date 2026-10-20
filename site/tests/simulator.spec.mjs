@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const open = async (page, hash = "#seed=7&players=8") => {
+const open = async (page, hash = "#seed=36&players=8") => {
   await page.goto(`/${hash}`);
   await expect(page.locator("body")).toHaveAttribute("data-ready", "true");
 };
@@ -14,13 +14,13 @@ test("seats every player in a circle", async ({ page }) => {
 
 test("stepping reveals private information to the right player", async ({ page }) => {
   await open(page);
-  // Seed 7 / 8 players: the first minion (Cleo, the Spy) is woken and told the evil team.
+  // Seed 36 / 8 players: the minion (Dev, the Spy) is woken and told the evil team.
   await page.locator("#next").click();
-  await expect(page.locator('.seat[data-name="Cleo"]')).toHaveClass(/awake/);
+  await expect(page.locator('.seat[data-name="Dev"]')).toHaveClass(/awake/);
   await page.locator("#next").click();
-  await expect(page.locator("#caption")).toHaveText("Storyteller → Cleo: Evil: Cleo, Dev");
-  await page.locator('.seat[data-name="Cleo"]').click();
-  await expect(page.locator("#knowledge-title")).toHaveText("What Cleo knows — Spy");
+  await expect(page.locator("#caption")).toHaveText("Storyteller → Dev: Evil: Cleo, Dev");
+  await page.locator('.seat[data-name="Dev"]').click();
+  await expect(page.locator("#knowledge-title")).toHaveText("What Dev knows — Spy");
   await expect(page.locator("#knowledge-list")).toContainText("Evil: Cleo, Dev");
 });
 
@@ -43,7 +43,7 @@ test("a player's point of view hides other characters and private steps", async 
   const log = await page.locator("#log").innerText();
   expect(log).not.toContain("Evil: Cleo, Dev");
   expect(log).not.toContain("storyteller");
-  expect(log).toContain("Bram and Gus: one is the Investigator");
+  expect(log).toContain("Gus and Cleo: one is the Empath");
 });
 
 test("loading a seed is reproducible and shareable", async ({ page }) => {
@@ -71,7 +71,7 @@ test("in a player's view, other players' private info stays hidden", async ({ pa
 test("night deaths are announced at dawn without their cause", async ({ page }) => {
   await open(page);
   await page.locator("#pov").selectOption("Hana");
-  // Seed 7 / 8 players: Ada dies to the demon on night 2.
+  // Seed 36 / 8 players: Ada dies to the demon on night 2.
   await page.keyboard.press("Shift+ArrowRight"); // Day 1
   await page.keyboard.press("Shift+ArrowRight"); // Night 2
   await page.keyboard.press("Shift+ArrowRight"); // Day 2
@@ -122,9 +122,9 @@ test("townsfolk and outsiders get different shades of blue", async ({ page }) =>
   await open(page);
   const border = (name) =>
     page.locator(`.seat[data-name="${name}"] .token`).evaluate((e) => getComputedStyle(e).borderTopColor);
-  // Seed 7 / 8 players: Ada is the Washerwoman, Bram the Butler.
+  // Seed 36 / 8 players: Ada is the Washerwoman, Esme the Recluse.
   expect(await border("Ada")).toBe("rgb(47, 104, 196)");
-  expect(await border("Bram")).toBe("rgb(134, 185, 243)");
+  expect(await border("Esme")).toBe("rgb(134, 185, 243)");
 });
 
 test("tokens show the official character icon", async ({ page }) => {
@@ -140,14 +140,14 @@ test("tokens show the official character icon", async ({ page }) => {
 
 test("demon bluffs appear around the demon once told", async ({ page }) => {
   await open(page);
-  // Seed 7 / 8 players: Dev is the Imp and learns the bluffs on step 8.
+  // Seed 36 / 8 players: Cleo is the Imp and learns the bluffs on step 7.
   await expect(page.locator(".bluff")).toHaveCount(0);
-  for (let i = 0; i < 8; i++) await page.keyboard.press("ArrowRight");
-  await expect(page.locator('.seat[data-name="Dev"] .bluff')).toHaveCount(3);
-  await expect(page.locator('.seat[data-name="Dev"] .bluff').first()).toHaveAttribute("title", /^Bluff: /);
+  for (let i = 0; i < 7; i++) await page.keyboard.press("ArrowRight");
+  await expect(page.locator('.seat[data-name="Cleo"] .bluff')).toHaveCount(3);
+  await expect(page.locator('.seat[data-name="Cleo"] .bluff').first()).toHaveAttribute("title", /^Bluff: /);
   // The demon sees their own bluffs; nobody else does.
-  await page.locator("#pov").selectOption("Dev");
-  await expect(page.locator('.seat[data-name="Dev"] .bluff')).toHaveCount(3);
+  await page.locator("#pov").selectOption("Cleo");
+  await expect(page.locator('.seat[data-name="Cleo"] .bluff')).toHaveCount(3);
   await page.locator("#pov").selectOption("Ada");
   await page.keyboard.press("End");
   await expect(page.locator(".bluff")).toHaveCount(0);
@@ -183,29 +183,29 @@ test("play toggles to pause and back", async ({ page }) => {
 
 test("votes highlight the nominee and everyone who voted", async ({ page }) => {
   await open(page);
-  // Seed 7 / 8 players: on day 1, Bram nominates Esme and six players vote.
+  // Seed 36 / 8 players: on day 1, Ada nominates Bram and three players vote.
   await page.keyboard.press("Shift+ArrowRight");
   await page.keyboard.press("ArrowRight"); // nomination
   await page.keyboard.press("ArrowRight"); // vote
-  await expect(page.locator("#caption")).toContainText("6 votes for Esme");
-  await expect(page.locator('.seat[data-name="Esme"]')).toHaveClass(/nominee/);
-  await expect(page.locator(".seat.voted")).toHaveCount(6);
+  await expect(page.locator("#caption")).toContainText("3 votes for Bram");
+  await expect(page.locator('.seat[data-name="Bram"]')).toHaveClass(/nominee/);
+  await expect(page.locator(".seat.voted")).toHaveCount(3);
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".seat.voted")).toHaveCount(0);
 });
 
 test("information highlights the players and characters it names", async ({ page }) => {
   await open(page);
-  // Seed 7 / 8 players: step 12 tells Ada "Bram and Gus: one is the Investigator".
-  for (let i = 0; i < 11; i++) await page.keyboard.press("ArrowRight");
-  await expect(page.locator("#caption")).toContainText("one is the Investigator");
+  // Seed 36 / 8 players: step 13 tells Ada "Gus and Cleo: one is the Empath".
+  for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowRight");
+  await expect(page.locator("#caption")).toContainText("one is the Empath");
   await expect(page.locator(".seat.mentioned")).toHaveCount(2);
-  await expect(page.locator('.seat[data-name="Bram"]')).toHaveClass(/mentioned/);
   await expect(page.locator('.seat[data-name="Gus"]')).toHaveClass(/mentioned/);
-  await expect(page.locator("#caption .player-ref")).toHaveText(["Bram", "Gus"]);
-  await expect(page.locator("#caption .char-ref")).toHaveText("Investigator");
-  await expect(page.locator("#caption .char-ref img")).toHaveAttribute("src", /investigator\.png$/);
-  await expect(page.locator("#log .current .char-ref")).toHaveText("Investigator");
+  await expect(page.locator('.seat[data-name="Cleo"]')).toHaveClass(/mentioned/);
+  await expect(page.locator("#caption .player-ref")).toHaveText(["Gus", "Cleo"]);
+  await expect(page.locator("#caption .char-ref")).toHaveText("Empath");
+  await expect(page.locator("#caption .char-ref img")).toHaveAttribute("src", /empath\.png$/);
+  await expect(page.locator("#log .current .char-ref")).toHaveText("Empath");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".seat.mentioned")).toHaveCount(0);
 });
@@ -214,7 +214,7 @@ test("a script can be chosen and is kept in the URL", async ({ page }) => {
   await open(page);
   await expect(page.locator("#script option")).toHaveText(["Trouble Brewing"]);
   await expect(page.locator("#script")).toHaveValue("trouble_brewing");
-  await expect(page).toHaveURL(/#script=trouble_brewing&seed=7&players=8$/);
+  await expect(page).toHaveURL(/#script=trouble_brewing&seed=36&players=8$/);
   // An unknown script in the URL falls back to the first one.
   await open(page, "#script=nope&seed=7&players=8");
   await expect(page.locator("#script")).toHaveValue("trouble_brewing");
@@ -222,33 +222,33 @@ test("a script can be chosen and is kept in the URL", async ({ page }) => {
 
 test("arrows show which way communication goes", async ({ page }) => {
   await open(page);
-  // Step 3: the storyteller tells Cleo the evil team.
+  // Step 3: the storyteller tells Dev the evil team.
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#arrows .flow-arrow.tell")).toHaveCount(1);
-  await expect(page.locator("#caption .who")).toHaveText("Storyteller → Cleo: ");
+  await expect(page.locator("#caption .who")).toHaveText("Storyteller → Dev: ");
   const tell = await page.locator("#arrows .flow-arrow").evaluate((l) => ({
     x1: +l.getAttribute("x1"), y1: +l.getAttribute("y1"), x2: +l.getAttribute("x2"), y2: +l.getAttribute("y2"),
   }));
   const board = await page.locator("#board").boundingBox();
-  const cleo = await page.locator('.seat[data-name="Cleo"] .token').boundingBox();
-  const cleoX = cleo.x + cleo.width / 2 - board.x;
-  // The arrow starts near the centre and ends near Cleo.
-  expect(Math.abs(tell.x2 - cleoX)).toBeLessThan(Math.abs(tell.x1 - cleoX));
+  const dev = await page.locator('.seat[data-name="Dev"] .token').boundingBox();
+  const devX = dev.x + dev.width / 2 - board.x;
+  // The arrow starts near the centre and ends near Dev.
+  expect(Math.abs(tell.x2 - devX)).toBeLessThan(Math.abs(tell.x1 - devX));
   // A wake step has no arrow.
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#arrows .flow-arrow")).toHaveCount(0);
-  // Day 1: Bram nominates Esme, player to player.
+  // Day 1: Ada nominates Bram, player to player.
   await page.keyboard.press("Shift+ArrowRight");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#arrows .flow-arrow.event")).toHaveCount(1);
-  await expect(page.locator("#caption .who")).toHaveText("Bram → Esme: ");
+  await expect(page.locator("#caption .who")).toHaveText("Ada → Bram: ");
 });
 
 test("the arrow is drawn above the centre text", async ({ page }) => {
   await open(page);
-  // Step 12: the storyteller tells Ada (top seat), so the arrow crosses the caption.
-  for (let i = 0; i < 11; i++) await page.keyboard.press("ArrowRight");
+  // Step 13: the storyteller tells Ada (top seat), so the arrow crosses the caption.
+  for (let i = 0; i < 12; i++) await page.keyboard.press("ArrowRight");
   const z = (selector) => page.locator(selector).evaluate((e) => Number(getComputedStyle(e).zIndex));
   expect(await z("#arrows")).toBeGreaterThan(await z("#center"));
   expect(await z("#arrows")).toBeGreaterThan(await z(".seat >> nth=0"));

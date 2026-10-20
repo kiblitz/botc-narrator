@@ -18,16 +18,20 @@ impl character::Def for Def {
         character::Kind::Minion
     }
 
-    fn night_action(&self, _night: u32) -> Option<character::NightAction> {
+    fn night_order(&self) -> character::NightOrder {
+        character::NightOrder {
+            first: Some(17),
+            other: Some(7),
+        }
+    }
+
+    fn night_action(&self) -> Option<character::NightAction> {
         Some(character::NightAction::ReadWrite(act))
     }
 }
 
 /// Poisons a player until the next dusk.
 fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
-    if !ctx.state().is_alive(me) {
-        return;
-    }
     let candidates = ctx.state().alive_except(me);
     ctx.wake(me);
     if let Some(target) = ctx.ask_one(me, "Who do you want to poison?", &candidates)

@@ -19,7 +19,14 @@ impl character::Def for Def {
         character::Kind::Townsfolk
     }
 
-    fn night_action(&self, _night: u32) -> Option<character::NightAction> {
+    fn night_order(&self) -> character::NightOrder {
+        character::NightOrder {
+            first: Some(37),
+            other: Some(53),
+        }
+    }
+
+    fn night_action(&self) -> Option<character::NightAction> {
         Some(character::NightAction::ReadOnly(act))
     }
 }
@@ -27,17 +34,16 @@ impl character::Def for Def {
 /// Learns how many of their two alive neighbours are evil.
 fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
     let state = ctx.state();
-    if !state.is_alive(me) {
-        return;
-    }
     let alive = state.alive_ids();
     let n = alive.len();
     let i = alive.iter().position(|p| p == me).expect("empath is alive");
     let mut neighbours = vec![&alive[(i + n - 1) % n], &alive[(i + 1) % n]];
     neighbours.dedup();
+    neighbours.retain(|p| *p != me);
+    let neighbours: Vec<player::Id> = neighbours.into_iter().cloned().collect();
     let count = neighbours
-        .into_iter()
-        .filter(|p| *p != me && state.is_evil(p))
+        .iter()
+        .filter(|p| ctx.registers_evil(me, p))
         .count();
     let noun = "evil neighbours";
     let truthful = vec![info::Message::Count { count, noun }];

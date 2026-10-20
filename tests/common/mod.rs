@@ -10,11 +10,16 @@ use botc_narrator::event;
 use botc_narrator::game;
 use botc_narrator::info;
 use botc_narrator::player;
+use botc_narrator::script;
 use botc_narrator::storyteller;
 use botc_narrator::table;
 
 pub fn p(name: &str) -> player::Id {
     player::Id::new(name)
+}
+
+pub fn trouble_brewing() -> script::Script {
+    script::by_id("trouble_brewing").expect("Trouble Brewing is registered")
 }
 
 pub fn state(seats: &[(&str, character::Ref)]) -> game::State {
@@ -26,6 +31,8 @@ pub fn state(seats: &[(&str, character::Ref)]) -> game::State {
 #[derive(Default)]
 pub struct Recorder {
     answers: VecDeque<Vec<player::Id>>,
+    /// Players who break their madness whenever asked.
+    pub breaks_madness: Vec<player::Id>,
     pub log: String,
 }
 
@@ -81,6 +88,12 @@ impl table::Io for Recorder {
             decision.reason,
             picked.join(", ")
         ));
+    }
+
+    fn broke_madness(&mut self, player: &player::Id, about: &'static str) -> bool {
+        let broke = self.breaks_madness.contains(player);
+        self.line(format!("  {player} mad about {about}: broke = {broke}"));
+        broke
     }
 
     fn batch_started(&mut self, size: usize) {
@@ -148,6 +161,18 @@ pub fn grimoire(state: &game::State) -> String {
     let mut out = String::new();
     for p in state.players() {
         let _ = write!(out, "{}: {}", p.id, p.character.name());
+        if let Some(believed) = p.believes {
+            let _ = write!(out, " (believes {})", believed.name());
+        }
+        if p.alignment != p.character.kind().alignment().unwrap_or(p.alignment) {
+            let _ = write!(out, " ({})", p.alignment);
+        }
+        for ability in &p.gained {
+            let _ = write!(out, " (+{})", ability.name());
+        }
+        if p.lost_ability {
+            out.push_str(" (lost ability)");
+        }
         if !p.alive {
             out.push_str(" [dead]");
         }

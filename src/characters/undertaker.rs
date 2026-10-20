@@ -19,22 +19,26 @@ impl character::Def for Def {
         character::Kind::Townsfolk
     }
 
-    fn night_action(&self, night: u32) -> Option<character::NightAction> {
-        (night > 1).then_some(character::NightAction::ReadOnly(act))
+    fn night_order(&self) -> character::NightOrder {
+        character::NightOrder {
+            first: None,
+            other: Some(55),
+        }
+    }
+
+    fn night_action(&self) -> Option<character::NightAction> {
+        Some(character::NightAction::ReadOnly(act))
     }
 }
 
 /// Learns the character of the player executed today.
 fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
-    let state = ctx.state();
-    if !state.is_alive(me) {
-        return;
-    }
-    let Some(executed) = state.executed_today() else {
+    let Some(executed) = ctx.state().executed_today().cloned() else {
         return;
     };
-    let truthful = vec![info::Message::Character(state.character(executed).name())];
-    let misinformation = characters::any_character(state);
+    let registered = ctx.registered_character(me, &executed);
+    let truthful = vec![info::Message::Character(registered.name())];
+    let misinformation = characters::any_character(ctx.state());
     ctx.wake(me);
     ctx.inform(me, truthful, misinformation);
     ctx.sleep(me);

@@ -37,6 +37,25 @@ pub enum Event {
         player: player::Id,
         into: &'static str,
     },
+    /// The player is told they are `character`, which they are not.
+    Believes {
+        player: player::Id,
+        character: &'static str,
+    },
+    AbilityGained {
+        player: player::Id,
+        ability: &'static str,
+    },
+    AbilityLost {
+        player: player::Id,
+        ability: &'static str,
+    },
+    FabledAdded(&'static str),
+    /// The storyteller judged that a mad player broke their madness.
+    MadnessBroken {
+        player: player::Id,
+        about: &'static str,
+    },
     ReminderPlaced {
         player: player::Id,
         reminder: game::Reminder,
@@ -60,6 +79,19 @@ impl fmt::Display for Event {
             Event::KillPrevented { player, by } => write!(f, "{player} survives ({by})"),
             Event::KillRedirected { from, to } => write!(f, "kill on {from} redirected to {to}"),
             Event::Transformed { player, into } => write!(f, "{player} becomes the {into}"),
+            Event::Believes { player, character } => {
+                write!(f, "{player} believes they are the {character}")
+            }
+            Event::AbilityGained { player, ability } => {
+                write!(f, "{player} gains the {ability} ability")
+            }
+            Event::AbilityLost { player, ability } => {
+                write!(f, "{player} loses the {ability} ability")
+            }
+            Event::FabledAdded(name) => write!(f, "the {name} is in play"),
+            Event::MadnessBroken { player, about } => {
+                write!(f, "{player} broke madness about the {about}")
+            }
             Event::ReminderPlaced { player, reminder } => write!(
                 f,
                 "{} ({}) marks {player}: {}",

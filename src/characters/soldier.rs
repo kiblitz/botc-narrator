@@ -1,4 +1,7 @@
 use crate::character;
+use crate::ctx;
+use crate::event;
+use crate::player;
 
 pub struct Def;
 
@@ -15,7 +18,18 @@ impl character::Def for Def {
         character::Kind::Townsfolk
     }
 
-    fn safe_from_demon(&self) -> bool {
-        true
+    /// Safe from the demon.
+    fn intercept_death(
+        &self,
+        _ctx: &mut ctx::Write<'_>,
+        me: &player::Id,
+        target: &player::Id,
+        cause: &event::Cause,
+    ) -> character::Interception {
+        if target == me && *cause == event::Cause::Demon {
+            character::Interception::Prevent
+        } else {
+            character::Interception::Pass
+        }
     }
 }

@@ -7,6 +7,7 @@ use std::fmt;
 use rand::SeedableRng;
 use rand::seq::index;
 
+use crate::character;
 use crate::game;
 use crate::info;
 use crate::player;
@@ -30,6 +31,21 @@ pub enum Reason {
     MayorRedirect {
         mayor: player::Id,
     },
+    /// How `target` registers to `asker`'s ability: the first option is the
+    /// truth, the others are misregistrations (the Recluse, the Spy).
+    Registration {
+        asker: player::Id,
+        target: player::Id,
+    },
+    /// Which not-in-play character a player is told they are (the Drunk's
+    /// Townsfolk).
+    BelievedCharacter {
+        player: player::Id,
+    },
+    /// Which good player registers as the demon to the Fortune Teller.
+    RedHerring {
+        fortune_teller: player::Id,
+    },
 }
 
 impl fmt::Display for Reason {
@@ -51,6 +67,18 @@ impl fmt::Display for Reason {
             Reason::MayorRedirect { mayor } => {
                 write!(f, "the demon attacked Mayor {mayor}: who dies instead")
             }
+            Reason::Registration { asker, target } => {
+                write!(
+                    f,
+                    "how {target} registers to {asker} (first option is true)"
+                )
+            }
+            Reason::BelievedCharacter { player } => {
+                write!(f, "which character {player} believes they are")
+            }
+            Reason::RedHerring { fortune_teller } => {
+                write!(f, "red herring for Fortune Teller {fortune_teller}")
+            }
         }
     }
 }
@@ -63,6 +91,9 @@ pub enum Choice {
         message: info::Message,
         truthful: bool,
     },
+    Alignment(character::Alignment),
+    /// Registers as some kind other than this one.
+    NotOfKind(character::Kind),
 }
 
 impl Choice {
@@ -70,7 +101,7 @@ impl Choice {
     pub fn players(&self) -> Vec<&player::Id> {
         match self {
             Choice::Player(p) => vec![p],
-            Choice::Character(_) => Vec::new(),
+            Choice::Character(_) | Choice::Alignment(_) | Choice::NotOfKind(_) => Vec::new(),
             Choice::Info { message, .. } => message.players(),
         }
     }
@@ -78,7 +109,7 @@ impl Choice {
     /// Characters this option names.
     pub fn characters(&self) -> Vec<&'static str> {
         match self {
-            Choice::Player(_) => Vec::new(),
+            Choice::Player(_) | Choice::Alignment(_) | Choice::NotOfKind(_) => Vec::new(),
             Choice::Character(name) => vec![*name],
             Choice::Info { message, .. } => message.characters(),
         }
@@ -90,6 +121,11 @@ impl fmt::Display for Choice {
         match self {
             Choice::Player(p) => write!(f, "{p}"),
             Choice::Character(name) => f.write_str(name),
+            Choice::Alignment(alignment) => write!(f, "{alignment}"),
+            Choice::NotOfKind(kind) => match kind {
+                character::Kind::Outsider => write!(f, "not an {kind}"),
+                _ => write!(f, "not a {kind}"),
+            },
             Choice::Info { message, truthful } => {
                 write!(f, "\"{message}\"")?;
                 if !truthful {

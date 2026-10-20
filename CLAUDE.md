@@ -10,8 +10,12 @@ Rust Blood on the Clocktower storyteller engine. Read README.md for the architec
 - Grimoire status is reminder tokens (`game::Reminder`), not per-effect boolean fields.
 - The simulator (`src/sim.rs` -> `web/` wasm -> `site/`) records every step with an audience (public / player / storyteller) and a grimoire snapshot; the table gets the grimoire with each event (`table::Io::event`), so every grimoire change must go through `ctx::Write::record`. In a player's view the site shows only that player's knowledge, and night deaths are announced at dawn without their cause.
 - Character icons are the official art, hotlinked from the townsquare (clocktower.online) repo pinned to a commit in `site/app.js`; never copy them into this repository.
-- Scripts are registered in one place, `script::all()`; the simulator's Script picker lists whatever is there.
+- Scripts are registered in one place, `script::all()` (from `script::SCRIPTS`); the simulator's Script picker lists whatever is there.
 - No GitHub Actions. `scripts/check.sh` is the merge gate.
+- Scripts are data: `data/scripts/<id>.json` (official ids, matched to `Def::id` ignoring underscores) through the `characters::all()` registry, listed in `script::SCRIPTS`. Night orders are computed from each character's `night_order` (clocktower.online numbering), never hand-written.
+- Information abilities learn about other players only through registration (`ctx::Read::registers_evil` / `registered_character` / `registers_as`), so misregistration (Recluse, Spy) is central; the storyteller decides each query.
+- A player who believes they are a character they are not (`Player::believes`) acts as it but is malfunctioning. Hooks run for every ability a player has (`State::abilities`: own unless lost, believed, gained).
+- Any death (demon, execution, ability) goes through `ctx::Write::kill`, where abilities may prevent or redirect it (`intercept_death`). Setup counts come from `setup_counts` adjustments applied by `setup::choose`.
 
 ## Conventions
 

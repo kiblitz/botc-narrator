@@ -1,6 +1,5 @@
 use crate::character;
-use crate::ctx;
-use crate::player;
+use crate::setup;
 
 pub struct Def;
 
@@ -17,7 +16,8 @@ impl character::Def for Def {
         character::Kind::Minion
     }
 
-    fn on_setup(&self, ctx: &mut ctx::Write<'_>, _me: &player::Id) {
-        ctx.note("Baron in play: two extra Outsiders replace Townsfolk");
+    /// [+2 Outsiders]
+    fn setup_counts(&self, counts: setup::Counts) -> Vec<setup::Counts> {
+        vec![counts.shift_outsiders(2)]
     }
 }

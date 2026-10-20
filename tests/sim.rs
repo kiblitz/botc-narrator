@@ -1,12 +1,13 @@
+mod common;
+
 use rand::SeedableRng;
 
 use botc_narrator::character;
 use botc_narrator::script;
 use botc_narrator::sim;
-use botc_narrator::trouble_brewing;
 
 fn simulate(seed: u64, players: usize) -> sim::Trace {
-    sim::simulate(seed, players, &trouble_brewing::script())
+    sim::simulate(seed, players, &common::trouble_brewing())
 }
 
 fn simulate_json(seed: u64, players: usize) -> String {
@@ -34,13 +35,14 @@ fn setups_follow_trouble_brewing_counts() {
         (13, [9, 0, 3, 1]),
         (15, [9, 2, 3, 1]),
     ];
+    let mut drunk_seen = false;
     for seed in 0..40 {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         for (players, [t, o, m, d]) in expected {
-            let seats = sim::setup(&mut rng, players, &trouble_brewing::script());
+            let seats = sim::setup(&mut rng, players, &common::trouble_brewing());
             assert_eq!(seats.len(), players);
             let has_baron = seats.iter().any(|(_, c)| c.id() == "baron");
-            let shift = if has_baron { 2.min(3 - o) } else { 0 };
+            let shift = if has_baron { 2 } else { 0 };
             assert_eq!(
                 counts(&seats),
                 [t - shift, o + shift, m, d],
@@ -50,9 +52,10 @@ fn setups_follow_trouble_brewing_counts() {
             ids.sort();
             ids.dedup();
             assert_eq!(ids.len(), players, "duplicate character");
-            assert!(!ids.contains(&"drunk"));
+            drunk_seen |= ids.contains(&"drunk");
         }
     }
+    assert!(drunk_seen, "the Drunk is part of setups");
 }
 
 #[test]
@@ -138,15 +141,15 @@ fn vote_steps_name_the_nominee_and_voters() {
 
 #[test]
 fn information_steps_carry_the_players_and_characters_they_name() {
-    let trace = simulate(7, 8);
-    // Ada (Washerwoman) learns "Bram and Gus: one is the Investigator".
+    let trace = simulate(36, 8);
+    // Ada (Washerwoman) learns "Gus and Cleo: one is the Empath".
     let step = trace
         .steps
         .iter()
-        .find(|s| s.kind == sim::Kind::Tell && s.text.contains("one is the Investigator"))
+        .find(|s| s.kind == sim::Kind::Tell && s.text.contains("one is the Empath"))
         .expect("washerwoman info");
-    assert_eq!(step.players, ["Bram", "Gus"]);
-    assert_eq!(step.characters, ["Investigator"]);
+    assert_eq!(step.players, ["Gus", "Cleo"]);
+    assert_eq!(step.characters, ["Empath"]);
     // A choice names the chosen players.
     let ask = trace
         .steps
@@ -172,7 +175,7 @@ fn scripts_are_listed_and_unknown_ones_rejected() {
 
 #[test]
 fn communication_steps_say_which_way_they_go() {
-    let trace = simulate(7, 8);
+    let trace = simulate(36, 8);
     for step in &trace.steps {
         let me = || sim::Endpoint::Player(step.player.clone().unwrap());
         match step.kind {
@@ -193,22 +196,22 @@ fn communication_steps_say_which_way_they_go() {
     let nomination = trace
         .steps
         .iter()
-        .find(|s| s.text == "Bram nominates Esme")
+        .find(|s| s.text == "Ada nominates Bram")
         .expect("nomination");
     let flow = nomination.flow.as_ref().expect("nomination flow");
-    assert_eq!(flow.from, sim::Endpoint::Player("Bram".into()));
-    assert_eq!(flow.to, sim::Endpoint::Player("Esme".into()));
+    assert_eq!(flow.from, sim::Endpoint::Player("Ada".into()));
+    assert_eq!(flow.to, sim::Endpoint::Player("Bram".into()));
 }
 
 #[test]
 fn decisions_carry_the_players_and_characters_they_chose() {
-    let trace = simulate(7, 8);
+    let trace = simulate(36, 8);
     let step = trace
         .steps
         .iter()
         .find(|s| s.kind == sim::Kind::Decision && s.text.contains("one is the Spy"))
         .expect("investigator decision");
-    assert_eq!(step.players, ["Esme", "Cleo"]);
+    assert_eq!(step.players, ["Dev", "Esme"]);
     assert_eq!(step.characters, ["Spy"]);
     let bluffs = trace
         .steps
