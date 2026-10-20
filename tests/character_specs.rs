@@ -21,7 +21,14 @@ const FIELDS: [&str; 15] = [
     "test_scenarios",
 ];
 
-const KINDS: [&str; 6] = ["townsfolk", "outsider", "minion", "demon", "traveller", "fabled"];
+const KINDS: [&str; 6] = [
+    "townsfolk",
+    "outsider",
+    "minion",
+    "demon",
+    "traveller",
+    "fabled",
+];
 
 #[test]
 fn character_specs_are_complete() {
