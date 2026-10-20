@@ -453,6 +453,14 @@ impl State {
         self.player_mut(target).reminders.push(reminder);
     }
 
+    /// Returns whether the token was there.
+    pub(crate) fn remove_reminder(&mut self, target: &player::Id, reminder: &Reminder) -> bool {
+        let reminders = &mut self.player_mut(target).reminders;
+        let before = reminders.len();
+        reminders.retain(|r| r != reminder);
+        reminders.len() != before
+    }
+
     pub(crate) fn remove_reminders(&mut self, placed_by: &player::Id, expiry: Expiry) {
         for p in &mut self.seats {
             p.reminders

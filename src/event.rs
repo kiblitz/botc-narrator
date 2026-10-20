@@ -64,6 +64,10 @@ pub enum Event {
         player: player::Id,
         reminder: game::Reminder,
     },
+    ReminderRemoved {
+        player: player::Id,
+        reminder: game::Reminder,
+    },
     Voted {
         nominee: player::Id,
         voters: Vec<player::Id>,
@@ -103,6 +107,11 @@ impl fmt::Display for Event {
                 f,
                 "{} ({}) marks {player}: {}",
                 reminder.placed_by, reminder.source, reminder.effect
+            ),
+            Event::ReminderRemoved { player, reminder } => write!(
+                f,
+                "{} ({}) removes {}'s {} token",
+                reminder.placed_by, reminder.source, player, reminder.effect
             ),
             Event::Voted {
                 nominee,

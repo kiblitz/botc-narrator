@@ -78,6 +78,36 @@ pub fn not_in_play(state: &game::State, kind: character::Kind) -> Vec<character:
         .collect()
 }
 
+/// Characters of these kinds that information may name: the script's, or
+/// the in-play ones when no script is recorded.
+pub fn characters_of(state: &game::State, kinds: &[character::Kind]) -> Vec<character::Ref> {
+    let pool: Vec<character::Ref> = if state.script().is_empty() {
+        state.players().iter().map(|p| p.character).collect()
+    } else {
+        state.script().to_vec()
+    };
+    let mut out: Vec<character::Ref> = Vec::new();
+    for c in pool {
+        if kinds.contains(&c.kind()) && !out.iter().any(|o| character::same(*o, c)) {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// Whether `player` wakes tonight (night `night`) for one of their own
+/// abilities: one with a night action and a turn tonight that it wakes for.
+/// Judged now, so a turn still to come counts.
+pub fn wakes_for_ability(state: &game::State, player: &player::Id, night: u32) -> bool {
+    state.abilities(player).iter().any(|c| {
+        let order = c.night_order();
+        let turn = if night == 1 { order.first } else { order.other };
+        let on_script =
+            state.script().is_empty() || state.script().iter().any(|s| character::same(*s, *c));
+        c.night_action().is_some() && turn.is_some() && on_script && c.wakes_tonight(state, player)
+    })
+}
+
 /// Whether anyone is, or believes they are, this character.
 pub fn in_play(state: &game::State, c: character::Ref) -> bool {
     state
@@ -305,6 +335,26 @@ pub fn has_mark(
         .reminders
         .iter()
         .any(|r| &r.placed_by == me && r.source == source.id() && r.effect == effect)
+}
+
+/// Whether `me` used `source`'s once-per-game ability during the current night.
+pub fn used_tonight(state: &game::State, me: &player::Id, source: character::Ref) -> bool {
+    let history = state.history();
+    let night_start = history
+        .iter()
+        .rposition(|e| matches!(e, event::Event::PhaseBegan(game::Phase::Night(_))));
+    matches!(state.phase(), game::Phase::Night(_))
+        && night_start.is_some_and(|start| {
+            history[start..].iter().any(|e| match e {
+                event::Event::ReminderPlaced { player, reminder } => {
+                    player == me
+                        && &reminder.placed_by == me
+                        && reminder.source == source.id()
+                        && reminder.effect == game::Effect::AbilityUsed
+                }
+                _ => false,
+            })
+        })
 }
 
 /// Whether `me` has used `source`'s once-per-game ability.

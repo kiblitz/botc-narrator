@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::character;
 use crate::player;
 
 /// Information the storyteller gives a player. Typed so engines can render it
@@ -29,6 +30,24 @@ pub enum Message {
     },
     Bluffs(Vec<&'static str>),
     Grimoire(Vec<(player::Id, &'static str)>),
+    /// A player, pointed at.
+    Player(player::Id),
+    /// "This player is this character."
+    Is {
+        player: player::Id,
+        character: &'static str,
+    },
+    /// Which way round the circle something is.
+    Direction(Direction),
+    /// Which alignment is winning; `None` for neither.
+    Winning(Option<character::Alignment>),
+}
+
+/// Around the circle: clockwise is increasing seat order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Direction {
+    Clockwise,
+    Anticlockwise,
 }
 
 impl Message {
@@ -39,6 +58,8 @@ impl Message {
             Message::Team { evil } => evil.iter().collect(),
             Message::Group { players, .. } => players.iter().collect(),
             Message::Grimoire(seats) => seats.iter().map(|(p, _)| p).collect(),
+            Message::Player(player) | Message::Is { player, .. } => vec![player],
+            Message::Direction(_) | Message::Winning(_) => Vec::new(),
             Message::Count { .. }
             | Message::YesNo(_)
             | Message::Character(_)
@@ -50,13 +71,18 @@ impl Message {
     /// Character names the message names, in order.
     pub fn characters(&self) -> Vec<&'static str> {
         match self {
-            Message::OneOf { character, .. } | Message::Character(character) => vec![*character],
+            Message::OneOf { character, .. }
+            | Message::Character(character)
+            | Message::Is { character, .. } => vec![*character],
             Message::Bluffs(names) | Message::Characters(names) => names.clone(),
             Message::Grimoire(seats) => seats.iter().map(|(_, c)| *c).collect(),
             Message::Count { .. }
             | Message::YesNo(_)
             | Message::Team { .. }
-            | Message::Group { .. } => Vec::new(),
+            | Message::Group { .. }
+            | Message::Player(_)
+            | Message::Direction(_)
+            | Message::Winning(_) => Vec::new(),
         }
     }
 }
@@ -87,6 +113,12 @@ impl fmt::Display for Message {
                 let seats: Vec<String> = seats.iter().map(|(p, c)| format!("{p}={c}")).collect();
                 f.write_str(&seats.join(", "))
             }
+            Message::Player(player) => write!(f, "{player}"),
+            Message::Is { player, character } => write!(f, "{player} is the {character}"),
+            Message::Direction(Direction::Clockwise) => f.write_str("Clockwise"),
+            Message::Direction(Direction::Anticlockwise) => f.write_str("Anticlockwise"),
+            Message::Winning(Some(alignment)) => write!(f, "{alignment} is winning"),
+            Message::Winning(None) => f.write_str("Neither team is winning"),
         }
     }
 }

@@ -135,12 +135,13 @@ impl<'a> Read<'a> {
 
     /// Give `player` information. The storyteller picks one of the `truthful`
     /// messages; if the player is malfunctioning, `misinformation` is legal too.
+    /// Returns what the player was told.
     pub fn inform(
         &mut self,
         player: &player::Id,
         truthful: Vec<info::Message>,
         misinformation: Vec<info::Message>,
-    ) {
+    ) -> Option<info::Message> {
         let malfunctioning = self.state.is_malfunctioning(player);
         let must_lie = !misinformation.is_empty() && self.forced_false(player);
         let mut options: Vec<(info::Message, bool)> = if must_lie {
@@ -170,9 +171,9 @@ impl<'a> Read<'a> {
                 truthful: *truthful,
             }
         });
-        if let Some((message, _)) = chosen.into_iter().next() {
-            self.tell(player, &message);
-        }
+        let (message, _) = chosen.into_iter().next()?;
+        self.tell(player, &message);
+        Some(message)
     }
 
     // Registration: information abilities learn about other players through
@@ -413,6 +414,16 @@ impl<'a> Write<'a> {
         });
     }
 
+    /// Take `reminder` off `target`, if it is there.
+    pub fn remove_reminder(&mut self, target: &player::Id, reminder: &game::Reminder) {
+        if self.state.remove_reminder(target, reminder) {
+            self.record(event::Event::ReminderRemoved {
+                player: target.clone(),
+                reminder: reminder.clone(),
+            });
+        }
+    }
+
     /// Tell `target` they are `character`, which they are not (or, with
     /// `None`, that they are their real character again).
     pub fn set_believed(&mut self, target: &player::Id, character: Option<character::Ref>) {
@@ -631,8 +642,8 @@ impl<'a> Write<'a> {
         player: &player::Id,
         truthful: Vec<info::Message>,
         misinformation: Vec<info::Message>,
-    ) {
-        self.read().inform(player, truthful, misinformation);
+    ) -> Option<info::Message> {
+        self.read().inform(player, truthful, misinformation)
     }
 
     pub fn registered_alignment(

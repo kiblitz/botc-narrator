@@ -388,7 +388,8 @@ impl table::Io for Recorder {
             | event::Event::AbilityLost { player, .. }
             | event::Event::MadnessBroken { player, .. }
             | event::Event::AlignmentChanged { player, .. }
-            | event::Event::ReminderPlaced { player, .. } => {
+            | event::Event::ReminderPlaced { player, .. }
+            | event::Event::ReminderRemoved { player, .. } => {
                 self.push(Kind::Event, Some(player), text, Audience::Storyteller);
             }
             event::Event::KillRedirected { to, .. } => {

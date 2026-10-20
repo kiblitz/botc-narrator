@@ -62,10 +62,14 @@ Override only the hooks the ability uses (the full list is in the README,
 |---|---|
 | learn a number / yes-no / a character | `tell_count`, `tell_yes_no`, `tell_character` |
 | "one of these two is the X" | `tell_one_of(ctx, me, kind)` |
+| learn a player / a player's character / a direction / who is winning | `info::Message::Player`, `Is`, `Direction`, `Winning` with `ctx.inform` (it returns what was told) |
+| good or evil characters information may name | `characters_of(state, kinds)` (the script's, or in play) |
+| "woke tonight due to their ability" | `wakes_for_ability(state, p, night)` |
 | how many are evil | `count_evil`, `alive_neighbours`, `groups` |
 | choose players / a character | `ctx.ask`, `ctx.ask_one`, `ctx.ask_character` |
 | protect / poison / any token | `mark(ctx, me, &Def, target, effect, expiry)`, `has_mark` |
-| once per game | `use_once(ctx, me, &Def)`, `used` |
+| once per game | `use_once(ctx, me, &Def)`, `used`, `used_tonight` |
+| take a token off | `ctx.remove_reminder(target, &reminder)` |
 | kill | `kill(ctx, me, target)`; the demon's attack: `demon_attack` |
 | storyteller choices | `storyteller_agrees`, `storyteller_picks_player`, `storyteller_picks_character` |
 | setup modifier | `setup_counts` with `setup::Counts::shift_outsiders` / `with` |
