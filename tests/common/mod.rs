@@ -65,7 +65,7 @@ impl table::Io for Recorder {
         answer
     }
 
-    fn event(&mut self, event: &event::Event) {
+    fn event(&mut self, event: &event::Event, _view: &game::State) {
         self.line(format!("* {event}"));
     }
 

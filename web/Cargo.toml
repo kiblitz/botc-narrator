@@ -1,0 +1,13 @@
+[package]
+name = "botc_web"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+botc_narrator = { path = ".." }
+wasm-bindgen = "0.2"
+getrandom = { version = "0.3", features = ["wasm_js"] }

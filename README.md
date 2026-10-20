@@ -57,6 +57,18 @@ A character is a unit struct implementing `character::Def`. It overrides only th
 
 Drunk (thinks they are a Townsfolk), Recluse/Spy misregistration, Fortune Teller red herring, Butler voting restriction, nomination/voting rules, and reminder tokens in the Spy's grimoire view. Misinformation for "one of these two is the X" only offers characters in play, not the whole script.
 
+## Simulator site
+
+`site/` is a static page that generates random, plausible Trouble Brewing games in the browser (the engine compiled to WebAssembly from `web/`) and lets you step through them. Players sit in a circle; each step shows who is awake, what they were told or asked, storyteller decisions and public events. Click a player to see everything they know so far, or switch the view to one player's point of view to hide what they couldn't see. Games are reproducible from `#seed=…&players=…` in the URL.
+
+Generation (`sim.rs`) uses legal setups for 5–15 players (no Drunk yet), players who act on simple heuristics (evil targets good), a random storyteller, and daily nominations with a majority vote.
+
+```sh
+sh scripts/serve-web.sh              # build the wasm and serve at http://localhost:8080
+```
+
+Building needs `wasm-pack` and the `wasm32-unknown-unknown` target; the Playwright tests (`site/tests`) run in `scripts/check.sh`.
+
 ## Running
 
 ```sh

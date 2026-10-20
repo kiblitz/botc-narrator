@@ -187,8 +187,8 @@ impl<'a> Write<'a> {
     }
 
     pub fn record(&mut self, event: event::Event) {
-        self.io.event(&event);
-        self.state.record(event);
+        self.state.record(event.clone());
+        self.io.event(&event, self.state);
     }
 
     /// A storyteller-facing note, kept in the history.
@@ -203,7 +203,11 @@ impl<'a> Write<'a> {
     }
 
     pub fn place_reminder(&mut self, target: &player::Id, reminder: game::Reminder) {
-        self.state.place_reminder(target, reminder);
+        self.state.place_reminder(target, reminder.clone());
+        self.record(event::Event::ReminderPlaced {
+            player: target.clone(),
+            reminder,
+        });
     }
 
     /// Attempt to kill `target`. Demon kills respect protection, demon-proof

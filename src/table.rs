@@ -4,6 +4,7 @@
 use rand::seq::index;
 
 use crate::event;
+use crate::game;
 use crate::info;
 use crate::player;
 use crate::storyteller;
@@ -23,8 +24,8 @@ pub trait Io {
         count: usize,
     ) -> Vec<player::Id>;
 
-    /// A public or storyteller-facing game event happened.
-    fn event(&mut self, _event: &event::Event) {}
+    /// A game event happened; `view` is the grimoire after it.
+    fn event(&mut self, _event: &event::Event, _view: &game::State) {}
 
     /// The storyteller made a decision (for logging; players never see this).
     fn decided(&mut self, _decision: &storyteller::Decision, _picks: &[usize]) {}
@@ -80,7 +81,7 @@ impl Io for Console {
         answer
     }
 
-    fn event(&mut self, event: &event::Event) {
+    fn event(&mut self, event: &event::Event, _view: &game::State) {
         println!("[event] {event}");
     }
 

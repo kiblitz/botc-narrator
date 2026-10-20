@@ -5,3 +5,5 @@ cd "$(dirname "$0")/.."
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test
+sh scripts/build-web.sh
+(cd site && npm ci --silent && npx playwright test)

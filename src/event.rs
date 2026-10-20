@@ -37,6 +37,15 @@ pub enum Event {
         player: player::Id,
         into: &'static str,
     },
+    ReminderPlaced {
+        player: player::Id,
+        reminder: game::Reminder,
+    },
+    Voted {
+        nominee: player::Id,
+        votes: usize,
+        needed: usize,
+    },
     Note(String),
     Won(character::Alignment),
 }
@@ -51,6 +60,16 @@ impl fmt::Display for Event {
             Event::KillPrevented { player, by } => write!(f, "{player} survives ({by})"),
             Event::KillRedirected { from, to } => write!(f, "kill on {from} redirected to {to}"),
             Event::Transformed { player, into } => write!(f, "{player} becomes the {into}"),
+            Event::ReminderPlaced { player, reminder } => write!(
+                f,
+                "{} ({}) marks {player}: {:?}",
+                reminder.placed_by, reminder.source, reminder.effect
+            ),
+            Event::Voted {
+                nominee,
+                votes,
+                needed,
+            } => write!(f, "{votes} votes for {nominee} ({needed} needed)"),
             Event::Note(text) => f.write_str(text),
             Event::Won(alignment) => write!(f, "{alignment} wins!"),
         }

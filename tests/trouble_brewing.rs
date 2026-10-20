@@ -50,6 +50,7 @@ fn poisoned_chef_and_three_phases() {
         sleep Lucius
         wake Ivy
           Ivy? Who do you want to poison? => Gordon
+        * Ivy (poisoner) marks Gordon: Poisoned
         sleep Ivy
         === parallel (3) ===
         wake Gordon
@@ -85,6 +86,7 @@ fn poisoned_chef_and_three_phases() {
     });
     expect![[r#"
         * === Day 1 ===
+        * Buffy (slayer) marks Buffy: AbilityUsed
           Buffy? Who do you want to slay? => Ivy
         --- grimoire ---
         Lucius: Imp
@@ -105,9 +107,11 @@ fn poisoned_chef_and_three_phases() {
         * === Night 2 ===
         wake Ivy
           Ivy? Who do you want to poison? => Zoltar
+        * Ivy (poisoner) marks Zoltar: Poisoned
         sleep Ivy
         wake Friar
           Friar? Who do you want to protect? => Troi
+        * Friar (monk) marks Troi: Protected
         sleep Friar
         wake Lucius
           Lucius? Who do you want to kill? => Gordon
@@ -150,9 +154,11 @@ fn monk_protection_stops_the_demon() {
         * === Night 2 ===
         wake Ivy
           Ivy? Who do you want to poison? => Buffy
+        * Ivy (poisoner) marks Buffy: Poisoned
         sleep Ivy
         wake Friar
           Friar? Who do you want to protect? => Troi
+        * Friar (monk) marks Troi: Protected
         sleep Friar
         wake Lucius
           Lucius? Who do you want to kill? => Troi
@@ -216,6 +222,7 @@ fn soldier_survives_unless_poisoned() {
         * === Night 2 ===
         wake Poisoner
           Poisoner? Who do you want to poison? => Soldier
+        * Poisoner (poisoner) marks Soldier: Poisoned
         sleep Poisoner
         wake Imp
           Imp? Who do you want to kill? => Soldier
@@ -258,6 +265,7 @@ fn imp_starpass_passes_to_chosen_minion() {
         * === Night 2 ===
         wake Poisoner
           Poisoner? Who do you want to poison? => Chef
+        * Poisoner (poisoner) marks Chef: Poisoned
         sleep Poisoner
         wake Imp
           Imp? Who do you want to kill? => Imp
@@ -321,6 +329,7 @@ fn scarlet_woman_catches_the_demon_with_five_alive() {
     expect![[r#"
         * === Night 1 ===
         * === Day 1 ===
+        * Slayer (slayer) marks Slayer: AbilityUsed
           Slayer? Who do you want to slay? => Imp
         * Imp dies (Ability { by: Id("Slayer") })
         * Scarlet becomes the Imp
@@ -416,6 +425,7 @@ fn virgin_executes_a_townsfolk_nominator_once() {
         * === Night 1 ===
         * === Day 1 ===
         * Chef nominates Virgin
+        * Virgin (virgin) marks Virgin: AbilityUsed
         * Chef is executed
         * Chef dies (Execution)
         * Empath nominates Virgin
@@ -558,6 +568,7 @@ fn first_night_info_characters_get_truthful_options() {
         === end parallel ===
         wake Butler
           Butler? Choose your master => Imp
+        * Butler (butler) marks Imp: Custom("master")
         sleep Butler
         wake Spy
           storyteller [1 of 1 options] information for Spy (Spy): "Imp=Imp, Spy=Spy, Wash=Washerwoman, Lib=Librarian, Inv=Investigator, Butler=Butler"

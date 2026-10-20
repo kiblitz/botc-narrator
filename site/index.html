@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clocktower Simulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Clocktower Simulator</h1>
+    <form id="controls">
+      <label>Players
+        <select id="players"></select>
+      </label>
+      <label>Seed
+        <input id="seed" type="number" min="0" max="4294967295" step="1">
+      </label>
+      <button type="submit" id="load">Load</button>
+      <button type="button" id="random">New random game</button>
+      <label>View
+        <select id="pov"><option value="">Storyteller (everything)</option></select>
+      </label>
+    </form>
+  </header>
+
+  <main>
+    <section id="table-area">
+      <div id="board" aria-label="Seating circle">
+        <div id="center">
+          <div id="phase"></div>
+          <div id="caption"></div>
+        </div>
+      </div>
+      <div id="stepper">
+        <button id="first" title="First step (Home)">⏮</button>
+        <button id="prev-phase" title="Previous phase (Shift+←)">⏪</button>
+        <button id="prev" title="Previous step (←)">◀</button>
+        <button id="play" title="Play / pause (Space)">▶</button>
+        <button id="next" title="Next step (→)">▶|</button>
+        <button id="next-phase" title="Next phase (Shift+→)">⏩</button>
+        <button id="last" title="Last step (End)">⏭</button>
+        <input id="scrub" type="range" min="0" value="0" aria-label="Step">
+        <span id="counter"></span>
+      </div>
+    </section>
+
+    <aside>
+      <section id="knowledge">
+        <h2 id="knowledge-title">Click a player</h2>
+        <ol id="knowledge-list"></ol>
+      </section>
+      <section id="log-area">
+        <h2>Game log</h2>
+        <ol id="log"></ol>
+      </section>
+    </aside>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
