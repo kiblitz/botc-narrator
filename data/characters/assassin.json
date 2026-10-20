@@ -1,0 +1,77 @@
+{
+  "id": "assassin",
+  "name": "Assassin",
+  "kind": "minion",
+  "ability": "Once per game, at night*, choose a player: they die, even if for some reason they could not.",
+  "first_night": null,
+  "other_nights": 36,
+  "reminders": [
+    "Dead",
+    "No ability"
+  ],
+  "setup": null,
+  "wakes": "Each night except the first, until the ability is used (then the night token is removed).",
+  "interaction": "Shakes head (no use) or points at one player; told nothing.",
+  "drunk_or_poisoned": "If drunk or poisoned when used, the kill fails (normal protection and inability to die apply) and the once-per-game ability is still spent.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The kill cannot be prevented by any protection (Monk, Soldier, Tea Lady, Fool, Sailor) unless the Assassin is drunk or poisoned.",
+      "source": "https://wiki.bloodontheclocktower.com/Assassin"
+    },
+    {
+      "text": "A Fool killed by the Assassin dies and stays dead even though the Fool still has their ability.",
+      "source": "https://wiki.bloodontheclocktower.com/Assassin"
+    },
+    {
+      "text": "A drunk Assassin targeting a Moonchild or Goon has no ability: the target does not die; the Goon still turns evil from being chosen.",
+      "source": "https://wiki.bloodontheclocktower.com/Assassin"
+    },
+    {
+      "text": "After use, mark NO ABILITY; the Assassin does not wake again.",
+      "source": "https://wiki.bloodontheclocktower.com/Assassin"
+    }
+  ],
+  "test_scenarios": [
+    {
+      "name": "kills through Soldier",
+      "setup": "Seats: Alice Assassin, Bob Soldier, Cara Imp, Dan Chef, Eve Empath.",
+      "actions": "Night 2: Imp kills Dan; Assassin chooses Bob.",
+      "expected": "Dawn: Dan and Bob both died; Alice marked No ability and never woken again."
+    },
+    {
+      "name": "kills through Monk protection",
+      "setup": "Seats: Alice Assassin, Bob Monk, Cara Imp, Dan Empath, Eve Chef.",
+      "actions": "Night 2: Monk protects Dan; Assassin chooses Dan; Imp kills Eve.",
+      "expected": "Dan and Eve die."
+    },
+    {
+      "name": "poisoned Assassin is spent",
+      "setup": "Seats: Alice Assassin, Bob Soldier, Cara Poisoner, Dan Imp, Eve Chef.",
+      "actions": "Night 2: Poisoner poisons Alice; Alice chooses Bob.",
+      "expected": "Bob does not die; Alice's ability is used up (No ability)."
+    },
+    {
+      "name": "not woken first night",
+      "setup": "Seats: Alice Assassin, Bob Imp, Cara Chef.",
+      "actions": "Night 1.",
+      "expected": "Assassin is not woken on night 1."
+    },
+    {
+      "name": "declines then uses",
+      "setup": "Seats: Alice Assassin, Bob Imp, Cara Chef, Dan Empath.",
+      "actions": "Night 2: Alice shakes head. Night 3: Alice chooses Cara.",
+      "expected": "Night 2 no Assassin kill; Night 3 Cara dies and Alice is marked No ability."
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "kill",
+    "once-per-game",
+    "unpreventable-kill"
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Assassin",
+    "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+  ]
+}

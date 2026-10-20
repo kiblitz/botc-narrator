@@ -1,0 +1,111 @@
+{
+  "id": "marionette",
+  "name": "Marionette",
+  "kind": "minion",
+  "ability": "You think you are a good character, but you are not. The Demon knows who you are. [You neighbor the Demon]",
+  "first_night": 12,
+  "other_nights": null,
+  "reminders": [
+    "Is the Marionette"
+  ],
+  "setup": "Remove the Marionette token and add a Townsfolk token instead (if three Minions would be in play, also replace a Minion with a Townsfolk). A good player neighbouring the Demon becomes the Marionette and believes they are their good character.",
+  "wakes": "Never as the Marionette. Wakes when their believed good character would; the Demon is woken on the first night to be shown who the Marionette is.",
+  "interaction": "The Marionette is told nothing about being evil and skips Minion info. The Demon is shown the Marionette (the player and the Marionette token) on the first night.",
+  "drunk_or_poisoned": "No observable change: the Marionette has no ability of its own beyond setup and the Demon's knowledge, which are already done. Their believed good ability never works regardless.",
+  "jinxes": [
+    {
+      "with": "alchemist",
+      "text": "An Alchemist-Marionette has no Marionette ability & the Marionette is in play."
+    },
+    {
+      "with": "balloonist",
+      "text": "If the Marionette thinks that they are the Balloonist, an Outsider might have been added during setup."
+    },
+    {
+      "with": "huntsman",
+      "text": "If the Marionette thinks that they are the Huntsman, the Damsel was added during setup."
+    },
+    {
+      "with": "lilmonsta",
+      "text": "If there would be a Marionette in play, they enter play after the Demon & must start as their neighbor."
+    },
+    {
+      "with": "magician",
+      "text": "If the Magician is alive, the Demon doesn't know which neighbor is the Marionette."
+    },
+    {
+      "with": "mathematician",
+      "text": "The Mathematician learns if the Marionette's ability yielded false info or failed to work properly."
+    },
+    {
+      "with": "plaguedoctor",
+      "text": "If the Storyteller would gain the Marionette ability, one of the Demon's good neighbors becomes the Marionette."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "The Marionette registers as evil and as a Minion while believing they are a good character.",
+      "source": "https://wiki.bloodontheclocktower.com/Marionette"
+    },
+    {
+      "text": "The Marionette must sit directly next to the Demon.",
+      "source": "https://wiki.bloodontheclocktower.com/Marionette"
+    },
+    {
+      "text": "The Marionette does not learn the evil team and other Minions do not learn the Marionette.",
+      "source": "https://wiki.bloodontheclocktower.com/Marionette"
+    },
+    {
+      "text": "Treat the Marionette like a Drunk: their good ability does not work and they may receive false information.",
+      "source": "https://wiki.bloodontheclocktower.com/Marionette"
+    },
+    {
+      "text": "Abilities that would reveal Minion status (Snitch, Preacher, Poppy Grower, Damsel, etc.) do not wake the Marionette.",
+      "source": "https://wiki.bloodontheclocktower.com/Marionette"
+    }
+  ],
+  "test_scenarios": [
+    {
+      "name": "setup and demon knowledge",
+      "setup": "Seats in order: Mia Imp, Ned (Marionette, believes Undertaker), Ola Chef, Pat Empath, Quin Monk, Rex Poisoner",
+      "actions": "First night.",
+      "expected": "Ned is shown Undertaker; Ned gets no Minion info; Mia is shown Ned as the Marionette; Rex does not learn Ned."
+    },
+    {
+      "name": "false info",
+      "setup": "Same seating; Ned believes Undertaker",
+      "actions": "Day 1: Ola (Chef) executed. Night 2: Ned wakes as Undertaker.",
+      "expected": "Ned may be shown any character (Storyteller chooses, e.g. Imp); the info is not guaranteed true."
+    },
+    {
+      "name": "registers evil",
+      "setup": "Mia Imp, Ned Marionette (believes Monk), Ola Empath (seated next to Ned), Pat Chef, Quin Soldier",
+      "actions": "First night: Ola Empath reads her neighbours Ned and Pat.",
+      "expected": "Ola's truthful count includes Ned as evil (1)."
+    },
+    {
+      "name": "poisoned marionette",
+      "setup": "Mia Imp, Ned Marionette (believes Soldier), Rex Poisoner, Pat Chef, Quin Empath",
+      "actions": "Night 2: Rex poisons Ned; Mia attacks Ned.",
+      "expected": "Ned dies: the Soldier protection never worked; poisoning changes nothing."
+    },
+    {
+      "name": "magician jinx",
+      "setup": "Mia Imp, Ned Marionette, Ola Magician, Pat Chef, Quin Empath (Mia neighbours Ned and Pat)",
+      "actions": "First night.",
+      "expected": "Mia is not told which neighbour is the Marionette."
+    }
+  ],
+  "building_blocks": [
+    "believes-character",
+    "registers-as",
+    "setup-modifier",
+    "seating-constraint",
+    "demon-info",
+    "false-info"
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Marionette",
+    "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+  ]
+}

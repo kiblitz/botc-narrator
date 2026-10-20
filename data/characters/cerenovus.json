@@ -1,0 +1,75 @@
+{
+  "id": "cerenovus",
+  "name": "Cerenovus",
+  "kind": "minion",
+  "ability": "Each night, choose a player & a good character: they are “mad” they are this character tomorrow, or might be executed.",
+  "first_night": 25,
+  "other_nights": 15,
+  "reminders": [
+    "Mad"
+  ],
+  "setup": null,
+  "wakes": "Every night, including the first.",
+  "interaction": "Cerenovus chooses a player (alive or dead) and a Townsfolk/Outsider character. The chosen player is woken and shown 'This character selected you', the Cerenovus token and the chosen character.",
+  "drunk_or_poisoned": "If drunk or poisoned, the Storyteller may still wake the target and show the madness, but the madness has no effect: the player cannot be executed for breaking it.",
+  "jinxes": [
+    {
+      "with": "goblin",
+      "text": "The Cerenovus may choose to make a player mad that they are the Goblin."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Madness requires a genuine effort to convince the group; the Storyteller judges.",
+      "source": "https://wiki.bloodontheclocktower.com/Cerenovus"
+    },
+    {
+      "text": "A madness execution counts as the day's one execution (as with the Mutant); if during the day, go to night.",
+      "source": "https://wiki.bloodontheclocktower.com/Cerenovus"
+    },
+    {
+      "text": "Evil players may be executed for breaking madness but the Storyteller may decline.",
+      "source": "https://wiki.bloodontheclocktower.com/Cerenovus"
+    },
+    {
+      "text": "Dead players can be chosen and executed for breaking madness.",
+      "source": "https://wiki.bloodontheclocktower.com/Cerenovus"
+    }
+  ],
+  "test_scenarios": [
+    {
+      "name": "mad and complies",
+      "setup": "Seats: Ann Cerenovus, Bo Barber, Cy Vortox, Di Savant, Ed Clockmaker.",
+      "actions": "Night 1: Ann chooses Bo as Savant. Day 1: Bo claims Savant consistently.",
+      "expected": "Bo is shown the madness; the Storyteller does not execute Bo."
+    },
+    {
+      "name": "breaks madness",
+      "setup": "Same seats.",
+      "actions": "Night 2: Ann chooses Ed as Dreamer. Day 2: Ed openly says he is the Clockmaker.",
+      "expected": "The Storyteller may execute Ed; it is the day's execution and night falls."
+    },
+    {
+      "name": "poisoned Cerenovus",
+      "setup": "Seats: Ann Cerenovus, Fi Poisoner, Bo Barber, Cy Imp.",
+      "actions": "Night 1: Fi poisons Ann; Ann chooses Bo as Savant. Day 1: Bo says he is the Barber.",
+      "expected": "Bo is not executed for madness."
+    },
+    {
+      "name": "Goblin jinx",
+      "setup": "Seats: Ann Cerenovus, Bo Chef, Cy Imp; Goblin on the script.",
+      "actions": "Night 1: Ann chooses Bo with the Goblin.",
+      "expected": "Allowed: Bo is mad about being the Goblin."
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "choose-character",
+    "madness",
+    "storyteller-execution"
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Cerenovus",
+    "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+  ]
+}

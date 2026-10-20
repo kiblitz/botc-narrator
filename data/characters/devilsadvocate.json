@@ -1,0 +1,80 @@
+{
+  "id": "devilsadvocate",
+  "name": "Devil's Advocate",
+  "kind": "minion",
+  "ability": "Each night, choose a living player (different to last night): if executed tomorrow, they don't die.",
+  "first_night": 22,
+  "other_nights": 13,
+  "reminders": [
+    "Survives execution"
+  ],
+  "setup": null,
+  "wakes": "Every night, including the first.",
+  "interaction": "Chooses a living player, not the one chosen the previous night (self allowed); told nothing.",
+  "drunk_or_poisoned": "If drunk or poisoned when choosing, or when the execution happens, the executed player dies normally.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The chosen player must be alive; cannot choose a Zombuul registering as dead.",
+      "source": "https://wiki.bloodontheclocktower.com/Devil%27s_Advocate"
+    },
+    {
+      "text": "Cannot choose the same player on consecutive nights, even if they were not executed.",
+      "source": "https://wiki.bloodontheclocktower.com/Devil%27s_Advocate"
+    },
+    {
+      "text": "May choose themself.",
+      "source": "https://wiki.bloodontheclocktower.com/Devil%27s_Advocate"
+    },
+    {
+      "text": "Announce the execution and that the player survives, without explaining why; the execution still happened (a Zombuul does not lose its life, a Boomdandy still explodes).",
+      "source": "https://wiki.bloodontheclocktower.com/Devil%27s_Advocate"
+    },
+    {
+      "text": "Other abilities (e.g. Tinker) can still kill the protected player.",
+      "source": "https://wiki.bloodontheclocktower.com/Devil%27s_Advocate"
+    }
+  ],
+  "test_scenarios": [
+    {
+      "name": "protects self",
+      "setup": "Seats: Dee Devil's Advocate, Al Imp, Bea Chef, Cid Empath.",
+      "actions": "Night 1: Dee chooses Dee. Day 1: Dee executed.",
+      "expected": "Dee is executed but does not die; the day ends."
+    },
+    {
+      "name": "protects Demon",
+      "setup": "Seats: Dee Devil's Advocate, Al Imp, Bea Chef, Cid Empath, Eve Monk.",
+      "actions": "Night 2: Dee chooses Al. Day 2: Al executed.",
+      "expected": "Al survives; the game continues."
+    },
+    {
+      "name": "no repeat",
+      "setup": "Seats: Dee Devil's Advocate, Al Imp, Bea Chef.",
+      "actions": "Night 1: Dee chooses Al.",
+      "expected": "Night 2: Al is not a legal choice."
+    },
+    {
+      "name": "poisoned Devil's Advocate",
+      "setup": "Seats: Dee Devil's Advocate, Al Imp, Bea Sailor, Cid Chef.",
+      "actions": "Night 2: Bea chooses Dee and the Storyteller makes Dee drunk; Dee chooses Al. Day 2: Al executed.",
+      "expected": "Al dies; good wins."
+    },
+    {
+      "name": "protection expires",
+      "setup": "Seats: Dee Devil's Advocate, Al Imp, Bea Chef.",
+      "actions": "Night 1: Dee chooses Bea. Day 1: no execution. Night 2: Dee chooses Al. Day 2: Bea executed.",
+      "expected": "Bea dies on day 2."
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "protect-from-execution",
+    "not-same-as-last-night",
+    "survives-execution"
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Devil%27s_Advocate",
+    "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+  ]
+}

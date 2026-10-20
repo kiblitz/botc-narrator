@@ -1,0 +1,89 @@
+{
+  "id": "goblin",
+  "name": "Goblin",
+  "kind": "minion",
+  "ability": "If you publicly claim to be the Goblin when nominated & are executed that day, your team wins.",
+  "first_night": null,
+  "other_nights": null,
+  "reminders": [
+    "Claimed"
+  ],
+  "setup": null,
+  "wakes": "Never. The ability is triggered by a public claim during the day.",
+  "interaction": "Chooses nothing and is told nothing. When nominated, the player may publicly claim to be the Goblin before voting; the Storyteller announces the claim to the group and marks the Goblin CLAIMED.",
+  "drunk_or_poisoned": "If the Goblin is drunk or poisoned when executed (after claiming that day), the ability does not trigger: the Goblin dies and the game continues. The claim itself is still a legal public statement.",
+  "jinxes": [
+    {
+      "with": "cerenovus",
+      "text": "The Cerenovus may choose to make a player mad that they are the Goblin."
+    },
+    {
+      "with": "plaguedoctor",
+      "text": "If the Storyteller would gain the Goblin ability, a Minion gains it, and learns this."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "The claim must be made when nominated, before votes, loudly enough for everyone to hear.",
+      "source": "https://wiki.bloodontheclocktower.com/Goblin"
+    },
+    {
+      "text": "The claim only counts on the day it is made; a claim on an earlier day does not make a later execution win.",
+      "source": "https://wiki.bloodontheclocktower.com/Goblin"
+    },
+    {
+      "text": "Any player may claim to be the Goblin; a non-Goblin who claims and is executed causes nothing and the game continues.",
+      "source": "https://wiki.bloodontheclocktower.com/Goblin"
+    },
+    {
+      "text": "If the Goblin is executed without having claimed that day, the Goblin simply dies.",
+      "source": "https://wiki.bloodontheclocktower.com/Goblin"
+    },
+    {
+      "text": "The ability needs only the execution, not the death: a claimed Goblin who is executed but survives (e.g. Devil's Advocate) still wins for their team.",
+      "source": "https://wiki.bloodontheclocktower.com/Goblin"
+    }
+  ],
+  "test_scenarios": [
+    {
+      "name": "claimed goblin executed",
+      "setup": "Abdallah Goblin, Bea Imp, Cal Chef, Dee Empath, Eve Monk",
+      "actions": "Day 1: Cal nominates Abdallah; Abdallah publicly claims Goblin; majority votes; Abdallah executed.",
+      "expected": "Abdallah dies; evil wins immediately."
+    },
+    {
+      "name": "good player claims goblin",
+      "setup": "Lewis Artist, Bea Imp, Cal Goblin, Dee Empath, Eve Monk",
+      "actions": "Day 1: Lewis nominated, claims Goblin, executed.",
+      "expected": "Lewis dies; game continues (no win)."
+    },
+    {
+      "name": "claim on earlier day",
+      "setup": "Doug Goblin, Bea Imp, Cal Chef, Dee Empath, Eve Monk",
+      "actions": "Day 1: Doug nominated, claims Goblin, survives vote. Day 2: Doug nominated, does not claim, executed.",
+      "expected": "Doug dies; game continues."
+    },
+    {
+      "name": "poisoned goblin",
+      "setup": "Abdallah Goblin, Bea Imp, Cal Poisoner, Dee Empath, Eve Monk, Fay Chef",
+      "actions": "Night 2: Poisoner poisons Abdallah. Day 2: Abdallah nominated, claims Goblin, executed.",
+      "expected": "Abdallah dies; no win; game continues."
+    },
+    {
+      "name": "no claim",
+      "setup": "Abdallah Goblin, Bea Imp, Cal Chef, Dee Empath, Eve Monk",
+      "actions": "Day 1: Abdallah nominated, says nothing about Goblin, executed.",
+      "expected": "Abdallah dies; game continues."
+    }
+  ],
+  "building_blocks": [
+    "on-nominated",
+    "public-claim",
+    "on-execution",
+    "alternate-win-condition"
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Goblin",
+    "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+  ]
+}

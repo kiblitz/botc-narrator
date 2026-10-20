@@ -1,0 +1,86 @@
+{
+  "id": "harpy",
+  "name": "Harpy",
+  "kind": "minion",
+  "ability": "Each night, choose 2 players: tomorrow, the 1st player is mad that the 2nd is evil, or one or both might die.",
+  "first_night": 26.5,
+  "other_nights": 17.5,
+  "reminders": [
+    "Mad",
+    "2nd"
+  ],
+  "setup": null,
+  "wakes": "Each night, including the first.",
+  "interaction": "Chooses a first player (MAD) then a second player (2ND). The MAD player is woken, shown the THIS CHARACTER SELECTED YOU info token and the Harpy token, and shown the 2ND player.",
+  "drunk_or_poisoned": "The Storyteller may still wake the chosen player as normal, but no madness applies and the Storyteller may not kill either player for breaking it.",
+  "jinxes": [],
+  "rulings": [
+    {
+      "text": "The Harpy chooses one player at a time, not two at once.",
+      "source": "https://wiki.bloodontheclocktower.com/Harpy"
+    },
+    {
+      "text": "A chosen player stays affected until the Harpy's next choice.",
+      "source": "https://wiki.bloodontheclocktower.com/Harpy"
+    },
+    {
+      "text": "If the MAD player breaks madness, the Storyteller may kill one, both, or neither of the two players.",
+      "source": "https://wiki.bloodontheclocktower.com/Harpy"
+    },
+    {
+      "text": "If a dead player is chosen, only the living player can be killed.",
+      "source": "https://wiki.bloodontheclocktower.com/Harpy"
+    },
+    {
+      "text": "The Storyteller chooses the order of deaths if it matters.",
+      "source": "https://wiki.bloodontheclocktower.com/Harpy"
+    },
+    {
+      "text": "The Harpy is not in the townsquare roles.json night order; the official night sheet places it between the Fearmonger and the Mezepheles on both nights, hence the half positions.",
+      "source": "https://github.com/ThePandemoniumInstitute/botc-release/blob/main/resources/data/nightsheet.json"
+    }
+  ],
+  "test_scenarios": [
+    {
+      "name": "madness kept",
+      "setup": "Hal Harpy, Ida Imp, Jo Farmer, Kim Chef, Lou Empath, Max Monk",
+      "actions": "Night 1: Hal chooses Jo then Kim. Day 1: Jo says Kim is evil.",
+      "expected": "Jo woken and shown Harpy + Kim; no deaths from the Harpy on day 1."
+    },
+    {
+      "name": "madness broken, both die",
+      "setup": "Hal Harpy, Ida Imp, Jo Farmer, Kim Chef, Lou Empath, Max Monk",
+      "actions": "Night 1: Hal chooses Jo then Kim. Day 1: Jo says Kim is good; Storyteller (scripted) kills both.",
+      "expected": "Jo and Kim die during day 1; Jo's Farmer ability does not trigger (day death)."
+    },
+    {
+      "name": "madness broken, one dies",
+      "setup": "Hal Harpy, Ida Imp, Jo Farmer, Kim Chef, Lou Empath, Max Monk",
+      "actions": "Night 1: Hal chooses Jo then Kim. Day 1: Jo breaks madness; Storyteller (scripted) kills only Kim.",
+      "expected": "Kim dies; Jo lives."
+    },
+    {
+      "name": "dead second player",
+      "setup": "Hal Harpy, Ida Imp, Jo Farmer, Kim Chef (dead), Lou Empath, Max Monk",
+      "actions": "Night 2: Hal chooses Jo then Kim. Day 2: Jo breaks madness; Storyteller chooses to kill.",
+      "expected": "Only Jo can die."
+    },
+    {
+      "name": "poisoned harpy",
+      "setup": "Hal Harpy, Ida No Dashii (neighbouring Hal), Jo Farmer, Kim Chef, Lou Empath, Max Monk",
+      "actions": "Night 1: Hal chooses Jo then Kim. Day 1: Jo says Kim is good.",
+      "expected": "No Harpy deaths; Jo and Kim live."
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "madness",
+    "storyteller-kill",
+    "day-ability",
+    "inform-player"
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Harpy",
+    "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/roles.json"
+  ]
+}
