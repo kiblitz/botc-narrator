@@ -9,6 +9,7 @@ Rust Blood on the Clocktower storyteller engine. Read README.md for the architec
 - Info abilities supply truthful and misinformation options; poisoning is handled centrally by `ctx::Read::inform`, never per character.
 - Grimoire status is reminder tokens (`game::Reminder`), not per-effect boolean fields.
 - The simulator (`src/sim.rs` -> `web/` wasm -> `site/`) records every step with an audience (public / player / storyteller) and a grimoire snapshot; the table gets the grimoire with each event (`table::Io::event`), so every grimoire change must go through `ctx::Write::record`. In a player's view the site shows only that player's knowledge, and night deaths are announced at dawn without their cause.
+- Character icons are the official art, hotlinked from the townsquare (clocktower.online) repo pinned to a commit in `site/app.js`; never copy them into this repository.
 - No GitHub Actions. `scripts/check.sh` is the merge gate.
 
 ## Conventions

@@ -135,4 +135,5 @@ test("tokens show the official character icon", async ({ page }) => {
   );
   await page.locator("#pov").selectOption("Ada");
   await expect(page.locator('.seat[data-name="Dev"] .token img')).toHaveCount(0);
+  await expect(page.locator('.seat[data-name="Dev"] .token')).toHaveAttribute("title", "Unknown character");
 });

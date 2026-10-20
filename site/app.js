@@ -4,8 +4,8 @@ const MIN_PLAYERS = 5;
 const MAX_PLAYERS = 15;
 const PLAY_INTERVAL_MS = 700;
 // Official character icons, loaded from the townsquare (clocktower.online)
-// assets rather than copied into this repository.
-const ICON_BASE = "https://raw.githubusercontent.com/bra1n/townsquare/develop/src/assets/icons/";
+// assets (pinned to a commit) rather than copied into this repository.
+const ICON_BASE = "https://raw.githubusercontent.com/bra1n/townsquare/d9c2b17dc9b2d7b091b55c988707784f12980f44/src/assets/icons/";
 const iconUrl = (character) => `${ICON_BASE}${character.toLowerCase().replace(/[^a-z]/g, "")}.png`;
 
 const isPhase = (step) => step.kind === "phase_began";
