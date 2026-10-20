@@ -63,7 +63,7 @@ Character kinds are Townsfolk, Outsider, Minion, Demon, **Traveller** (seated, c
 
 ### Adding characters and scripts
 
-A character is a unit struct implementing `character::Def` in its own module (`src/characters/<id>.rs`), registered once in `characters::all()`. It overrides only the hooks it uses:
+A character is a unit struct implementing `character::Def` in its own module (`src/characters/<id>.rs`) plus one line in the `registry!` list in `src/characters.rs`; abilities are mostly composed from the building blocks in `ability` (tell a count / yes-no / character / "one of two", count registered evil, mark a player, use once, kill, the demon attack, storyteller picks). **See [docs/adding-characters.md](docs/adding-characters.md).** It overrides only the hooks it uses:
 
 | Hook | When |
 |---|---|
@@ -71,7 +71,7 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `night_action`, `wakes_tonight` | what it does at its turn; whether it wakes tonight (default: alive), checked when the turn comes |
 | `day_action` | a public day ability (Slayer) |
 | `setup_counts`, `duplicates_in_setup` | how it changes the setup counts (Baron: +2 Outsiders; options for "+0 or +1"); copies filling extra slots (Legion, Riot) |
-| `on_setup` | storyteller setup choices before the first night (Drunk, Fortune Teller red herring) |
+| `on_setup` | storyteller setup choices before the first night (Drunk, Fortune Teller red herring); `game::State::script` is set by then |
 | `on_night_start`, `on_day_start`, `on_day_end` | phase changes, for living players |
 | `on_nominated`, `on_nominates`, `on_vote` | the nominee, the nominator, everyone after a vote |
 | `on_executed`, `intercept_death`, `on_death` | executions, preventing or redirecting any death, reacting to deaths |

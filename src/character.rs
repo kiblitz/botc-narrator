@@ -4,7 +4,6 @@ use crate::ctx;
 use crate::event;
 use crate::game;
 use crate::player;
-use crate::script;
 use crate::setup;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
@@ -157,7 +156,7 @@ pub trait Def: Sync {
 
     /// Before the first night, with every player seated: storyteller setup
     /// choices (the Drunk's believed Townsfolk, the Fortune Teller's red herring).
-    fn on_setup(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _script: &script::Script) {}
+    fn on_setup(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id) {}
 
     /// Called for each living player when a night begins.
     fn on_night_start(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id) {}

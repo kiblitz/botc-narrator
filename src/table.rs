@@ -3,6 +3,7 @@
 
 use rand::seq::index;
 
+use crate::character;
 use crate::event;
 use crate::game;
 use crate::info;
@@ -23,6 +24,17 @@ pub trait Io {
         candidates: &[player::Id],
         count: usize,
     ) -> Vec<player::Id>;
+
+    /// Ask a player to choose one of `options` (characters); returns its
+    /// index. Invalid answers are replaced by the first option.
+    fn ask_character(
+        &mut self,
+        _player: &player::Id,
+        _prompt: &str,
+        _options: &[character::Ref],
+    ) -> usize {
+        0
+    }
 
     /// A game event happened; `view` is the grimoire after it.
     fn event(&mut self, _event: &event::Event, _view: &game::State) {}

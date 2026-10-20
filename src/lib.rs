@@ -4,6 +4,7 @@
 //! how players are talked to ([`table::Io`]) and how the storyteller makes
 //! discretionary choices ([`storyteller::Strategy`]) are pluggable.
 
+pub mod ability;
 pub mod character;
 pub mod characters;
 pub mod ctx;

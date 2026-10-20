@@ -127,7 +127,7 @@ fn the_drunk_believes_a_townsfolk_and_acts_as_it_with_false_info() {
         .run(|ctx| narrator::setup(ctx, &common::trouble_brewing()))
         .run(night);
     expect![[r#"
-          storyteller [1 of 9 options] which character Drunk believes they are: Chef
+          storyteller [1 of 9 options] Drunk Drunk: which Townsfolk they believe they are: Chef
         * Drunk believes they are the Chef
         * === Night 1 ===
         wake Poisoner
@@ -163,7 +163,10 @@ fn the_drunk_believes_a_townsfolk_and_acts_as_it_with_false_info() {
     "#]]
     .assert_eq(&g.transcript());
     // The believed Chef is never offered as a demon bluff.
-    assert!(narrator::in_play(&g.state, &characters::chef::Def));
+    assert!(botc_narrator::ability::in_play(
+        &g.state,
+        &characters::chef::Def
+    ));
     assert!(g.state.is_malfunctioning(&p("Drunk")));
     assert_eq!(g.state.character(&p("Drunk")).id(), "drunk");
 }
@@ -346,8 +349,8 @@ fn the_undertaker_and_ravenkeeper_learn_registered_characters() {
           storyteller [1 of 1 options] information for Raven (Ravenkeeper): "Chef"
           -> Raven: Chef
         sleep Raven
-          storyteller [1 of 5 options] how Spy registers to Undertaker (first option is true): Undertaker
         wake Undertaker
+          storyteller [1 of 5 options] how Spy registers to Undertaker (first option is true): Undertaker
           storyteller [1 of 1 options] information for Undertaker (Undertaker): "Undertaker"
           -> Undertaker: Undertaker
         sleep Undertaker
@@ -378,7 +381,7 @@ fn the_fortune_tellers_red_herring_registers_as_the_demon() {
         .run(|ctx| narrator::setup(ctx, &common::trouble_brewing()))
         .run(night);
     expect![[r#"
-          storyteller [1 of 3 options] red herring for Fortune Teller Teller: Chef
+          storyteller [1 of 3 options] Fortune Teller Teller: which good player is the red herring: Chef
         * Teller (fortune_teller) marks Chef: red herring
         * === Night 1 ===
         === parallel (2) ===

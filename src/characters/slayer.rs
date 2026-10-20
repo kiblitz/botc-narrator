@@ -1,7 +1,6 @@
+use crate::ability;
 use crate::character;
 use crate::ctx;
-use crate::event;
-use crate::game;
 use crate::player;
 
 pub struct Def;
@@ -26,19 +25,14 @@ impl character::Def for Def {
 
 /// Once per game, publicly chooses a player: if they are the demon, they die.
 fn slay(ctx: &mut ctx::Write<'_>, me: &player::Id) {
-    let state = ctx.state();
-    if !state.is_alive(me) || state.has_effect(me, game::Effect::AbilityUsed) {
+    if !ctx.state().is_alive(me) || !ability::use_once(ctx, me, &Def) {
         return;
     }
-    let reminder = game::Reminder::new(&Def, me, game::Effect::AbilityUsed, game::Expiry::Never);
-    ctx.place_reminder(me, reminder);
     let candidates = ctx.state().alive_ids();
     if let Some(target) = ctx.ask_one(me, "Who do you want to slay?", &candidates)
         && !ctx.state().is_malfunctioning(me)
-        && ctx
-            .registers_as(me, &target, character::Kind::Demon)
-            .is_some()
+        && ctx.registers_as(me, &target, character::Kind::Demon).is_some()
     {
-        ctx.kill(&target, event::Cause::Ability { by: me.clone() });
+        ability::kill(ctx, me, &target);
     }
 }

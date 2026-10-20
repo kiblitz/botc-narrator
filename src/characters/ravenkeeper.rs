@@ -1,8 +1,7 @@
+use crate::ability;
 use crate::character;
-use crate::characters;
 use crate::ctx;
 use crate::game;
-use crate::info;
 use crate::player;
 
 pub struct Def;
@@ -36,15 +35,12 @@ impl character::Def for Def {
     }
 }
 
-/// If they died tonight, chooses a player and learns their character.
+/// On the night they die, chooses a player and learns their character.
 fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
     let candidates = ctx.state().seat_order();
     ctx.wake(me);
     if let Some(target) = ctx.ask_one(me, "Choose a player to learn about", &candidates) {
-        let registered = ctx.registered_character(me, &target);
-        let truthful = vec![info::Message::Character(registered.name())];
-        let misinformation = characters::any_character(ctx.state());
-        ctx.inform(me, truthful, misinformation);
+        ability::tell_character(ctx, me, &target);
     }
     ctx.sleep(me);
 }

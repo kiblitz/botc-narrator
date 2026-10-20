@@ -1,7 +1,6 @@
+use crate::ability;
 use crate::character;
-use crate::characters;
 use crate::ctx;
-use crate::info;
 use crate::player;
 
 pub struct Def;
@@ -38,11 +37,8 @@ fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
     let pairs = (0..seats.len())
         .filter(|&i| evil[i] && evil[(i + 1) % seats.len()])
         .count();
-    let state = ctx.state();
-    let noun = "evil pairs";
-    let truthful = vec![info::Message::Count { count: pairs, noun }];
-    let misinformation = characters::counts(0..=state.evil_ids().len(), noun);
+    let max = ctx.state().evil_ids().len();
     ctx.wake(me);
-    ctx.inform(me, truthful, misinformation);
+    ability::tell_count(ctx, me, pairs, max, "evil pairs");
     ctx.sleep(me);
 }

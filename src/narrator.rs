@@ -1,5 +1,6 @@
 //! Game flow: setup, nights in script order, and day actions.
 
+use crate::ability;
 use crate::character;
 use crate::ctx;
 use crate::event;
@@ -18,11 +19,13 @@ pub const EVIL_INFO_MIN_PLAYERS: usize = 7;
 pub const MINION_INFO_ORDER: u32 = 6;
 pub const DEMON_INFO_ORDER: u32 = 9;
 
-/// Before the first night: every player's setup ability runs (the Drunk is
+/// Before the first night: the script is recorded in the grimoire
+/// (`game::State::script`), then every player's setup ability runs (the Drunk is
 /// told who they believe they are), then the setup ability of each believed
 /// character (a Drunk who believes they are the Fortune Teller gets a red
 /// herring).
 pub fn setup(ctx: &mut ctx::Write<'_>, script: &script::Script) {
+    ctx.set_script(script.characters.clone());
     let players: Vec<(player::Id, character::Ref)> = ctx
         .state()
         .players()
@@ -30,7 +33,7 @@ pub fn setup(ctx: &mut ctx::Write<'_>, script: &script::Script) {
         .map(|p| (p.id.clone(), p.character))
         .collect();
     for (id, character) in players {
-        character.on_setup(ctx, &id, script);
+        character.on_setup(ctx, &id);
     }
     let believers: Vec<(player::Id, character::Ref)> = ctx
         .state()
@@ -39,7 +42,7 @@ pub fn setup(ctx: &mut ctx::Write<'_>, script: &script::Script) {
         .filter_map(|p| p.believes.map(|c| (p.id.clone(), c)))
         .collect();
     for (id, character) in believers {
-        character.on_setup(ctx, &id, script);
+        character.on_setup(ctx, &id);
     }
 }
 
@@ -113,7 +116,7 @@ pub fn demon_info(ctx: &mut ctx::Write<'_>, script: &script::Script) {
             matches!(
                 c.kind(),
                 character::Kind::Townsfolk | character::Kind::Outsider
-            ) && !in_play(ctx.state(), **c)
+            ) && !ability::in_play(ctx.state(), **c)
         })
         .map(|c| c.name())
         .collect();
@@ -126,15 +129,6 @@ pub fn demon_info(ctx: &mut ctx::Write<'_>, script: &script::Script) {
     });
     read.tell(&demon, &info::Message::Bluffs(bluffs));
     read.sleep(&demon);
-}
-
-/// Whether anyone is, or believes they are, this character (so the Drunk's
-/// Townsfolk is never a demon bluff).
-pub fn in_play(state: &game::State, c: character::Ref) -> bool {
-    state
-        .players()
-        .iter()
-        .any(|p| character::same(p.character, c) || character::same(p.believed(), c))
 }
 
 /// Runs night actions in order. Consecutive read-only actions are announced

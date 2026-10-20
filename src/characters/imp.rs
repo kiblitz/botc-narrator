@@ -1,3 +1,4 @@
+use crate::ability;
 use crate::character;
 use crate::ctx;
 use crate::event;
@@ -56,18 +57,5 @@ impl character::Def for Def {
 /// Kills a player each night after the first; killing themself passes the
 /// demon to a minion.
 fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
-    let candidates = ctx.state().alive_ids();
-    ctx.wake(me);
-    let target = ctx.ask_one(me, "Who do you want to kill?", &candidates);
-    ctx.sleep(me);
-    if let Some(target) = target
-        && !ctx.state().is_malfunctioning(me)
-    {
-        let cause = if &target == me {
-            event::Cause::Starpass
-        } else {
-            event::Cause::Demon
-        };
-        ctx.kill(&target, cause);
-    }
+    ability::demon_attack(ctx, me);
 }

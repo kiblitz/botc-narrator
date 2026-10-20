@@ -1,5 +1,5 @@
+use crate::ability;
 use crate::character;
-use crate::characters;
 use crate::ctx;
 use crate::player;
 
@@ -32,5 +32,7 @@ impl character::Def for Def {
 
 /// Learns that one of two players is a particular Townsfolk.
 fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
-    characters::inform_one_of(ctx, me, character::Kind::Townsfolk);
+    ctx.wake(me);
+    ability::tell_one_of(ctx, me, character::Kind::Townsfolk);
+    ctx.sleep(me);
 }

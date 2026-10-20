@@ -386,6 +386,7 @@ impl table::Io for Recorder {
             | event::Event::AbilityGained { player, .. }
             | event::Event::AbilityLost { player, .. }
             | event::Event::MadnessBroken { player, .. }
+            | event::Event::AlignmentChanged { player, .. }
             | event::Event::ReminderPlaced { player, .. } => {
                 self.push(Kind::Event, Some(player), text, Audience::Storyteller);
             }
@@ -396,6 +397,21 @@ impl table::Io for Recorder {
                 self.push(Kind::Event, None, text, Audience::Storyteller);
             }
         }
+    }
+
+    fn ask_character(
+        &mut self,
+        player: &player::Id,
+        prompt: &str,
+        options: &[character::Ref],
+    ) -> usize {
+        let answer = self.rng.random_range(0..options.len());
+        let name = options[answer].name();
+        let text = format!("{prompt} {name}");
+        let step = self.push(Kind::Ask, Some(player), text, Audience::Player);
+        step.characters = vec![name];
+        step.flow = Some(Flow::from_player(player));
+        answer
     }
 
     fn broke_madness(&mut self, _player: &player::Id, _about: &'static str) -> bool {

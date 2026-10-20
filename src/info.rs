@@ -16,6 +16,14 @@ pub enum Message {
         character: &'static str,
     },
     Character(&'static str),
+    /// Several characters, e.g. which Outsiders are in play.
+    Characters(Vec<&'static str>),
+    /// "`count` of these players are `noun`", e.g. 1 of 3 is evil.
+    Group {
+        players: Vec<player::Id>,
+        count: usize,
+        noun: &'static str,
+    },
     Team {
         evil: Vec<player::Id>,
     },
@@ -29,10 +37,12 @@ impl Message {
         match self {
             Message::OneOf { players, .. } => players.iter().collect(),
             Message::Team { evil } => evil.iter().collect(),
+            Message::Group { players, .. } => players.iter().collect(),
             Message::Grimoire(seats) => seats.iter().map(|(p, _)| p).collect(),
             Message::Count { .. }
             | Message::YesNo(_)
             | Message::Character(_)
+            | Message::Characters(_)
             | Message::Bluffs(_) => Vec::new(),
         }
     }
@@ -41,9 +51,12 @@ impl Message {
     pub fn characters(&self) -> Vec<&'static str> {
         match self {
             Message::OneOf { character, .. } | Message::Character(character) => vec![*character],
-            Message::Bluffs(names) => names.clone(),
+            Message::Bluffs(names) | Message::Characters(names) => names.clone(),
             Message::Grimoire(seats) => seats.iter().map(|(_, c)| *c).collect(),
-            Message::Count { .. } | Message::YesNo(_) | Message::Team { .. } => Vec::new(),
+            Message::Count { .. }
+            | Message::YesNo(_)
+            | Message::Team { .. }
+            | Message::Group { .. } => Vec::new(),
         }
     }
 }
@@ -61,6 +74,13 @@ impl fmt::Display for Message {
                 write!(f, "{a} and {b}: one is the {character}")
             }
             Message::Character(name) => f.write_str(name),
+            Message::Characters(names) if names.is_empty() => f.write_str("None"),
+            Message::Characters(names) => f.write_str(&join(names)),
+            Message::Group {
+                players,
+                count,
+                noun,
+            } => write!(f, "{}: {count} {noun}", join(players)),
             Message::Team { evil } => write!(f, "Evil: {}", join(evil)),
             Message::Bluffs(names) => write!(f, "Bluffs: {}", join(names)),
             Message::Grimoire(seats) => {

@@ -1,3 +1,4 @@
+use crate::ability;
 use crate::character;
 use crate::ctx;
 use crate::game;
@@ -30,15 +31,13 @@ impl character::Def for Def {
     }
 }
 
-/// Poisons a player until the next dusk.
+/// Chooses a player who is poisoned tonight and tomorrow day.
 fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
     let candidates = ctx.state().alive_except(me);
     ctx.wake(me);
-    if let Some(target) = ctx.ask_one(me, "Who do you want to poison?", &candidates)
-        && !ctx.state().is_malfunctioning(me)
-    {
-        let reminder = game::Reminder::new(&Def, me, game::Effect::Poisoned, game::Expiry::Dusk);
-        ctx.place_reminder(&target, reminder);
+    if let Some(target) = ctx.ask_one(me, "Who do you want to poison?", &candidates) {
+        let (effect, expiry) = (game::Effect::Poisoned, game::Expiry::Dusk);
+        ability::mark(ctx, me, &Def, &target, effect, expiry);
     }
     ctx.sleep(me);
 }

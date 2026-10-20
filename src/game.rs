@@ -169,6 +169,7 @@ impl Player {
 pub struct State {
     seats: Vec<Player>,
     fabled: Vec<character::Ref>,
+    script: Vec<character::Ref>,
     phase: Phase,
     deaths_tonight: Vec<player::Id>,
     executed_today: Option<player::Id>,
@@ -206,6 +207,7 @@ impl State {
         Self {
             seats,
             fabled: Vec::new(),
+            script: Vec::new(),
             phase: Phase::Setup,
             deaths_tonight: Vec::new(),
             executed_today: None,
@@ -288,6 +290,12 @@ impl State {
     /// Whether the player acts with this character's ability.
     pub fn has_ability(&self, id: &player::Id, character_id: &str) -> bool {
         self.abilities(id).iter().any(|c| c.id() == character_id)
+    }
+
+    /// The characters on the script being played (set by `narrator::setup`):
+    /// what abilities that name "any good character" choose from.
+    pub fn script(&self) -> &[character::Ref] {
+        &self.script
     }
 
     /// Storyteller-side Fabled characters in play.
@@ -464,6 +472,14 @@ impl State {
             p.lost_ability = true;
         }
         p.gained.retain(|c| !character::same(*c, ability));
+    }
+
+    pub(crate) fn set_alignment(&mut self, id: &player::Id, alignment: character::Alignment) {
+        self.player_mut(id).alignment = alignment;
+    }
+
+    pub(crate) fn set_script(&mut self, characters: Vec<character::Ref>) {
+        self.script = characters;
     }
 
     pub(crate) fn add_fabled(&mut self, fabled: character::Ref) {

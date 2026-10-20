@@ -17,6 +17,8 @@ Rust Blood on the Clocktower storyteller engine. Read README.md for the architec
 - A player who believes they are a character they are not (`Player::believes`) acts as it but is malfunctioning. Hooks run for every ability a player has (`State::abilities`: own unless lost, believed, gained).
 - Any death (demon, execution, ability) goes through `ctx::Write::kill`, where abilities may prevent or redirect it (`intercept_death`). Setup counts come from `setup_counts` adjustments applied by `setup::choose`.
 
+- Adding a character is one file `src/characters/<id>.rs` plus one `registry!` line, with no engine edits: compose `ability` building blocks; if a character family needs engine support, add a general mechanism (generic `storyteller::Reason::Ability`, `info::Message` variants), never a special case. Guide: `docs/adding-characters.md`.
+
 ## Conventions
 
 - `scripts/check.sh` needs `wasm-pack`, the `wasm32-unknown-unknown` target and node (Playwright tests in `site/tests`). Write Python helper output as UTF-8 (`PYTHONUTF8=1`) on this machine; cp1252 corrupts non-ASCII text.

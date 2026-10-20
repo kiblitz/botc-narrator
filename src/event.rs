@@ -50,6 +50,10 @@ pub enum Event {
         player: player::Id,
         ability: &'static str,
     },
+    AlignmentChanged {
+        player: player::Id,
+        alignment: character::Alignment,
+    },
     FabledAdded(&'static str),
     /// The storyteller judged that a mad player broke their madness.
     MadnessBroken {
@@ -87,6 +91,9 @@ impl fmt::Display for Event {
             }
             Event::AbilityLost { player, ability } => {
                 write!(f, "{player} loses the {ability} ability")
+            }
+            Event::AlignmentChanged { player, alignment } => {
+                write!(f, "{player} is now {alignment}")
             }
             Event::FabledAdded(name) => write!(f, "the {name} is in play"),
             Event::MadnessBroken { player, about } => {

@@ -1,3 +1,4 @@
+use crate::ability;
 use crate::character;
 use crate::ctx;
 use crate::game;
@@ -30,15 +31,13 @@ impl character::Def for Def {
     }
 }
 
-/// Protects another player from the demon tonight.
+/// Chooses a player (not themself) who is safe from the demon tonight.
 fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
     let candidates = ctx.state().alive_except(me);
     ctx.wake(me);
-    if let Some(target) = ctx.ask_one(me, "Who do you want to protect?", &candidates)
-        && !ctx.state().is_malfunctioning(me)
-    {
-        let reminder = game::Reminder::new(&Def, me, game::Effect::Protected, game::Expiry::Dusk);
-        ctx.place_reminder(&target, reminder);
+    if let Some(target) = ctx.ask_one(me, "Who do you want to protect?", &candidates) {
+        let (effect, expiry) = (game::Effect::Protected, game::Expiry::Dusk);
+        ability::mark(ctx, me, &Def, &target, effect, expiry);
     }
     ctx.sleep(me);
 }

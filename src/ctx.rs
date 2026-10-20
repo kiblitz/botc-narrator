@@ -74,6 +74,20 @@ impl<'a> Read<'a> {
         self.ask(player, prompt, candidates, 1).into_iter().next()
     }
 
+    /// Ask a player to choose one of `options` (characters).
+    pub fn ask_character(
+        &mut self,
+        player: &player::Id,
+        prompt: &str,
+        options: &[character::Ref],
+    ) -> Option<character::Ref> {
+        if options.is_empty() {
+            return None;
+        }
+        let answer = self.io.ask_character(player, prompt, options);
+        Some(options.get(answer).copied().unwrap_or(options[0]))
+    }
+
     /// Let the storyteller choose `count` of `options`; `describe` says how
     /// each option is presented. When there is no real choice (as many options
     /// as picks) the storyteller is not consulted.
@@ -391,6 +405,20 @@ impl<'a> Write<'a> {
         });
     }
 
+    /// `target` changes alignment (their character stays).
+    pub fn set_alignment(&mut self, target: &player::Id, alignment: character::Alignment) {
+        self.state.set_alignment(target, alignment);
+        self.record(event::Event::AlignmentChanged {
+            player: target.clone(),
+            alignment,
+        });
+    }
+
+    /// The script being played (see `game::State::script`).
+    pub fn set_script(&mut self, characters: Vec<character::Ref>) {
+        self.state.set_script(characters);
+    }
+
     /// Put a Fabled character in play (it is never seated).
     pub fn add_fabled(&mut self, fabled: character::Ref) {
         assert_eq!(
@@ -540,6 +568,15 @@ impl<'a> Write<'a> {
         candidates: &[player::Id],
     ) -> Option<player::Id> {
         self.read().ask_one(player, prompt, candidates)
+    }
+
+    pub fn ask_character(
+        &mut self,
+        player: &player::Id,
+        prompt: &str,
+        options: &[character::Ref],
+    ) -> Option<character::Ref> {
+        self.read().ask_character(player, prompt, options)
     }
 
     pub fn choose<T: Clone>(

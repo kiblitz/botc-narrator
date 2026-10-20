@@ -553,18 +553,18 @@ fn first_night_info_characters_get_truthful_options() {
     expect![[r#"
         * === Night 1 ===
         === parallel (3) ===
-          storyteller [1 of 4 options] how Spy registers to Wash (first option is true): not a Townsfolk
         wake Wash
+          storyteller [1 of 4 options] how Spy registers to Wash (first option is true): not a Townsfolk
           storyteller [1 of 16 options] information for Wash (Washerwoman): "Imp and Lib: one is the Librarian"
           -> Wash: Imp and Lib: one is the Librarian
         sleep Wash
-          storyteller [1 of 2 options] how Spy registers to Lib (first option is true): not an Outsider
         wake Lib
+          storyteller [1 of 2 options] how Spy registers to Lib (first option is true): not an Outsider
           storyteller [1 of 8 options] information for Lib (Librarian): "Butler and Imp: one is the Butler"
           -> Lib: Butler and Imp: one is the Butler
         sleep Lib
-          storyteller [1 of 2 options] how Spy registers to Inv (first option is true): Spy
         wake Inv
+          storyteller [1 of 2 options] how Spy registers to Inv (first option is true): Spy
           storyteller [1 of 8 options] information for Inv (Investigator): "Spy and Imp: one is the Spy"
           -> Inv: Spy and Imp: one is the Spy
         sleep Inv

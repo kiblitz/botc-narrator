@@ -1,7 +1,6 @@
+use crate::ability;
 use crate::character;
-use crate::characters;
 use crate::ctx;
-use crate::info;
 use crate::player;
 
 pub struct Def;
@@ -31,15 +30,12 @@ impl character::Def for Def {
     }
 }
 
-/// Learns the character of the player executed today.
+/// Learns which character died by execution today.
 fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
     let Some(executed) = ctx.state().executed_today().cloned() else {
         return;
     };
-    let registered = ctx.registered_character(me, &executed);
-    let truthful = vec![info::Message::Character(registered.name())];
-    let misinformation = characters::any_character(ctx.state());
     ctx.wake(me);
-    ctx.inform(me, truthful, misinformation);
+    ability::tell_character(ctx, me, &executed);
     ctx.sleep(me);
 }

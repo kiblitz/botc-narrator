@@ -1,7 +1,6 @@
+use crate::ability;
 use crate::character;
-use crate::characters;
 use crate::ctx;
-use crate::info;
 use crate::player;
 
 pub struct Def;
@@ -33,21 +32,9 @@ impl character::Def for Def {
 
 /// Learns how many of their two alive neighbours are evil.
 fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
-    let state = ctx.state();
-    let alive = state.alive_ids();
-    let n = alive.len();
-    let i = alive.iter().position(|p| p == me).expect("empath is alive");
-    let mut neighbours = vec![&alive[(i + n - 1) % n], &alive[(i + 1) % n]];
-    neighbours.dedup();
-    neighbours.retain(|p| *p != me);
-    let neighbours: Vec<player::Id> = neighbours.into_iter().cloned().collect();
-    let count = neighbours
-        .iter()
-        .filter(|p| ctx.registers_evil(me, p))
-        .count();
-    let noun = "evil neighbours";
-    let truthful = vec![info::Message::Count { count, noun }];
+    let neighbours = ability::alive_neighbours(ctx.state(), me);
+    let count = ability::count_evil(ctx, me, &neighbours);
     ctx.wake(me);
-    ctx.inform(me, truthful, characters::counts(0..=2, noun));
+    ability::tell_count(ctx, me, count, 2, "evil neighbours");
     ctx.sleep(me);
 }
