@@ -1,0 +1,84 @@
+{
+  "id": "chambermaid",
+  "name": "Chambermaid",
+  "kind": "townsfolk",
+  "ability": "Each night, choose 2 alive players (not yourself): you learn how many woke tonight due to their ability.",
+  "first_night": 76,
+  "other_nights": 95,
+  "reminders": [],
+  "setup": [],
+  "wakes": "Every night, including the first, late in the night order. Not woken if fewer than 2 other living players can be chosen.",
+  "chooses": "2 alive players, not themselves.",
+  "learns": "A number 0, 1 or 2: how many of the chosen players woke tonight due to their own ability.",
+  "malfunction": "Storyteller may give a false number from 0-2 (misinformation offered centrally).",
+  "jinxes": [
+    {
+      "with": "mathematician",
+      "text": "The Chambermaid can detect if the Mathematician will wake tonight."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "Waking for other reasons does not count: Minion/Demon info, or being woken by another character's ability (e.g. a Shabaloth woken by the Exorcist).",
+      "source": "https://wiki.bloodontheclocktower.com/Chambermaid"
+    },
+    {
+      "text": "A player who woke on an earlier night but not tonight is not counted.",
+      "source": "https://wiki.bloodontheclocktower.com/Chambermaid"
+    },
+    {
+      "text": "Players who woke for their ability count even if they are drunk or poisoned.",
+      "source": "https://wiki.bloodontheclocktower.com/Chambermaid"
+    },
+    {
+      "text": "A player who wakes but chooses not to act (e.g. Assassin) counts; an ability used without waking (e.g. Gossip) does not.",
+      "source": "https://wiki.bloodontheclocktower.com/Chambermaid"
+    },
+    {
+      "text": "If a dead player is chosen, the Storyteller has the Chambermaid choose again.",
+      "source": "https://wiki.bloodontheclocktower.com/Chambermaid"
+    }
+  ],
+  "building_blocks": [
+    "choose-players",
+    "learn-number",
+    "wake-count"
+  ],
+  "tests": [
+    {
+      "name": "counts wakers",
+      "setup": "Alice Chambermaid, Bob Monk, Cara Fool, Dan Poisoner, Eve Imp. Night 2.",
+      "actions": "Bob protects Cara, Dan poisons Bob, Eve kills Cara; Alice chooses Bob and Dan.",
+      "expected": "Both woke due to their ability (Bob's counts though poisoned): Alice learns 2."
+    },
+    {
+      "name": "first night minion info not counted",
+      "setup": "Alice Chambermaid, Bob Soldier, Cara Assassin, Dan Moonchild, Eve Imp. Night 1.",
+      "actions": "Alice chooses Cara and Dan.",
+      "expected": "Cara woke only for Minion info, Dan never wakes: Alice learns 0."
+    },
+    {
+      "name": "drunk chambermaid",
+      "setup": "Alice is the Drunk believing she is the Chambermaid; Bob Grandmother, Cara Goon, Dan Poisoner, Eve Imp. Night 2.",
+      "actions": "Alice chooses Bob and Cara; storyteller is offered 1 and 2 as misinformation and picks 2.",
+      "expected": "True count is 0; Alice learns 2."
+    },
+    {
+      "name": "woken by other ability not counted",
+      "setup": "Alice Chambermaid, Bob Exorcist, Cara Fool, Dan Witch, Eve Shabaloth. Night 2.",
+      "actions": "Bob chooses Eve and Eve is woken by the Exorcist; Alice chooses Eve and Cara.",
+      "expected": "Eve woke due to the Exorcist, not her own ability: Alice learns 0."
+    },
+    {
+      "name": "mathematician jinx",
+      "setup": "Alice Chambermaid, Bob Mathematician, Cara Chef, Dan Poisoner, Eve Imp. Night 2.",
+      "actions": "Alice chooses Bob and Cara (Mathematician wakes after the Chambermaid).",
+      "expected": "Bob will wake tonight and counts: Alice learns 1."
+    }
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Chambermaid",
+    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
+    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "shugenja",
+  "name": "Shugenja",
+  "kind": "townsfolk",
+  "ability": "You start knowing if your closest evil player is clockwise or anti-clockwise. If equidistant, this info is arbitrary.",
+  "first_night": 67,
+  "other_nights": null,
+  "reminders": [],
+  "setup": [],
+  "wakes": "First night only, or the night they become the Shugenja mid-game.",
+  "chooses": null,
+  "learns": "The direction (clockwise or anti-clockwise) of the closest evil player, by fewest seats. If evil players are equally close both ways, the Storyteller picks either direction.",
+  "malfunction": "If drunk or poisoned the Storyteller may point either way. The engine offers the wrong direction as the misinformation option.",
+  "jinxes": [],
+  "rulings": [
+    { "text": "Closest means the fewest steps around the circle from the Shugenja. The distance itself is never given.", "source": "https://wiki.bloodontheclocktower.com/Shugenja" },
+    { "text": "If evil players are equally close in both directions the Storyteller chooses, and the Shugenja is not told the answer was arbitrary.", "source": "https://wiki.bloodontheclocktower.com/Shugenja" },
+    { "text": "A Shugenja created mid-game wakes that night to learn the information.", "source": "https://wiki.bloodontheclocktower.com/Shugenja" }
+  ],
+  "building_blocks": ["seating", "alignment-check", "registers-as"],
+  "tests": [
+    { "name": "closest evil is clockwise", "setup": "Seats clockwise: Alice Shugenja, Bob Chef, Cara Imp, Dan Monk, Eve Saint, Finn Baron, Gus Empath, Hal Mayor. Cara is 2 seats clockwise, Finn is 3 seats anti-clockwise.", "actions": "Night 1.", "expected": "Alice learns clockwise." },
+    { "name": "equidistant is arbitrary", "setup": "Seats clockwise: Alice Shugenja, Bob Imp, Cara Chef, Dan Monk, Eve Poisoner. Bob and Eve are each 1 seat away.", "actions": "Night 1.", "expected": "The Storyteller decision offers both clockwise and anti-clockwise as truthful; whichever is picked, Alice learns it." },
+    { "name": "poisoned Shugenja", "setup": "Seats clockwise: Alice Shugenja, Gus Saint, Bob Imp, Cara Chef, Dan Monk, Finn Poisoner. Bob is 2 seats clockwise, Finn is 1 seat anti-clockwise.", "actions": "Night 1: Finn poisons Alice before she wakes.", "expected": "Truthful anti-clockwise and misinformation clockwise are offered; the Storyteller picks clockwise and Alice learns clockwise." },
+    { "name": "Recluse may register as evil", "setup": "Seats clockwise: Alice Shugenja, Bob Recluse, Cara Chef, Dan Monk, Eve Imp, Finn Empath. Bob is 1 seat clockwise, Eve is 2 seats anti-clockwise.", "actions": "Night 1: the Storyteller has Bob register as evil.", "expected": "Bob is the closest evil player, so Alice learns clockwise." }
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Shugenja",
+    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
+    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
+  ]
+}

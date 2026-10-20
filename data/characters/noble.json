@@ -1,0 +1,53 @@
+{
+  "id": "noble",
+  "name": "Noble",
+  "kind": "townsfolk",
+  "ability": "You start knowing 3 players, 1 and only 1 of which is evil.",
+  "first_night": 65,
+  "other_nights": null,
+  "reminders": ["Know", "Know", "Know"],
+  "setup": [],
+  "wakes": "First night only (or the first night after becoming the Noble mid-game).",
+  "chooses": null,
+  "learns": "3 players, exactly 1 of which registers as evil.",
+  "malfunction": "Drunk or poisoned: may be shown any 3 players (e.g. 0 or 2+ evil); misinformation offered centrally, storyteller picks.",
+  "jinxes": [],
+  "rulings": [
+    { "text": "The Noble is shown two good players and one evil player (marked KNOW); never 1 good + 2 evil or 3 evil.", "source": "https://wiki.bloodontheclocktower.com/Noble" },
+    { "text": "Registration applies: a Spy may register good and a Recluse may register evil.", "source": "https://wiki.bloodontheclocktower.com/Noble" },
+    { "text": "A Noble created mid-game (e.g. by the Pit-Hag) learns on their first night as the Noble.", "source": "https://wiki.bloodontheclocktower.com/Noble" },
+    { "text": "The wiki does not say whether the Noble may be among the 3; assume other players only (uncertain).", "source": "https://wiki.bloodontheclocktower.com/Noble" }
+  ],
+  "building_blocks": ["learn-player", "alignment-check", "registers-as"],
+  "tests": [
+    {
+      "name": "normal info",
+      "setup": "Alice Noble, Bob Chambermaid, Carol Po, Dave Barber, Eve Godfather, Fay Mayor.",
+      "actions": "First night: Noble wakes; storyteller picks Bob, Carol, Fay.",
+      "expected": "Alice learns Bob, Carol, Fay; exactly one (Carol) is evil."
+    },
+    {
+      "name": "recluse registers evil",
+      "setup": "Alice Noble, Bob Chambermaid, Carol Barber, Dave Recluse, Eve Imp, Fay Poisoner.",
+      "actions": "First night: storyteller has Dave register as evil and picks Bob, Carol, Dave.",
+      "expected": "Alice learns Bob, Carol, Dave (Dave counted as the one evil)."
+    },
+    {
+      "name": "poisoned noble",
+      "setup": "Alice Noble, Bob Chef, Carol Imp, Dave Poisoner, Eve Empath.",
+      "actions": "First night: Poisoner poisons Alice before she wakes; misinformation options offered centrally, storyteller picks Bob, Carol, Dave.",
+      "expected": "Alice learns Bob, Carol, Dave (two evil)."
+    },
+    {
+      "name": "pit-hag makes a noble",
+      "setup": "Amy Klutz, Evin Clockmaker, Sarah Spy, Julian Po, Ben Pit-Hag.",
+      "actions": "Night 3: Pit-Hag turns Amy into the Noble; Sarah registers as good.",
+      "expected": "Amy wakes that night and learns Evin, Sarah, Julian (Julian the one evil)."
+    }
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Noble",
+    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
+    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
+  ]
+}

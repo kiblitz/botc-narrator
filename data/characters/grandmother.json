@@ -1,0 +1,61 @@
+{
+  "id": "grandmother",
+  "name": "Grandmother",
+  "kind": "townsfolk",
+  "ability": "You start knowing a good player & their character. If the Demon kills them, you die too.",
+  "first_night": 59,
+  "other_nights": 73,
+  "reminders": ["Grandchild", "Dead"],
+  "setup": [],
+  "wakes": "First night only, to be shown the Grandchild. She does not wake on other nights; the other-nights slot is where the Storyteller resolves her death if the Demon killed the Grandchild.",
+  "chooses": null,
+  "learns": "One good player (the Grandchild) and that player's character.",
+  "malfunction": "Drunk or poisoned on the first night: may be shown a wrong player and/or character (misinformation offered centrally). Drunk or poisoned when the Demon kills the Grandchild: she does not die.",
+  "jinxes": [
+    { "with": "leviathan", "text": "If the Leviathan is in play and the Grandchild dies by execution, evil wins." }
+  ],
+  "rulings": [
+    { "text": "If the Demon kills the Grandchild, the Grandmother dies too (mark her DEAD).", "source": "https://wiki.bloodontheclocktower.com/Grandmother" },
+    { "text": "If the Grandchild dies any other way (execution, Gambler, a non-Demon night death) the Grandmother survives.", "source": "https://wiki.bloodontheclocktower.com/Grandmother" },
+    { "text": "A drunk Grandmother (e.g. made drunk by the Sailor) survives the Demon killing her Grandchild.", "source": "https://wiki.bloodontheclocktower.com/Grandmother" },
+    { "text": "The Storyteller chooses a good player as Grandchild while preparing the first night and marks them GRANDCHILD.", "source": "https://wiki.bloodontheclocktower.com/Grandmother" }
+  ],
+  "building_blocks": ["learn-player", "learn-character", "kill", "on-death"],
+  "tests": [
+    {
+      "name": "shown grandchild on first night",
+      "setup": "Alice Grandmother, Bob Professor, Carol Imp, Dave Poisoner, Eve Chef. Storyteller marks Bob as Grandchild.",
+      "actions": "First night: Grandmother wakes.",
+      "expected": "Alice learns Bob is the Professor."
+    },
+    {
+      "name": "demon kills grandchild, grandmother dies",
+      "setup": "Alice Grandmother, Bob Professor (Grandchild), Carol Imp, Dave Poisoner, Eve Chef.",
+      "actions": "Night 2: Imp kills Bob.",
+      "expected": "At dawn both Bob and Alice are announced dead."
+    },
+    {
+      "name": "grandchild executed, grandmother survives",
+      "setup": "Alice Grandmother, Bob Professor (Grandchild), Carol Imp, Dave Poisoner, Eve Chef.",
+      "actions": "Day 1: Bob is executed. Night 2: Imp kills Eve.",
+      "expected": "Alice stays alive; only Bob (day) and Eve (night) die."
+    },
+    {
+      "name": "poisoned grandmother: misinformation and survival",
+      "setup": "Alice Grandmother, Bob Tinker (Grandchild), Carol Imp, Dave Poisoner, Eve Chef. Poisoner poisons Alice on night 1 and night 2.",
+      "actions": "First night: Grandmother wakes; misinformation options are offered centrally and the storyteller picks Eve as the Chef. Night 2: Imp kills Bob.",
+      "expected": "Alice learns Eve is the Chef; at dawn Bob is dead and Alice survives."
+    },
+    {
+      "name": "leviathan jinx: grandchild executed",
+      "setup": "Alice Grandmother, Bob Monk (Grandchild), Carol Leviathan, Dave Baron, Eve Chef, Fay Saint.",
+      "actions": "Day 2: Bob is executed.",
+      "expected": "Evil wins immediately."
+    }
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Grandmother",
+    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
+    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
+  ]
+}

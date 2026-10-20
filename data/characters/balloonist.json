@@ -1,0 +1,89 @@
+{
+  "id": "balloonist",
+  "name": "Balloonist",
+  "kind": "townsfolk",
+  "ability": "Each night, you learn a player of a different character type than last night. [+0 or +1 Outsider]",
+  "first_night": 66,
+  "other_nights": 85,
+  "reminders": [
+    "Know"
+  ],
+  "setup": [
+    "+0 or +1 Outsider (Storyteller's choice)"
+  ],
+  "wakes": "Every night, including the first.",
+  "chooses": null,
+  "learns": "A player (pointed to). First night: any player. Later nights: a player whose character type differs from that of the player shown the previous night.",
+  "malfunction": "May be shown a player of the same character type as the previously shown player. Once sober and healthy, the next player must differ in type from the player actually shown on the malfunctioning night.",
+  "jinxes": [
+    {
+      "with": "marionette",
+      "text": "If the Marionette thinks that they are the Balloonist, an Outsider might have been added during setup."
+    }
+  ],
+  "rulings": [
+    {
+      "text": "The shown player may be alive or dead, good or evil.",
+      "source": "https://wiki.bloodontheclocktower.com/Balloonist"
+    },
+    {
+      "text": "The Balloonist does not learn the shown player's character type.",
+      "source": "https://wiki.bloodontheclocktower.com/Balloonist"
+    },
+    {
+      "text": "After a drunk/poisoned night, the next sober result must differ in type from the player shown on the malfunctioning night.",
+      "source": "https://wiki.bloodontheclocktower.com/Balloonist"
+    },
+    {
+      "text": "If the Vortox is in play, each player shown must be the same character type as the previous one.",
+      "source": "https://wiki.bloodontheclocktower.com/Balloonist"
+    },
+    {
+      "text": "The Spy and Recluse may register as a different character type.",
+      "source": "https://wiki.bloodontheclocktower.com/Balloonist"
+    }
+  ],
+  "building_blocks": [
+    "learn-player",
+    "setup-modifier",
+    "track-history",
+    "registers-as"
+  ],
+  "tests": [
+    {
+      "name": "types differ each night",
+      "setup": "Seats: Alice Balloonist, Bob Chef, Cara Butler, Dan Poisoner, Eve Imp. Storyteller added +1 Outsider at setup.",
+      "actions": "Night 1 storyteller shows Bob. Night 2 storyteller shows Cara. Night 3 storyteller shows Dan.",
+      "expected": "Night 1: any player is legal; Alice learns Bob. Night 2: legal options are Cara, Dan, Eve (no Townsfolk); Alice learns Cara. Night 3: legal options exclude Cara (Outsider); Alice learns Dan."
+    },
+    {
+      "name": "poisoned may repeat type",
+      "setup": "Alice Balloonist, Bob Chef, Cara Empath, Dan Poisoner, Eve Imp.",
+      "actions": "Night 1 Alice shown Bob. Night 2 Dan poisons Alice; storyteller picks misinformation Cara. Night 3 Alice is healthy.",
+      "expected": "Night 2 options include same-type Cara (Townsfolk); Alice learns Cara. Night 3 legal options exclude Townsfolk: Dan or Eve."
+    },
+    {
+      "name": "dead player may be shown",
+      "setup": "Alice Balloonist, Bob Chef (executed day 1), Cara Butler, Dan Spy, Eve Imp.",
+      "actions": "Night 1 Alice shown Cara. Night 2.",
+      "expected": "Night 2 legal options include dead Bob (Townsfolk), Dan and Eve, but not Cara."
+    },
+    {
+      "name": "vortox forces same type",
+      "setup": "Alice Balloonist, Bob Chef, Cara Empath, Dan Witch, Eve Vortox.",
+      "actions": "Night 1 Alice shown Bob. Night 2.",
+      "expected": "Night 2 options are only Townsfolk players (e.g. Cara): Vortox makes Townsfolk information false."
+    },
+    {
+      "name": "spy registers as townsfolk",
+      "setup": "Alice Balloonist, Bob Chef, Cara Butler, Dan Spy, Eve Imp.",
+      "actions": "Night 1 storyteller shows Dan, registering as Townsfolk. Night 2.",
+      "expected": "Night 2 the previous type is Townsfolk: Bob is not legal; Cara or Eve are."
+    }
+  ],
+  "sources": [
+    "https://wiki.bloodontheclocktower.com/Balloonist",
+    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
+    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
+  ]
+}
