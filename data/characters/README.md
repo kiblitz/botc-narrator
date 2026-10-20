@@ -31,4 +31,10 @@ Building-block vocabulary (add new names when none fits, and keep them kebab-cas
 `setup-modifier`, `madness`, `believes-character`, `day-ability`,
 `on-nominated`, `on-death`, `on-execution`, `vote-modifier`,
 `extra-execution`, `ability-gain`, `character-change`, `poison`, `drunk`,
-`win-condition`, `demon-death-survival`, `false-info`, `delayed-effect`.
+`win-condition`, `demon-death-survival`, `false-info`, `delayed-effect`,
+`learn-yes-no`, `alignment-check` (learns or compares alignments),
+`seating` (uses neighbours or distance around the circle),
+`storyteller-judgement` (the Storyteller decides from the game state, e.g. who
+is winning), `track-history` (needs a record of past nights or days),
+`wake-count` (needs who woke tonight due to their ability),
+`ability-malfunction-count` (needs which abilities worked abnormally since dawn).

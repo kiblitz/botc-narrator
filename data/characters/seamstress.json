@@ -5,30 +5,69 @@
   "ability": "Once per game, at night, choose 2 players (not yourself): you learn if they are the same alignment.",
   "first_night": 62,
   "other_nights": 83,
-  "reminders": ["No Ability"],
-  "setup": [],
+  "reminders": [
+    "No Ability"
+  ],
+  "setup": null,
   "wakes": "Every night, including the first, until the ability is used. The Seamstress may decline to choose. Once the ability is used, they are marked No ability and no longer woken.",
-  "chooses": "Either nothing, or any 2 players other than themself (alive or dead, Travellers allowed).",
-  "learns": "Yes (nod) if the two players are the same alignment, no (shake) otherwise.",
-  "malfunction": "If drunk or poisoned when choosing, the ability is still used up (No ability) and the Storyteller may give either answer. The engine offers the false answer as a misinformation option.",
+  "interaction": "Chooses: Either nothing, or any 2 players other than themself (alive or dead, Travellers allowed). Learns: Yes (nod) if the two players are the same alignment, no (shake) otherwise.",
+  "drunk_or_poisoned": "If drunk or poisoned when choosing, the ability is still used up (No ability) and the Storyteller may give either answer. The engine offers the false answer as a misinformation option.",
   "jinxes": [],
   "rulings": [
-    { "text": "They may choose alive or dead players or even Travellers.", "source": "https://wiki.bloodontheclocktower.com/Seamstress" },
-    { "text": "The question is whether the two share an alignment, not whether both are good: two evil players give yes.", "source": "https://wiki.bloodontheclocktower.com/Seamstress" },
-    { "text": "A player whose character was changed (e.g. by the Pit-Hag into a good character) is compared on their current alignment.", "source": "https://wiki.bloodontheclocktower.com/Seamstress" },
-    { "text": "Signalling no action does not use the ability. Choosing players uses it and removes the Seamstress from the night order.", "source": "https://wiki.bloodontheclocktower.com/Seamstress" }
+    {
+      "text": "They may choose alive or dead players or even Travellers.",
+      "source": "https://wiki.bloodontheclocktower.com/Seamstress"
+    },
+    {
+      "text": "The question is whether the two share an alignment, not whether both are good: two evil players give yes.",
+      "source": "https://wiki.bloodontheclocktower.com/Seamstress"
+    },
+    {
+      "text": "A player whose character was changed (e.g. by the Pit-Hag into a good character) is compared on their current alignment.",
+      "source": "https://wiki.bloodontheclocktower.com/Seamstress"
+    },
+    {
+      "text": "Signalling no action does not use the ability. Choosing players uses it and removes the Seamstress from the night order.",
+      "source": "https://wiki.bloodontheclocktower.com/Seamstress"
+    }
   ],
-  "building_blocks": ["choose-players", "learn-yes-no", "alignment-check", "once-per-game", "registers-as"],
-  "tests": [
-    { "name": "two good players give yes", "setup": "Alice Seamstress, Bob Chef, Cara Empath, Dan Imp, Eve Poisoner.", "actions": "Night 1: Alice chooses Bob and Cara.", "expected": "Alice learns yes. Alice gets the No ability reminder and is not woken on later nights." },
-    { "name": "two evil players give yes", "setup": "Alice Seamstress, Bob Chef, Cara Empath, Dan Imp, Eve Poisoner.", "actions": "Night 2: Alice chooses Dan and Eve.", "expected": "Alice learns yes." },
-    { "name": "declining keeps the ability", "setup": "Alice Seamstress, Bob Chef, Cara Empath, Dan Imp, Eve Baron.", "actions": "Night 1: Alice declines. Night 3: Alice chooses Bob and Dan.", "expected": "Night 1: no information, Alice is still woken on night 2. Night 3: Alice learns no and the ability is used." },
-    { "name": "poisoned Seamstress still spends the ability", "setup": "Alice Seamstress, Bob Chef, Cara Empath, Dan Imp, Eve Poisoner.", "actions": "Night 2: Eve poisons Alice, then Alice chooses Bob and Dan.", "expected": "The Storyteller is offered truthful no and misinformation yes and picks yes. Alice learns yes and gets No ability." },
-    { "name": "Spy can register as good", "setup": "Alice Seamstress, Bob Chef, Sam Spy, Dan Imp, Cara Empath.", "actions": "Night 1: Alice chooses Bob and Sam; the Storyteller has Sam register as good.", "expected": "Alice learns yes." }
+  "building_blocks": [
+    "choose-players",
+    "learn-yes-no",
+    "alignment-check",
+    "once-per-game",
+    "registers-as"
   ],
-  "sources": [
-    "https://wiki.bloodontheclocktower.com/Seamstress",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
+  "test_scenarios": [
+    {
+      "name": "two good players give yes",
+      "setup": "Alice Seamstress, Bob Chef, Cara Empath, Dan Imp, Eve Poisoner.",
+      "actions": "Night 1: Alice chooses Bob and Cara.",
+      "expected": "Alice learns yes. Alice gets the No ability reminder and is not woken on later nights."
+    },
+    {
+      "name": "two evil players give yes",
+      "setup": "Alice Seamstress, Bob Chef, Cara Empath, Dan Imp, Eve Poisoner.",
+      "actions": "Night 2: Alice chooses Dan and Eve.",
+      "expected": "Alice learns yes."
+    },
+    {
+      "name": "declining keeps the ability",
+      "setup": "Alice Seamstress, Bob Chef, Cara Empath, Dan Imp, Eve Baron.",
+      "actions": "Night 1: Alice declines. Night 3: Alice chooses Bob and Dan.",
+      "expected": "Night 1: no information, Alice is still woken on night 2. Night 3: Alice learns no and the ability is used."
+    },
+    {
+      "name": "poisoned Seamstress still spends the ability",
+      "setup": "Alice Seamstress, Bob Chef, Cara Empath, Dan Imp, Eve Poisoner.",
+      "actions": "Night 2: Eve poisons Alice, then Alice chooses Bob and Dan.",
+      "expected": "The Storyteller is offered truthful no and misinformation yes and picks yes. Alice learns yes and gets No ability."
+    },
+    {
+      "name": "Spy can register as good",
+      "setup": "Alice Seamstress, Bob Chef, Sam Spy, Dan Imp, Cara Empath.",
+      "actions": "Night 1: Alice chooses Bob and Sam; the Storyteller has Sam register as good.",
+      "expected": "Alice learns yes."
+    }
   ]
 }

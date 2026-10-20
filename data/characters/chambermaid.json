@@ -6,11 +6,10 @@
   "first_night": 76,
   "other_nights": 95,
   "reminders": [],
-  "setup": [],
+  "setup": null,
   "wakes": "Every night, including the first, late in the night order. Not woken if fewer than 2 other living players can be chosen.",
-  "chooses": "2 alive players, not themselves.",
-  "learns": "A number 0, 1 or 2: how many of the chosen players woke tonight due to their own ability.",
-  "malfunction": "Storyteller may give a false number from 0-2 (misinformation offered centrally).",
+  "interaction": "Chooses: 2 alive players, not themselves. Learns: A number 0, 1 or 2: how many of the chosen players woke tonight due to their own ability.",
+  "drunk_or_poisoned": "Storyteller may give a false number from 0-2 (misinformation offered centrally).",
   "jinxes": [
     {
       "with": "mathematician",
@@ -44,7 +43,7 @@
     "learn-number",
     "wake-count"
   ],
-  "tests": [
+  "test_scenarios": [
     {
       "name": "counts wakers",
       "setup": "Alice Chambermaid, Bob Monk, Cara Fool, Dan Poisoner, Eve Imp. Night 2.",
@@ -75,10 +74,5 @@
       "actions": "Alice chooses Bob and Cara (Mathematician wakes after the Chambermaid).",
       "expected": "Bob will wake tonight and counts: Alice learns 1."
     }
-  ],
-  "sources": [
-    "https://wiki.bloodontheclocktower.com/Chambermaid",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
   ]
 }

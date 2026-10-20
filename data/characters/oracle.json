@@ -6,18 +6,27 @@
   "first_night": null,
   "other_nights": 82,
   "reminders": [],
-  "setup": [],
+  "setup": null,
   "wakes": "Each night except the first, after the Demon acts.",
-  "chooses": null,
-  "learns": "The number of dead players who are (register as) evil.",
-  "malfunction": "Drunk or poisoned: may learn any number (misinformation offered centrally, storyteller picks).",
+  "interaction": "Learns: The number of dead players who are (register as) evil.",
+  "drunk_or_poisoned": "Drunk or poisoned: may learn any number (misinformation offered centrally, storyteller picks).",
   "jinxes": [],
   "rulings": [
-    { "text": "Counts every evil dead player, including evil Travellers and Townsfolk/Outsiders turned evil.", "source": "https://wiki.bloodontheclocktower.com/Oracle" },
-    { "text": "The Oracle wakes after the Demon, so tonight's kills are included.", "source": "https://wiki.bloodontheclocktower.com/Oracle" }
+    {
+      "text": "Counts every evil dead player, including evil Travellers and Townsfolk/Outsiders turned evil.",
+      "source": "https://wiki.bloodontheclocktower.com/Oracle"
+    },
+    {
+      "text": "The Oracle wakes after the Demon, so tonight's kills are included.",
+      "source": "https://wiki.bloodontheclocktower.com/Oracle"
+    }
   ],
-  "building_blocks": ["learn-number", "alignment-check", "registers-as"],
-  "tests": [
+  "building_blocks": [
+    "learn-number",
+    "alignment-check",
+    "registers-as"
+  ],
+  "test_scenarios": [
     {
       "name": "zero evil dead",
       "setup": "Alice Oracle, Bob Flowergirl, Carol Juggler, Dave Fang Gu, Eve Witch.",
@@ -42,10 +51,5 @@
       "actions": "Night 2: storyteller has Bob register as evil.",
       "expected": "Alice learns 1."
     }
-  ],
-  "sources": [
-    "https://wiki.bloodontheclocktower.com/Oracle",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
   ]
 }

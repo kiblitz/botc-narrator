@@ -6,11 +6,10 @@
   "first_night": 60,
   "other_nights": null,
   "reminders": [],
-  "setup": [],
+  "setup": null,
   "wakes": "First night only.",
-  "chooses": null,
-  "learns": "A number: seats from the Demon to its nearest Minion, counting the shorter way around the circle (adjacent = 1).",
-  "malfunction": "Storyteller may give a false number (misinformation offered centrally).",
+  "interaction": "Learns: A number: seats from the Demon to its nearest Minion, counting the shorter way around the circle (adjacent = 1).",
+  "drunk_or_poisoned": "Storyteller may give a false number (misinformation offered centrally).",
   "jinxes": [],
   "rulings": [
     {
@@ -31,7 +30,7 @@
     "seating",
     "registers-as"
   ],
-  "tests": [
+  "test_scenarios": [
     {
       "name": "adjacent minion",
       "setup": "Circle: Alice Clockmaker, Bob Imp, Cara Poisoner, Dan Chef, Eve Empath.",
@@ -56,11 +55,5 @@
       "actions": "Night 1.",
       "expected": "Cara is ignored; Eve is 2 steps the other way (Alice, Eve): Alice learns 2."
     }
-  ],
-  "sources": [
-    "https://wiki.bloodontheclocktower.com/Clockmaker",
-    "https://wiki.bloodontheclocktower.com/Recluse",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
   ]
 }

@@ -6,11 +6,10 @@
   "first_night": 61,
   "other_nights": 79,
   "reminders": [],
-  "setup": [],
+  "setup": null,
   "wakes": "Every night, including the first.",
-  "chooses": "1 player, not themselves and not a Traveller.",
-  "learns": "2 character tokens: 1 good (Townsfolk/Outsider) and 1 evil (Minion/Demon); one is the chosen player's character.",
-  "malfunction": "Both shown characters may be wrong (misinformation offered centrally; still 1 good and 1 evil).",
+  "interaction": "Chooses: 1 player, not themselves and not a Traveller. Learns: 2 character tokens: 1 good (Townsfolk/Outsider) and 1 evil (Minion/Demon); one is the chosen player's character.",
+  "drunk_or_poisoned": "Both shown characters may be wrong (misinformation offered centrally; still 1 good and 1 evil).",
   "jinxes": [],
   "rulings": [
     {
@@ -31,7 +30,7 @@
     "learn-character",
     "registers-as"
   ],
-  "tests": [
+  "test_scenarios": [
     {
       "name": "good target",
       "setup": "Alice Dreamer, Bob Chef, Cara Butler, Dan Poisoner, Eve Imp. Night 1.",
@@ -62,10 +61,5 @@
       "actions": "Alice chooses.",
       "expected": "Legal choices are Bob, Dan and Eve only."
     }
-  ],
-  "sources": [
-    "https://wiki.bloodontheclocktower.com/Dreamer",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
   ]
 }

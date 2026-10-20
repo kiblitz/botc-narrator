@@ -5,21 +5,40 @@
   "ability": "You start knowing 3 players, 1 and only 1 of which is evil.",
   "first_night": 65,
   "other_nights": null,
-  "reminders": ["Know", "Know", "Know"],
-  "setup": [],
+  "reminders": [
+    "Know",
+    "Know",
+    "Know"
+  ],
+  "setup": null,
   "wakes": "First night only (or the first night after becoming the Noble mid-game).",
-  "chooses": null,
-  "learns": "3 players, exactly 1 of which registers as evil.",
-  "malfunction": "Drunk or poisoned: may be shown any 3 players (e.g. 0 or 2+ evil); misinformation offered centrally, storyteller picks.",
+  "interaction": "Learns: 3 players, exactly 1 of which registers as evil.",
+  "drunk_or_poisoned": "Drunk or poisoned: may be shown any 3 players (e.g. 0 or 2+ evil); misinformation offered centrally, storyteller picks.",
   "jinxes": [],
   "rulings": [
-    { "text": "The Noble is shown two good players and one evil player (marked KNOW); never 1 good + 2 evil or 3 evil.", "source": "https://wiki.bloodontheclocktower.com/Noble" },
-    { "text": "Registration applies: a Spy may register good and a Recluse may register evil.", "source": "https://wiki.bloodontheclocktower.com/Noble" },
-    { "text": "A Noble created mid-game (e.g. by the Pit-Hag) learns on their first night as the Noble.", "source": "https://wiki.bloodontheclocktower.com/Noble" },
-    { "text": "The wiki does not say whether the Noble may be among the 3; assume other players only (uncertain).", "source": "https://wiki.bloodontheclocktower.com/Noble" }
+    {
+      "text": "The Noble is shown two good players and one evil player (marked KNOW); never 1 good + 2 evil or 3 evil.",
+      "source": "https://wiki.bloodontheclocktower.com/Noble"
+    },
+    {
+      "text": "Registration applies: a Spy may register good and a Recluse may register evil.",
+      "source": "https://wiki.bloodontheclocktower.com/Noble"
+    },
+    {
+      "text": "A Noble created mid-game (e.g. by the Pit-Hag) learns on their first night as the Noble.",
+      "source": "https://wiki.bloodontheclocktower.com/Noble"
+    },
+    {
+      "text": "The wiki does not say whether the Noble may be among the 3; assume other players only (uncertain).",
+      "source": "https://wiki.bloodontheclocktower.com/Noble"
+    }
   ],
-  "building_blocks": ["learn-player", "alignment-check", "registers-as"],
-  "tests": [
+  "building_blocks": [
+    "learn-player",
+    "alignment-check",
+    "registers-as"
+  ],
+  "test_scenarios": [
     {
       "name": "normal info",
       "setup": "Alice Noble, Bob Chambermaid, Carol Po, Dave Barber, Eve Godfather, Fay Mayor.",
@@ -44,10 +63,5 @@
       "actions": "Night 3: Pit-Hag turns Amy into the Noble; Sarah registers as good.",
       "expected": "Amy wakes that night and learns Evin, Sarah, Julian (Julian the one evil)."
     }
-  ],
-  "sources": [
-    "https://wiki.bloodontheclocktower.com/Noble",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
   ]
 }

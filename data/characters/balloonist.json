@@ -8,13 +8,10 @@
   "reminders": [
     "Know"
   ],
-  "setup": [
-    "+0 or +1 Outsider (Storyteller's choice)"
-  ],
+  "setup": "+0 or +1 Outsider (Storyteller's choice)",
   "wakes": "Every night, including the first.",
-  "chooses": null,
-  "learns": "A player (pointed to). First night: any player. Later nights: a player whose character type differs from that of the player shown the previous night.",
-  "malfunction": "May be shown a player of the same character type as the previously shown player. Once sober and healthy, the next player must differ in type from the player actually shown on the malfunctioning night.",
+  "interaction": "Learns: A player (pointed to). First night: any player. Later nights: a player whose character type differs from that of the player shown the previous night.",
+  "drunk_or_poisoned": "May be shown a player of the same character type as the previously shown player. Once sober and healthy, the next player must differ in type from the player actually shown on the malfunctioning night.",
   "jinxes": [
     {
       "with": "marionette",
@@ -49,7 +46,7 @@
     "track-history",
     "registers-as"
   ],
-  "tests": [
+  "test_scenarios": [
     {
       "name": "types differ each night",
       "setup": "Seats: Alice Balloonist, Bob Chef, Cara Butler, Dan Poisoner, Eve Imp. Storyteller added +1 Outsider at setup.",
@@ -80,10 +77,5 @@
       "actions": "Night 1 storyteller shows Dan, registering as Townsfolk. Night 2.",
       "expected": "Night 2 the previous type is Townsfolk: Bob is not legal; Cara, Dan (registering as a Minion) or Eve are."
     }
-  ],
-  "sources": [
-    "https://wiki.bloodontheclocktower.com/Balloonist",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/roles.json",
-    "https://raw.githubusercontent.com/ThePandemoniumInstitute/botc-release/main/resources/data/nightsheet.json"
   ]
 }
