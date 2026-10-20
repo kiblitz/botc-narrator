@@ -75,3 +75,19 @@ fn simulated_games_are_well_formed_and_deterministic() {
         "only {finished} of 60 games reached a winner"
     );
 }
+
+#[test]
+fn every_death_is_announced_publicly() {
+    for seed in 0..60 {
+        let trace = sim::simulate(seed, sim::MIN_PLAYERS + (seed as usize % 11));
+        let final_seats = trace.snapshots.last().expect("snapshots");
+        for seat in final_seats.iter().filter(|s| !s.alive) {
+            let announced = trace.steps.iter().any(|s| {
+                s.kind == sim::Kind::Death
+                    && matches!(s.audience, sim::Audience::Public)
+                    && s.player.as_deref() == Some(seat.name.as_str())
+            });
+            assert!(announced, "seed {seed}: {} never announced dead", seat.name);
+        }
+    }
+}

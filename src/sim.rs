@@ -196,6 +196,13 @@ impl Recorder {
         });
     }
 
+    fn announce_night_deaths(&mut self) {
+        for dead in std::mem::take(&mut self.unannounced) {
+            let text = format!("{dead} died in the night");
+            self.push(Kind::Death, Some(&dead), text, Audience::Public);
+        }
+    }
+
     fn sync(&mut self, view: &game::State) {
         self.view = view.clone();
         self.phase = view.phase();
@@ -291,10 +298,7 @@ impl table::Io for Recorder {
             event::Event::PhaseBegan(phase) => {
                 self.push(Kind::PhaseBegan, None, text, Audience::Public);
                 if let game::Phase::Day(_) = phase {
-                    for dead in std::mem::take(&mut self.unannounced) {
-                        let text = format!("{dead} died in the night");
-                        self.push(Kind::Death, Some(&dead), text, Audience::Public);
-                    }
+                    self.announce_night_deaths();
                 }
             }
             event::Event::Died { player, .. } => {
@@ -309,8 +313,12 @@ impl table::Io for Recorder {
             }
             event::Event::Nominated { .. }
             | event::Event::Executed(_)
-            | event::Event::Voted { .. }
-            | event::Event::Won(_) => self.push(Kind::Event, None, text, Audience::Public),
+            | event::Event::Voted { .. } => self.push(Kind::Event, None, text, Audience::Public),
+            event::Event::Won(_) => {
+                // A night kill can end the game before dawn.
+                self.announce_night_deaths();
+                self.push(Kind::Event, None, text, Audience::Public);
+            }
             event::Event::KillPrevented { player, .. }
             | event::Event::Transformed { player, .. }
             | event::Event::ReminderPlaced { player, .. } => {
