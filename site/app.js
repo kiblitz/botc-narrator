@@ -278,6 +278,7 @@ function endpointCentre(endpoint) {
   const target = endpoint.kind === "storyteller"
     ? $("storyteller")
     : $("board").querySelector(`.seat[data-name="${CSS.escape(endpoint.name)}"] .token`);
+  if (!target) return null;
   const box = target.getBoundingClientRect();
   return { x: box.left + box.width / 2 - board.left, y: box.top + box.height / 2 - board.top, r: box.height / 2 };
 }
@@ -289,6 +290,7 @@ function renderArrow(step) {
   if (!step.flow) return;
   const a = endpointCentre(step.flow.from);
   const b = endpointCentre(step.flow.to);
+  if (!a || !b) return;
   const length = Math.hypot(b.x - a.x, b.y - a.y);
   if (length === 0) return;
   // Start and end just outside each endpoint.
