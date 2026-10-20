@@ -205,8 +205,9 @@ li.future { opacity: 0.35; }
 .bluffs { position: absolute; inset: 0; pointer-events: none; }
 .bluff {
   position: absolute;
-  width: calc(var(--token, 84px) * 0.4);
-  height: calc(var(--token, 84px) * 0.4);
+  width: calc(var(--token, 84px) * 0.34);
+  height: calc(var(--token, 84px) * 0.34);
+  z-index: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background: #ece3cf;

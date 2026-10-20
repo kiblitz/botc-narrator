@@ -153,9 +153,8 @@ function render() {
 }
 
 /**
- * The demon's bluffs as small tokens fanned around the demon's seat, on the
- * side facing the centre (where there is room) and clear of the name, once the
- * demon has been told them.
+ * The demon's bluffs as small tokens in a crown hugging the top of the demon's
+ * token (clear of the name below it), once the demon has been told them.
  */
 function renderBluffs(div, index) {
   div.querySelector(".bluffs")?.remove();
@@ -165,13 +164,10 @@ function renderBluffs(div, index) {
   if (!visible) return;
   // Bluffs stay with the demon who was told them, even after a starpass.
   const ring = el("div", "bluffs");
-  const inward = Number(div.dataset.angle) + Math.PI;
-  const spread = 0.6;
-  // In token widths: far enough to clear the name, and the reminders row
-  // when the fan points down (seats at the top of the circle).
+  const spread = 0.85; // radians between bluffs
+  const radius = 0.62; // token widths from the token's centre: just outside its rim
   bluffs.characters.forEach((character, i) => {
-    const angle = inward + (i - (bluffs.characters.length - 1) / 2) * spread;
-    const radius = Math.sin(angle) > 0.3 ? 1.75 : 1.15;
+    const angle = -Math.PI / 2 + (i - (bluffs.characters.length - 1) / 2) * spread;
     const token = el("div", "bluff");
     token.title = `Bluff: ${character}`;
     token.style.left = `calc(50% + ${Math.cos(angle) * radius} * var(--token, 84px))`;
