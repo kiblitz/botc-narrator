@@ -456,9 +456,6 @@ impl State {
         self.has_effect(id, Effect::Sober) || self.abilities(id).iter().any(|c| c.always_sober())
     }
 
-    /// Living players with an ability that counts as the demon
-    /// (`character::Def::counts_as_demon`): their own (unless lost) or a
-    /// gained one, never one they only believe they have.
     /// Whether a seated player's real character means the game has no Demon
     /// (`character::Def::demonless`: the Atheist). A setup fact, so dead or
     /// malfunctioning players count and believed characters do not.
@@ -466,6 +463,9 @@ impl State {
         self.seats.iter().any(|p| p.character.demonless())
     }
 
+    /// Living players with an ability that counts as the demon
+    /// (`character::Def::counts_as_demon`): their own (unless lost) or a
+    /// gained one, never one they only believe they have.
     pub fn demons(&self) -> Vec<player::Id> {
         self.seats
             .iter()
