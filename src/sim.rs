@@ -53,6 +53,14 @@ const EVIL_TRAVELLER: f64 = 0.4;
 /// Chance a player tries, on a given day, to convince the group they are
 /// something they must not be mad about (the Mutant, an Outsider).
 const MAD_ABOUT: f64 = 0.1;
+/// Chance a player uses an optional night ability (the Assassin) when asked.
+const USES_ABILITY: f64 = 0.35;
+/// Chance a nominated player claims their character when it pays (the Goblin).
+const CLAIMS: f64 = 0.5;
+/// Chance a good player happens to say the Mezepheles's word on a given day.
+const SAYS_WORD: f64 = 0.1;
+/// Roshambo: one game in three is lost.
+const LOSES_ROSHAMBO: f64 = 1.0 / 3.0;
 
 const NAMES: [&str; MAX_PLAYERS + MAX_TRAVELLERS] = [
     "Ada", "Bram", "Cleo", "Dev", "Esme", "Finn", "Gus", "Hana", "Ivo", "Juno", "Kit", "Lux",
@@ -67,6 +75,7 @@ pub fn setup(
 ) -> Vec<(player::Id, character::Ref)> {
     let mut characters = setup::choose(rng, players, script);
     characters.shuffle(rng);
+    seat_next_to_demon(&mut characters);
     NAMES
         .iter()
         .zip(characters)
@@ -103,6 +112,30 @@ pub fn travellers(
             game::Seat::traveller(player::Id::new(*name), *c, alignment)
         })
         .collect()
+}
+
+/// Moves each character that must sit next to a Demon (the Marionette) into
+/// a free seat beside one, swapping with a character that has no such need.
+fn seat_next_to_demon(seats: &mut [character::Ref]) {
+    let n = seats.len();
+    let Some(demon) = seats
+        .iter()
+        .position(|c| c.kind() == character::Kind::Demon)
+    else {
+        return;
+    };
+    let beside = [(demon + 1) % n, (demon + n - 1) % n];
+    for i in 0..n {
+        if !seats[i].seated_next_to_demon() || beside.contains(&i) {
+            continue;
+        }
+        let free = beside.iter().copied().find(|&s| {
+            seats[s].kind() != character::Kind::Demon && !seats[s].seated_next_to_demon()
+        });
+        if let Some(s) = free {
+            seats.swap(i, s);
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -302,6 +335,7 @@ impl Recorder {
     }
 
     /// Plausible answers: evil players aim at good players, everyone else
+    /// (including an evil player who believes they are good, the Marionette)
     /// chooses at random.
     fn answer(
         &mut self,
@@ -314,7 +348,7 @@ impl Recorder {
         let targets_good = if me.kind() == character::Kind::Demon {
             !self.rng.random_bool(DEMON_WILD_PICK)
         } else {
-            view.is_evil(player)
+            view.is_evil(player) && !view.player(player).believes_good()
         };
         let good: Vec<player::Id> = candidates
             .iter()
@@ -543,6 +577,16 @@ impl table::Io for Recorder {
         self.rng.random_bool(MAD_ABOUT)
     }
 
+    fn confirm(&mut self, _player: &player::Id, question: &table::Question) -> bool {
+        let p = match question {
+            table::Question::UseAbility(_) => USES_ABILITY,
+            table::Question::Claim(_) => CLAIMS,
+            table::Question::SaidWord(_) => SAYS_WORD,
+            table::Question::LostRoshambo { .. } => LOSES_ROSHAMBO,
+        };
+        self.rng.random_bool(p)
+    }
+
     fn decided(&mut self, decision: &storyteller::Decision, picks: &[usize]) {
         let picked: Vec<String> = picks
             .iter()
@@ -753,7 +797,9 @@ fn nominate_and_vote(
         Some(nominator) => narrator::nominate(ctx, nominator, nominee),
         None => narrator::storyteller_nominates(ctx, nominee),
     }
-    let ended = nominator.is_some_and(|n| !ctx.state().is_alive(n))
+    // The Virgin executed the nominator: the day ends. A nominator who died
+    // nominating (the Witch's curse) still nominated: the vote goes on.
+    let ended = ctx.state().winner().is_some()
         || (!executed_before && ctx.state().executed_today().is_some());
     if ended {
         return None;

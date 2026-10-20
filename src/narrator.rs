@@ -88,7 +88,8 @@ pub fn run_night(ctx: &mut ctx::Write<'_>, script: &script::Script) {
 
 /// The evil team as the minions and demon learn it: the evil Minions and
 /// Demons (not evil Travellers, nor a Townsfolk turned evil), and players
-/// whose ability joins it (the Magician).
+/// whose ability joins it (the Magician); not evil players who believe they
+/// are good (the Marionette).
 fn evil_team(state: &game::State) -> info::Message {
     info::Message::Team {
         evil: state
@@ -99,7 +100,8 @@ fn evil_team(state: &game::State) -> info::Message {
                     && matches!(
                         p.character.kind(),
                         character::Kind::Minion | character::Kind::Demon
-                    );
+                    )
+                    && !p.believes_good();
                 let joins = !state.is_malfunctioning(&p.id)
                     && state.abilities(&p.id).iter().any(|c| c.joins_evil_info());
                 evil || joins
@@ -136,9 +138,14 @@ pub fn evil_info(ctx: &mut ctx::Write<'_>) {
     }
 }
 
-/// Minions learn who is evil.
+/// Minions learn who is evil; a Minion who believes they are good does not wake.
 pub fn minion_info(ctx: &mut ctx::Write<'_>) {
-    let minions = ctx.state().alive_of_kind(character::Kind::Minion);
+    let minions: Vec<player::Id> = ctx
+        .state()
+        .alive_of_kind(character::Kind::Minion)
+        .into_iter()
+        .filter(|m| !ctx.state().player(m).believes_good())
+        .collect();
     let team = evil_team(ctx.state());
     let mut read = ctx.read();
     for m in &minions {
@@ -392,7 +399,7 @@ pub fn storyteller_nominates(ctx: &mut ctx::Write<'_>, nominee: &player::Id) {
 }
 
 /// A nomination: the nominee's abilities react (the Virgin), then the
-/// nominator's.
+/// nominator's, then everyone's `on_nomination` (the Witch).
 ///
 /// A nomination the nominator may not make ([`can_nominate`]) is refused.
 pub fn nominate(ctx: &mut ctx::Write<'_>, nominator: &player::Id, nominee: &player::Id) {
@@ -409,6 +416,10 @@ pub fn nominate(ctx: &mut ctx::Write<'_>, nominator: &player::Id, nominee: &play
     }
     for (id, ability) in ctx.abilities_of(std::slice::from_ref(nominator)) {
         ability.on_nominates(ctx, &id, nominee);
+    }
+    let everyone = ctx.state().seat_order();
+    for (id, ability) in ctx.abilities_of(&everyone) {
+        ability.on_nomination(ctx, &id, nominator, nominee);
     }
 }
 

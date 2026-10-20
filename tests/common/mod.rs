@@ -40,6 +40,8 @@ pub struct Recorder {
     /// Players who try to convince the group they are what they must not be
     /// mad about (the Mutant), whenever asked.
     pub mad_about: Vec<player::Id>,
+    /// Players who answer yes to every `table::Question`.
+    pub agrees: Vec<player::Id>,
     pub log: String,
 }
 
@@ -131,6 +133,15 @@ impl table::Io for Recorder {
         let mad = self.mad_about.contains(player);
         self.line(format!("  {player} claims {about}: {mad}"));
         mad
+    }
+
+    fn confirm(&mut self, player: &player::Id, question: &table::Question) -> bool {
+        let yes = self.agrees.contains(player);
+        self.line(format!(
+            "  {player}? {question} => {}",
+            if yes { "yes" } else { "no" }
+        ));
+        yes
     }
 
     fn batch_started(&mut self, size: usize) {

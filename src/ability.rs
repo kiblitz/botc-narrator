@@ -112,6 +112,20 @@ pub fn nominators_today(state: &game::State) -> Vec<player::Id> {
         .collect()
 }
 
+/// Today's nominations as (nominator, nominee), in order; the nominator is
+/// `None` when the storyteller nominated.
+pub fn nominations_today(state: &game::State) -> Vec<(Option<player::Id>, player::Id)> {
+    today(state)
+        .iter()
+        .filter_map(|e| match e {
+            event::Event::Nominated { nominee, nominator } => {
+                Some((nominator.clone(), nominee.clone()))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 /// What `me` publicly claimed today (or during the last day, if it is
 /// night): pairs of a player and the name of the character `me` said they
 /// are (names, since events compare by value). Claims are not tagged with
@@ -286,6 +300,17 @@ pub fn tell_one_of(ctx: &mut ctx::Read<'_>, me: &player::Id, kind: character::Ki
     ctx.inform(me, truthful, misinformation);
 }
 
+/// The grimoire as a player sees it (the Spy, the Widow): every seat's character.
+pub fn grimoire(state: &game::State) -> info::Message {
+    info::Message::Grimoire(
+        state
+            .players()
+            .iter()
+            .map(|p| (p.id.clone(), p.character.name()))
+            .collect(),
+    )
+}
+
 /// Misinformation for "learn a character" abilities: any in-play character.
 pub fn any_character(state: &game::State) -> Vec<info::Message> {
     state
@@ -316,6 +341,19 @@ pub fn noun(kind: character::Kind) -> &'static str {
 }
 
 // --- Choosing -------------------------------------------------------------------
+
+/// Why the storyteller decides something for `me`'s `character` ability.
+pub fn reason(
+    me: &player::Id,
+    character: character::Ref,
+    question: &'static str,
+) -> storyteller::Reason {
+    storyteller::Reason::Ability {
+        player: me.clone(),
+        character: character.name(),
+        question,
+    }
+}
 
 /// The storyteller answers a yes/no question about `me`'s ability; "no" is
 /// the first (default) option.

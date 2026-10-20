@@ -65,7 +65,8 @@ impl fmt::Display for Effect {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Expiry {
-    /// Removed when the next night begins.
+    /// Removed when the next night begins, or when the player whose ability
+    /// placed it dies.
     Dusk,
     /// Removed when night `n` begins ("drunk for 3 nights & 3 days").
     Night(u32),
@@ -209,6 +210,13 @@ impl Player {
     /// The character the player thinks they are.
     pub fn believed(&self) -> character::Ref {
         self.believes.unwrap_or(self.character)
+    }
+
+    /// Whether they think they are a good character they are not. An evil
+    /// player who does (the Marionette) is not part of the evil team's info.
+    pub fn believes_good(&self) -> bool {
+        self.believes
+            .is_some_and(|c| c.kind().alignment() == Some(character::Alignment::Good))
     }
 }
 

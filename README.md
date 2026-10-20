@@ -7,7 +7,7 @@ A Blood on the Clocktower storyteller engine in Rust, with the 22 Trouble Brewin
 The engine separates *rules* from *how the game is run*:
 
 - **Characters** (`src/characters/`) describe their ability against an ability context. They never print or prompt directly.
-- **The table** (`table::Io`) is how the storyteller talks to players: `wake`, `sleep`, `tell`, `ask`. Implement it for a console, a GUI, a networked app or a test recorder.
+- **The table** (`table::Io`) is how the storyteller talks to players: `wake`, `sleep`, `tell`, `ask`, and `confirm` for yes/no questions (`table::Question`: use an optional ability, claim a character, said the secret word, lost roshambo). Public announcements are `ctx::Write::announce` events. Implement it for a console, a GUI, a networked app or a test recorder.
 - **The storyteller** (`storyteller::Strategy`) makes every choice the rules leave to the storyteller's discretion.
 
 ### Storyteller decisions
@@ -48,7 +48,9 @@ Night actions are tagged `NightAction::ReadOnly` (gets `ctx::Read`, which cannot
 - Minions and demon learn each other on the first night only with 7 or more players (Travellers do not count and are not shown), unless a living, functioning ability hides it (`hides_evil_info`: Poppy Grower; `narrator::evil_info` runs it later). Abilities that `joins_evil_info` (Magician) appear in the team they are shown.
 - A Poisoned or Drunk token placed by another player only works while that player is sober and healthy themselves (`State::is_malfunctioning`): a poisoned Courtier's or Philosopher's target sobers.
 - `die` calls every living player's `on_death` hook, then the dead player's own (Scarlet Woman, Imp starpass), then checks win conditions.
-- `execute` calls `on_executed` (Saint), then `kill` with `Cause::Execution`.
+- `kill_unstoppably` skips protection and `intercept_death` (the Assassin); the death itself (`die`) is the same.
+- `execute` calls `on_executed` (Saint, Goblin, Boomdandy), then every player's `on_execution` (Fearmonger, Mastermind), then `kill` with `Cause::Execution`.
+- `check_win` asks every player's `vetoes_win` before declaring a winner (the Mastermind's extra day).
 
 ### Grimoire state
 
@@ -78,8 +80,9 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `requires` | characters that must be in play with it ("[+the Damsel]"): `setup::choose` swaps one in for a Townsfolk |
 | `on_setup` | storyteller setup choices before the first night (Drunk, Fortune Teller red herring); `game::State::script` is set by then |
 | `on_night_start`, `on_day_start`, `on_day_end` | phase changes, for living players |
-| `on_nominated`, `on_nominates`, `on_vote` | the nominee, the nominator, everyone after a vote |
-| `on_executed`, `intercept_death`, `on_death` | executions, preventing or redirecting any death, reacting to deaths |
+| `on_nominated`, `on_nominates`, `on_nomination`, `on_vote` | the nominee, the nominator, everyone after a nomination (Witch), everyone after a vote (dead players too) |
+| `on_executed`, `on_execution` | the executed player; everyone (dead too), when anyone is executed |
+| `intercept_death`, `on_death` | preventing or redirecting any death, reacting to deaths |
 | `on_learns_death` | the dead player learns they died: at once by day, at dawn for a night death (Klutz, Moonchild) |
 | `on_choose`, `on_chosen` | at night, the chooser's abilities, then each chosen player's (Lunatic, Goon), whenever a player chooses players with `ctx.ask` (any night choice counts, e.g. the Demon's Barber swap) |
 | `on_win` | the game was won; every player's abilities, dead ones too (Politician) |
@@ -93,6 +96,8 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `fabled_setup`, `fabled_dusk`, `permits_alignment_change`, `lies_to` | Fabled and Loric (no player): setup (Storm Catcher), dusk (Knaves switch), vetoing alignment changes (Spirit of Ivory), a lying storyteller for a player's information (Knaves) |
 | `joins_evil_info`, `hides_evil_info` | appears in the evil team's first-night info (Magician); keeps evil from learning each other (Poppy Grower) |
 | `demonless` | the game has no Demon, so good does not win by the Demon dying (Atheist) |
+| `vetoes_win` | stops a win for now (Mastermind) |
+| `seated_next_to_demon` | must sit beside a Demon (Marionette; the simulator's seating arranges it) |
 
 Extra deaths at other times are plain `ctx::Write::kill` calls from any hook.
 
@@ -108,7 +113,7 @@ Travellers: they are seated at setup only (no joining later, no exile). The Bish
 
 Protection and rule-changing Townsfolk: an Alchemist's Minion ability does not change the setup counts (an Alchemist-Baron adds no Outsiders), and the storyteller cannot make them choose again. The Amnesiac's hidden ability is a not-in-play Townsfolk's, not one the storyteller designs. The Atheist's storyteller never breaks rules, and nominating the Storyteller is the living Atheist claimant's day action rather than anyone's nomination. Players cannot decline once-per-game choices (Courtier, Engineer, Philosopher always use them the first night they can). The Engineer gives changed Minions the chosen characters in seat order (no storyteller choice). The Magician is shown as part of the evil team, without the Demon/Minion distinction (team info is not role-labelled). The Poppy Grower's optional rule (evil learn each other when it becomes drunk or leaves play) is not used. A Courtier's or Minstrel's drunkenness ends if they die.
 
-Nominating a Traveller's exile, and reminder tokens in the Spy's grimoire view. Misinformation for "one of these two is the X" only offers characters in play, not the whole script. Dead players' votes in the simulator and the Butler's voting restriction are not modelled; a believed character makes every ability of that player malfunction (right for the Drunk, not for a Lunatic who gains another ability); nothing can veto a win. The Saint's loss fires on execution before any ability can prevent the death. The simulator's player view shows a Drunk their real character (it does not read `believes` yet). The Fang Gu's jump only notices Monk protection (other ways an Outsider would survive still let it jump). A Cerenovus execution is judged once, at the end of the day. The Mathematician's count is an approximation: the engine does not record which abilities misfired, so any number up to how many other players are malfunctioning counts as true and the storyteller picks. The Chambermaid counts a player as woken by their ability if one of their abilities has a turn tonight that it wakes for, judged when she acts (a player who dies before a later turn still counts). The Seamstress passes by pointing at herself. The Dreamer may be shown the Vortox, and the Grandmother does not yet trigger the Leviathan jinx.
+Nominating a Traveller's exile, and reminder tokens in the Spy's grimoire view. Misinformation for "one of these two is the X" only offers characters in play, not the whole script. Dead players' votes in the simulator and the Butler's voting restriction are not modelled; a believed character makes every ability of that player malfunction (right for the Drunk, not for a Lunatic who gains another ability). The Saint's loss fires on execution before any ability can prevent the death. The simulator's player view shows a Drunk their real character (it does not read `believes` yet). The Fang Gu's jump only notices Monk protection (other ways an Outsider would survive still let it jump). A Cerenovus execution is judged once, at the end of the day. The Mathematician's count is an approximation: the engine does not record which abilities misfired, so any number up to how many other players are malfunctioning counts as true and the storyteller picks. The Chambermaid counts a player as woken by their ability if one of their abilities has a turn tonight that it wakes for, judged when she acts (a player who dies before a later turn still counts). The Seamstress passes by pointing at herself. The Dreamer may be shown the Vortox, and the Grandmother does not yet trigger the Leviathan jinx.
 
 Demons:
 
@@ -134,6 +139,8 @@ Outsiders:
 - The Lunatic's choices get no Chosen tokens (the Demon is told them).
 - The Tinker dies only at night; the Mutant is judged once, at the end of the day.
 - The Politician's "most responsible" is a storyteller yes/no at the end of the game; their alignment changes after the win is recorded (the recorded winner is the team that won).
+
+Minions: the Harpy wakes at 26 / 17 (officially 26.5 / 17.5, after the Fearmonger). When the Pit-Hag makes a Demon, "arbitrary deaths" are one optional extra kill of the storyteller's choice (Demon attacks still happen), and a character it creates with a first-night-only ability does not act. The Marionette never replaces a third Minion at setup, and only the simulator seats it beside the Demon. A Widow malfunctioning when choosing never poisons (rather than "while that lasts"). Whether a good player said the Mezepheles's word is judged once at the end of each day. If the Mastermind dies during the extra night or day, good wins at once. A Widow's poison does not lapse while she is drunk or poisoned. The Harpy's mad player is told the 2nd player as "Evil: <player>" (the claim they must make). A malfunctioning Fearmonger's choice leaves the previous Fear target in place. Only the Goblin is asked whether to claim (a false claim has no effect anyway). The Boomdandy's pointing is one round of choices, not a live countdown.
 
 ## Simulator site
 

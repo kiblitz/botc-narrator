@@ -70,7 +70,7 @@ Override only the hooks the ability uses (the full list is in the README,
 | protect / poison / any token | `mark(ctx, me, &Def, target, effect, expiry)`, `mark_all` (several players), `has_mark`, `marked` |
 | once per game | `use_once(ctx, me, &Def)`, `used`, `used_tonight` |
 | take a token off | `ctx.remove_reminder(target, &reminder)` |
-| kill | `kill(ctx, me, target)`; the demon's attack: `demon_attack`; a demon kill of a given player: `demon_kill` |
+| kill | `kill(ctx, me, target)`; the demon's attack: `demon_attack`; a demon kill of a given player: `demon_kill`; "even if they could not": `ctx.kill_unstoppably` |
 | "you may choose" (no-one is legal) | `ctx.ask_up_to` |
 | several identical tokens (No Dashii's two Poisoned) | `sync_marks`, `marked` |
 | nearest neighbours of a kind, alive or dead (No Dashii, Vigormortis) | `nearest_of_kind` |
@@ -89,6 +89,11 @@ Override only the hooks the ability uses (the full list is in the README,
 | a public claim ("X is the Y"), read back that night | `claim`, `claims_today` |
 | what the player was told | `ctx.inform` returns the chosen message |
 | "[+the Damsel]" | hook `requires` |
+| "if you nominated" (with the nominee) | `nominations_today` |
+| a player's yes/no choice or claim | `ctx.confirm(player, &table::Question::...)` |
+| see the grimoire | `grimoire(state)` |
+| "until you die" | `game::Expiry::Death` |
+| react to any nomination / execution, delay a win | hooks `on_nomination`, `on_execution`, `vetoes_win` |
 | becomes another character / alignment | `ctx.transform`, `ctx.set_alignment`, `ctx.set_believed` |
 | gains or loses an ability | `ctx.gain_ability`, `ctx.lose_ability` (acts the same night if its turn is still to come) |
 | alternate demon / forced false info | hooks `counts_as_demon`, `forces_false_info` |
@@ -106,6 +111,7 @@ Override only the hooks the ability uses (the full list is in the README,
 | end-of-game judgement | hook `on_win` (Politician) |
 | judged claims | `ctx.is_mad_about(player, about)` (Mutant) |
 | a token for a later night | `ctx.place_reminder` + `wakes_tonight` checking it, then `ctx.remove_reminder` (Moonchild, Barber) |
+| believes they are good (Marionette) | `ctx.set_believed` in `on_setup`; the evil team info skips them; hook `seated_next_to_demon` |
 
 ## Worked examples
 

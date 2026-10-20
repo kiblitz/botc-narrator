@@ -1,6 +1,8 @@
 //! The table: how the storyteller talks to players. Implement [`Io`] for a
 //! console, a GUI, a networked app, or a test recorder.
 
+use std::fmt;
+
 use rand::seq::index;
 
 use crate::character;
@@ -9,6 +11,34 @@ use crate::game;
 use crate::info;
 use crate::player;
 use crate::storyteller;
+
+/// A yes/no question for a player (or the table's judgement about them).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Question {
+    /// Whether to use an optional ability now (the Assassin's kill).
+    UseAbility(&'static str),
+    /// Whether to publicly claim to be this character (the Goblin, when nominated).
+    Claim(&'static str),
+    /// Whether the player said this word today (the Mezepheles's secret word).
+    SaidWord(&'static str),
+    /// Whether the player lost a game of roshambo against `against` (the
+    /// storyteller when `None`).
+    LostRoshambo { against: Option<player::Id> },
+}
+
+impl fmt::Display for Question {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Question::UseAbility(name) => write!(f, "use the {name} ability?"),
+            Question::Claim(name) => write!(f, "claim to be the {name}?"),
+            Question::SaidWord(word) => write!(f, "said \"{word}\"?"),
+            Question::LostRoshambo { against: Some(p) } => write!(f, "lost roshambo against {p}?"),
+            Question::LostRoshambo { against: None } => {
+                f.write_str("lost roshambo against the storyteller?")
+            }
+        }
+    }
+}
 
 pub trait Io {
     fn wake(&mut self, player: &player::Id);
@@ -70,6 +100,12 @@ pub trait Io {
     /// Whether `player` tried to convince the group they are `about` (the
     /// Mutant must not be mad about being an Outsider).
     fn is_mad_about(&mut self, _player: &player::Id, _about: &'static str) -> bool {
+        false
+    }
+
+    /// A yes/no `question` about `player`: their choice, or what the table
+    /// saw them do.
+    fn confirm(&mut self, _player: &player::Id, _question: &Question) -> bool {
         false
     }
 

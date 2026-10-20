@@ -1,6 +1,6 @@
+use crate::ability;
 use crate::character;
 use crate::ctx;
-use crate::info;
 use crate::player;
 
 pub struct Def;
@@ -40,13 +40,8 @@ impl character::Def for Def {
 
 /// Sees the grimoire.
 fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
-    let state = ctx.state();
-    let grimoire = state
-        .players()
-        .iter()
-        .map(|p| (p.id.clone(), p.character.name()))
-        .collect();
+    let grimoire = ability::grimoire(ctx.state());
     ctx.wake(me);
-    ctx.inform(me, vec![info::Message::Grimoire(grimoire)], Vec::new());
+    ctx.inform(me, vec![grimoire], Vec::new());
     ctx.sleep(me);
 }

@@ -208,6 +208,17 @@ pub trait Def: Sync {
     /// Called for the nominator, after the nominee's `on_nominated`.
     fn on_nominates(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _nominee: &player::Id) {}
 
+    /// Called for every player (dead ones too) after any nomination, after
+    /// the nominee's and nominator's hooks (the Witch's curse).
+    fn on_nomination(
+        &self,
+        _ctx: &mut ctx::Write<'_>,
+        _me: &player::Id,
+        _nominator: &player::Id,
+        _nominee: &player::Id,
+    ) {
+    }
+
     /// Called for every player (dead ones too) after a vote is tallied.
     fn on_vote(
         &self,
@@ -219,6 +230,10 @@ pub trait Def: Sync {
     }
 
     fn on_executed(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id) {}
+
+    /// Called for every player (dead ones too) when anyone is executed, after
+    /// the executed player's `on_executed` and before they die.
+    fn on_execution(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _executed: &player::Id) {}
 
     /// Called for every functioning living player's abilities when `target`
     /// would die of `cause`, in seat order; the first that does not `Pass`
@@ -355,6 +370,19 @@ pub trait Def: Sync {
     /// one) means the game has no Demon, so good does not win by the Demon
     /// dying (the Atheist).
     fn demonless(&self) -> bool {
+        false
+    }
+
+    /// Whether this ability (held by `me`, alive or dead) stops `winner`
+    /// from winning now (the Mastermind's extra day). Asked by
+    /// `ctx::Write::check_win` before the rules' win conditions apply.
+    fn vetoes_win(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _winner: Alignment) -> bool {
+        false
+    }
+
+    /// Whether this character must be seated next to a Demon (the
+    /// Marionette); whoever seats the players arranges it.
+    fn seated_next_to_demon(&self) -> bool {
         false
     }
 

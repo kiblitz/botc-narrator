@@ -187,6 +187,11 @@ impl<'a> Read<'a> {
         .next()
     }
 
+    /// Ask `player` a yes/no question (or the table's judgement about them).
+    pub fn confirm(&mut self, player: &player::Id, question: &table::Question) -> bool {
+        self.io.confirm(player, question)
+    }
+
     /// Give `player` information. The storyteller picks one of the `truthful`
     /// messages; if the player is malfunctioning, `misinformation` is legal too.
     /// Returns what the player was told.
@@ -714,6 +719,16 @@ impl<'a> Write<'a> {
         true
     }
 
+    /// `target` dies even if something would stop it (the Assassin): no
+    /// protection or `intercept_death` applies. Returns whether they died.
+    pub fn kill_unstoppably(&mut self, target: &player::Id, cause: event::Cause) -> bool {
+        if !self.state.is_alive(target) {
+            return false;
+        }
+        self.die(target, cause);
+        true
+    }
+
     fn die(&mut self, target: &player::Id, cause: event::Cause) {
         self.state.mark_dead(target);
         // A dead player's ability stops: its lingering tokens are removed.
@@ -743,8 +758,9 @@ impl<'a> Write<'a> {
         }
     }
 
-    /// Execute `target`: their execution triggers fire, then they die unless
-    /// an ability prevents it. Returns whether they died.
+    /// Execute `target`: their execution triggers fire, then every player's
+    /// `on_execution`, then they die unless an ability prevents it. Returns
+    /// whether they died.
     pub fn execute(&mut self, target: &player::Id) -> bool {
         if !self.state.is_alive(target) {
             return false;
@@ -753,6 +769,10 @@ impl<'a> Write<'a> {
         self.record(event::Event::Executed(target.clone()));
         for (id, ability) in self.abilities_of(std::slice::from_ref(target)) {
             ability.on_executed(self, &id);
+        }
+        let everyone = self.state.seat_order();
+        for (id, ability) in self.abilities_of(&everyone) {
+            ability.on_execution(self, &id, target);
         }
         self.kill(target, event::Cause::Execution)
     }
@@ -781,13 +801,26 @@ impl<'a> Write<'a> {
     }
 
     /// Good wins when no demon lives (unless the game has none, see
-    /// `character::Def::demonless`); evil wins when two players remain.
+    /// `character::Def::demonless`); evil wins when two players remain;
+    /// unless an ability vetoes the win (`character::Def::vetoes_win`).
     pub fn check_win(&mut self) {
-        if !self.state.demonless() && !self.state.demon_alive() {
-            self.win(character::Alignment::Good);
-        } else if self.state.alive_ids().len() <= 2 {
-            self.win(character::Alignment::Evil);
+        if self.state.winner().is_some() {
+            return;
         }
+        let winner = if !self.state.demonless() && !self.state.demon_alive() {
+            character::Alignment::Good
+        } else if self.state.alive_ids().len() <= 2 {
+            character::Alignment::Evil
+        } else {
+            return;
+        };
+        let everyone = self.state.seat_order();
+        for (id, ability) in self.abilities_of(&everyone) {
+            if ability.vetoes_win(self, &id, winner) {
+                return;
+            }
+        }
+        self.win(winner);
     }
 
     // Everything `Read` can do, so read-write abilities need not reborrow.
@@ -870,6 +903,10 @@ impl<'a> Write<'a> {
         options: Vec<player::Id>,
     ) -> Option<player::Id> {
         self.read().choose_player(reason, options)
+    }
+
+    pub fn confirm(&mut self, player: &player::Id, question: &table::Question) -> bool {
+        self.read().confirm(player, question)
     }
 
     pub fn inform(

@@ -65,6 +65,8 @@ pub enum Message {
     Winning(Option<character::Alignment>),
     /// How close a guess was (the Amnesiac's guess at their ability).
     Accuracy(Accuracy),
+    /// A secret word (the Mezepheles's).
+    Word(&'static str),
 }
 
 /// Around the circle: clockwise is increasing seat order.
@@ -108,7 +110,8 @@ impl Message {
             | Message::Alignment(_)
             | Message::NotInPlay(_)
             | Message::Selected { .. }
-            | Message::Accuracy(_) => Vec::new(),
+            | Message::Accuracy(_)
+            | Message::Word(_) => Vec::new(),
         }
     }
 
@@ -136,6 +139,7 @@ impl Message {
             | Message::IsAligned { .. }
             | Message::Advice { .. } => Vec::new(),
             Message::Accuracy(_) => Vec::new(),
+            Message::Word(_) => Vec::new(),
         }
     }
 }
@@ -188,6 +192,7 @@ impl fmt::Display for Message {
                 trust: false,
             } => write!(f, "Do not trust {player}"),
             Message::Statements(statements) => f.write_str(&join_with(statements, "; ")),
+            Message::Word(word) => write!(f, "The word is \"{word}\""),
         }
     }
 }
