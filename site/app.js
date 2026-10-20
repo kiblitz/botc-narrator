@@ -164,10 +164,11 @@ function renderBluffs(div, index) {
   if (!visible) return;
   // Bluffs stay with the demon who was told them, even after a starpass.
   const ring = el("div", "bluffs");
+  const top = -Math.PI / 2;
   const spread = 0.85; // radians between bluffs
   const radius = 0.62; // token widths from the token's centre: just outside its rim
   bluffs.characters.forEach((character, i) => {
-    const angle = -Math.PI / 2 + (i - (bluffs.characters.length - 1) / 2) * spread;
+    const angle = top + (i - (bluffs.characters.length - 1) / 2) * spread;
     const token = el("div", "bluff");
     token.title = `Bluff: ${character}`;
     token.style.left = `calc(50% + ${Math.cos(angle) * radius} * var(--token, 84px))`;
