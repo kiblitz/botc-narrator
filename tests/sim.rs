@@ -325,12 +325,5 @@ fn every_script_simulates_cleanly_across_seeds_and_player_counts() {
             ));
         }
     }
-    assert!(
-        failures.is_empty(),
-        "{}",
-        failures.join(
-            "
-"
-        )
-    );
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
