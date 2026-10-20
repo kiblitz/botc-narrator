@@ -58,10 +58,7 @@ fn guess(ctx: &mut ctx::Write<'_>, me: &player::Id) {
         .into_iter()
         .partition(|p| ctx.registers_as(me, p, character::Kind::Demon).is_some());
     let as_message = |players: Vec<player::Id>| -> Vec<info::Message> {
-        players
-            .into_iter()
-            .map(|p| info::Message::Players(vec![p]))
-            .collect()
+        players.into_iter().map(info::Message::Player).collect()
     };
     let right = ability::has_mark(ctx.state(), me, &Def, &guessed, game::Effect::Drunk);
     ctx.wake(me);
@@ -74,7 +71,7 @@ fn guess(ctx: &mut ctx::Write<'_>, me: &player::Id) {
         "which non-Demon player to show (wrong guess)",
         not_demons,
     ) {
-        ctx.tell(me, &info::Message::Players(vec![shown]));
+        ctx.tell(me, &info::Message::Player(shown));
     }
     ctx.sleep(me);
 }

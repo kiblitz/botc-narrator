@@ -775,7 +775,7 @@ fn lunatic_believes_they_are_the_demon_and_the_demon_knows() {
           -> Out: Bluffs: Washerwoman, Librarian, Investigator
         sleep Out
         wake Imp
-          -> Imp: Out=Lunatic
+          -> Imp: Out is the Lunatic
         sleep Imp
         wake Imp
           -> Imp: Evil: Imp, Poisoner
@@ -824,7 +824,7 @@ fn lunatic_attacks_first_and_the_demon_learns_the_choice() {
           Out? Who do you want to kill? => Chef
           storyteller [1 of 1 options] Lunatic Out: whom the Demon is shown the Lunatic chose: "Chef"
         wake Imp
-          -> Imp: Out=Lunatic
+          -> Imp: Out is the Lunatic
           -> Imp: Chef
         sleep Imp
         sleep Out
@@ -862,7 +862,7 @@ fn poisoned_lunatic_may_be_misreported_to_the_demon() {
           Out? Who do you want to kill? => Chef
           storyteller [1 of 7 options] Lunatic Out: whom the Demon is shown the Lunatic chose: "Out" (false)
         wake Imp
-          -> Imp: Out=Lunatic
+          -> Imp: Out is the Lunatic
           -> Imp: Out
         sleep Imp
         sleep Out
@@ -970,4 +970,29 @@ fn outsiders_are_registered_with_their_night_order() {
         Sweetheart Outsider "sweetheart" None/Some(41)
         Tinker Outsider "tinker" None/Some(49)"#]]
     .assert_eq(&rows.join("\n"));
+}
+
+#[test]
+fn no_day_end_ability_acts_after_the_game_is_won() {
+    // Three alive, nobody executed: the Mayor (seated first) wins; the Mutant
+    // must not then be executed.
+    let mut g = common::Game::new(&[
+        ("Mayor", &characters::mayor::Def),
+        ("Out", &characters::mutant::Def),
+        ("Imp", &characters::imp::Def),
+        ("Chef", &characters::chef::Def),
+    ]);
+    g.run(|ctx| {
+        narrator::setup(ctx, &script());
+        ctx.advance_phase();
+        ctx.advance_phase();
+        ctx.execute(&p("Chef"));
+        ctx.advance_phase();
+        ctx.advance_phase();
+    })
+    .quiet();
+    g.table.mad_about.push(p("Out"));
+    g.picks(&[&[1]]).run(narrator::end_day);
+    assert_eq!(g.state.winner(), Some(character::Alignment::Good));
+    assert!(g.state.is_alive(&p("Out")), "{}", g.transcript());
 }

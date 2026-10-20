@@ -463,6 +463,13 @@ impl State {
         self.seats.iter().any(|p| p.character.demonless())
     }
 
+    /// Poisoned or drunk by a token, not counting a believed character: for
+    /// abilities of a player who always believes they are something else
+    /// (the Lunatic).
+    pub fn is_impaired(&self, id: &player::Id) -> bool {
+        self.has_effect(id, Effect::Poisoned) || self.has_effect(id, Effect::Drunk)
+    }
+
     /// Living players with an ability that counts as the demon
     /// (`character::Def::counts_as_demon`): their own (unless lost) or a
     /// gained one, never one they only believe they have.

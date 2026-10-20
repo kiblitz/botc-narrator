@@ -482,11 +482,7 @@ impl<'a> Write<'a> {
         if let game::Phase::Day(_) = phase {
             // Night deaths are learnt at dawn.
             let dead = self.state.deaths_tonight().to_vec();
-            for (id, ability) in self.abilities_of(&dead) {
-                if self.state.winner().is_none() {
-                    ability.on_learns_death(self, &id);
-                }
-            }
+            self.learn_deaths(&dead);
         }
         for (id, ability) in self.active_abilities() {
             match phase {
@@ -734,10 +730,15 @@ impl<'a> Write<'a> {
         self.check_win();
         // A day death is learnt at once; night deaths at dawn (`advance_phase`).
         if let game::Phase::Day(_) = self.state.phase() {
-            for (id, ability) in self.abilities_of(std::slice::from_ref(target)) {
-                if self.state.winner().is_none() {
-                    ability.on_learns_death(self, &id);
-                }
+            self.learn_deaths(std::slice::from_ref(target));
+        }
+    }
+
+    /// The `dead` learn they died (`character::Def::on_learns_death`).
+    fn learn_deaths(&mut self, dead: &[player::Id]) {
+        for (id, ability) in self.abilities_of(dead) {
+            if self.state.winner().is_none() {
+                ability.on_learns_death(self, &id);
             }
         }
     }

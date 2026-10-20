@@ -34,13 +34,7 @@ impl character::Def for Def {
         if dead != me || ctx.state().is_malfunctioning(me) {
             return;
         }
-        let minions: Vec<character::Ref> = ctx
-            .state()
-            .script()
-            .iter()
-            .copied()
-            .filter(|c| c.kind() == character::Kind::Minion)
-            .collect();
+        let minions = ability::nameable(ctx.state(), &[character::Kind::Minion]);
         let holders = ctx.state().alive_of_kind(character::Kind::Minion);
         let mut read = ctx.read();
         let gained =

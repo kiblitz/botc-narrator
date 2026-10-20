@@ -217,6 +217,9 @@ pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32)
             }
             Some(character::NightAction::ReadOnly(f)) => {
                 // Read-only actions cannot change who acts: gather the run.
+                // (Their night choices are resolved after each action and may
+                // change the grimoire, e.g. a Goon making the chooser drunk,
+                // but not who has which ability.)
                 let mut batch: Vec<(player::Id, character::ReadOnlyFn)> = Vec::new();
                 add_turns(ctx.state(), &mut batch, c, f);
                 // Characters nobody acts for do not interrupt the run.
@@ -342,6 +345,9 @@ pub fn can_nominate(state: &game::State, player: &player::Id) -> bool {
 /// Fabled and Loric dusk abilities.
 pub fn end_day(ctx: &mut ctx::Write<'_>) {
     for (id, ability) in ctx.active_abilities() {
+        if ctx.state().winner().is_some() {
+            return;
+        }
         ability.on_day_end(ctx, &id);
     }
     for f in ctx.state().fabled().to_vec() {

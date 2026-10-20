@@ -1,7 +1,6 @@
 use crate::ability;
 use crate::character;
 use crate::ctx;
-use crate::game;
 use crate::info;
 use crate::narrator;
 use crate::player;
@@ -36,13 +35,7 @@ impl character::Def for Def {
     /// Thinks they are a Demon on the script (of the storyteller's choice):
     /// they wake and choose as it, before the real Demon, without effect.
     fn on_setup(&self, ctx: &mut ctx::Write<'_>, me: &player::Id) {
-        let demons: Vec<character::Ref> = ctx
-            .state()
-            .script()
-            .iter()
-            .copied()
-            .filter(|c| c.kind() == character::Kind::Demon)
-            .collect();
+        let demons = ability::nameable(ctx.state(), &[character::Kind::Demon]);
         let question = "which Demon they believe they are";
         if let Some(believed) =
             ability::storyteller_picks_character(&mut ctx.read(), me, &Def, question, demons)
@@ -55,8 +48,9 @@ impl character::Def for Def {
     /// drunk, the storyteller may show other players.
     fn on_choose(&self, ctx: &mut ctx::Write<'_>, me: &player::Id, chosen: &[player::Id]) {
         let state = ctx.state();
-        let impaired = state.has_effect(me, game::Effect::Poisoned)
-            || state.has_effect(me, game::Effect::Drunk);
+        // `is_malfunctioning` is always true for the Lunatic, who believes
+        // they are the Demon.
+        let impaired = state.is_impaired(me);
         let demons = state.demons();
         let mut options = vec![(chosen.to_vec(), true)];
         if impaired {
@@ -85,7 +79,7 @@ impl character::Def for Def {
                 .next()
                 .map_or_else(|| chosen.to_vec(), |(players, _)| players);
             ctx.wake(&demon);
-            ctx.tell(&demon, &info::Message::Grimoire(vec![(me.clone(), character::Def::name(&Def))]));
+            ctx.tell(&demon, &is_lunatic(me));
             ctx.tell(&demon, &info::Message::Players(shown));
             ctx.sleep(&demon);
         }
@@ -137,7 +131,15 @@ fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, night: u32) {
     }
     for demon in ctx.state().demons() {
         ctx.wake(&demon);
-        ctx.tell(&demon, &info::Message::Grimoire(vec![(me.clone(), character::Def::name(&Def))]));
+        ctx.tell(&demon, &is_lunatic(me));
         ctx.sleep(&demon);
+    }
+}
+
+/// What the Demon is told: who the Lunatic is.
+fn is_lunatic(me: &player::Id) -> info::Message {
+    info::Message::Is {
+        player: me.clone(),
+        character: character::Def::name(&Def),
     }
 }

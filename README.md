@@ -81,7 +81,7 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `on_nominated`, `on_nominates`, `on_vote` | the nominee, the nominator, everyone after a vote |
 | `on_executed`, `intercept_death`, `on_death` | executions, preventing or redirecting any death, reacting to deaths |
 | `on_learns_death` | the dead player learns they died: at once by day, at dawn for a night death (Klutz, Moonchild) |
-| `on_choose`, `on_chosen` | at night, the chooser's abilities, then each chosen player's (Lunatic, Goon), whenever a player chooses players with `ctx.ask` |
+| `on_choose`, `on_chosen` | at night, the chooser's abilities, then each chosen player's (Lunatic, Goon), whenever a player chooses players with `ctx.ask` (any night choice counts, e.g. the Demon's Barber swap) |
 | `on_win` | the game was won; every player's abilities, dead ones too (Politician) |
 | `on_madness_broken` | a player this ability made mad broke madness (`narrator::check_madness`, judged by the table) |
 | `misregistration` | how it may register falsely |
@@ -126,7 +126,14 @@ Free-form day abilities are narrowed to typed choices: the Gossip's statement an
 
 Outsiders:
 
-- the Barber's Demon cannot decline the swap, and a Barber who dies at night after its turn gives haircuts the next night. A Goon chosen by a read-only ability (Fortune Teller) makes the chooser drunk only after that ability's information. The Plague Doctor's Minion ability goes to a living Minion of the storyteller's choice (as the official jinxes do for several Minions), since the storyteller holds no abilities; with no living Minion, nothing happens. The Puzzlemaster's drunk player stays drunk while the Puzzlemaster is drunk or poisoned. The Damsel's Spy and Widow jinxes are not applied. The Lunatic's choices get no Chosen tokens (the Demon is told them). The Tinker dies only at night. The Mutant is judged once, at the end of the day. The Politician's "most responsible" is a storyteller yes/no at the end of the game.
+- The Barber's Demon cannot decline the swap, and a Barber who dies at night after its turn gives haircuts the next night.
+- A Goon chosen by a read-only ability (Fortune Teller) makes the chooser drunk only after that ability's information.
+- The Plague Doctor's Minion ability goes to a living Minion of the storyteller's choice (as the official jinxes do for several Minions), since the storyteller holds no abilities; with no living Minion, nothing happens.
+- The Puzzlemaster's drunk player stays drunk while the Puzzlemaster is drunk or poisoned.
+- The Damsel's Spy and Widow jinxes are not applied.
+- The Lunatic's choices get no Chosen tokens (the Demon is told them).
+- The Tinker dies only at night; the Mutant is judged once, at the end of the day.
+- The Politician's "most responsible" is a storyteller yes/no at the end of the game; their alignment changes after the win is recorded (the recorded winner is the team that won).
 
 ## Simulator site
 
