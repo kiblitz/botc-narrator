@@ -201,7 +201,13 @@ struct Recorder {
 }
 
 impl Recorder {
-    fn push(&mut self, kind: Kind, player: Option<&player::Id>, text: String, audience: Audience) {
+    fn push(
+        &mut self,
+        kind: Kind,
+        player: Option<&player::Id>,
+        text: String,
+        audience: Audience,
+    ) -> &mut Step {
         self.steps.push(Step {
             phase: self.phase,
             kind,
@@ -211,6 +217,7 @@ impl Recorder {
             snapshot: self.snapshots.len() - 1,
             voters: Vec::new(),
         });
+        self.steps.last_mut().expect("just pushed")
     }
 
     fn announce_night_deaths(&mut self) {
@@ -337,15 +344,13 @@ impl table::Io for Recorder {
                 }
             }
             event::Event::Nominated { .. } | event::Event::Executed(_) => {
-                self.push(Kind::Event, None, text, Audience::Public)
+                self.push(Kind::Event, None, text, Audience::Public);
             }
             event::Event::Voted {
                 nominee, voters, ..
             } => {
-                self.push(Kind::Vote, Some(nominee), text, Audience::Public);
-                if let Some(step) = self.steps.last_mut() {
-                    step.voters = voters.iter().map(ToString::to_string).collect();
-                }
+                self.push(Kind::Vote, Some(nominee), text, Audience::Public)
+                    .voters = voters.iter().map(ToString::to_string).collect();
             }
             event::Event::Won(_) => {
                 // A night kill can end the game before dawn.
@@ -360,7 +365,9 @@ impl table::Io for Recorder {
             event::Event::KillRedirected { to, .. } => {
                 self.push(Kind::Event, Some(to), text, Audience::Storyteller);
             }
-            event::Event::Note(_) => self.push(Kind::Event, None, text, Audience::Storyteller),
+            event::Event::Note(_) => {
+                self.push(Kind::Event, None, text, Audience::Storyteller);
+            }
         }
     }
 
