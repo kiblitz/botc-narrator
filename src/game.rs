@@ -346,12 +346,27 @@ impl State {
             || self.has_effect(id, Effect::Drunk)
     }
 
-    /// Whether a living player has an ability that counts as the demon
-    /// (`character::Def::counts_as_demon`): good wins when none does.
-    pub fn demon_alive(&self) -> bool {
+    /// Living players with an ability that counts as the demon
+    /// (`character::Def::counts_as_demon`): their own (unless lost) or a
+    /// gained one, never one they only believe they have.
+    pub fn demons(&self) -> Vec<player::Id> {
         self.seats
             .iter()
-            .any(|p| p.alive && self.abilities(&p.id).iter().any(|c| c.counts_as_demon()))
+            .filter(|p| {
+                let own = (!p.lost_ability).then_some(p.character);
+                p.alive
+                    && own
+                        .into_iter()
+                        .chain(p.gained.iter().copied())
+                        .any(|c| c.counts_as_demon())
+            })
+            .map(|p| p.id.clone())
+            .collect()
+    }
+
+    /// Whether any demon lives: good wins when none does.
+    pub fn demon_alive(&self) -> bool {
+        !self.demons().is_empty()
     }
 
     /// The first seated player with this character.

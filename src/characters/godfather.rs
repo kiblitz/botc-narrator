@@ -39,6 +39,8 @@ impl character::Def for Def {
                 || ability::died_today(state)
                     .iter()
                     .any(|p| state.kind(p) == character::Kind::Outsider))
+        // Whether an Outsider died is a grimoire fact here; misregistering
+        // dead Spies are not considered.
     }
 
     /// [-1 or +1 Outsider]

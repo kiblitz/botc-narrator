@@ -44,7 +44,7 @@ impl character::Def for Def {
             return;
         }
         let state = ctx.state();
-        if !state.alive_of_kind(character::Kind::Demon).is_empty() {
+        if state.demon_alive() {
             return;
         }
         let minions = state.alive_of_kind(character::Kind::Minion);

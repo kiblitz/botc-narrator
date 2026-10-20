@@ -101,7 +101,7 @@ pub fn minion_info(ctx: &mut ctx::Write<'_>) {
 
 /// The demon learns who is evil and three not-in-play good characters to bluff.
 pub fn demon_info(ctx: &mut ctx::Write<'_>, script: &script::Script) {
-    let demons = ctx.state().alive_of_kind(character::Kind::Demon);
+    let demons = ctx.state().demons();
     if demons.is_empty() {
         return;
     }
@@ -153,7 +153,11 @@ pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32)
             None => {}
             Some(character::NightAction::ReadWrite(f)) => {
                 for id in acting(ctx.state(), c) {
-                    if ctx.state().winner().is_none() && ctx.state().has_ability(&id, c.id()) {
+                    let state = ctx.state();
+                    if state.winner().is_none()
+                        && state.has_ability(&id, c.id())
+                        && c.wakes_tonight(state, &id)
+                    {
                         f(ctx, &id, night);
                     }
                 }

@@ -71,5 +71,5 @@ fn jumped(state: &game::State) -> bool {
     state
         .players()
         .iter()
-        .any(|p| ability::has_mark(state, &p.id, &Def, &p.id, game::Effect::AbilityUsed))
+        .any(|p| ability::used(state, &p.id, &Def))
 }

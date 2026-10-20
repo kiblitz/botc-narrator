@@ -1163,3 +1163,18 @@ fn the_spy_may_misregister_as_any_script_character() {
             .contains("[1 of 14 options] how Spy registers to Wash")
     );
 }
+
+#[test]
+fn a_player_who_only_believes_they_are_the_demon_does_not_keep_evil_alive() {
+    let mut g = common::Game::new(&[
+        ("Imp", &characters::imp::Def),
+        ("Lunatic", &characters::drunk::Def),
+        ("Chef", &characters::chef::Def),
+        ("Monk", &characters::monk::Def),
+    ]);
+    g.run(|ctx| {
+        ctx.set_believed(&p("Lunatic"), Some(&characters::imp::Def));
+        ctx.execute(&p("Imp"));
+    });
+    assert_eq!(g.state.winner(), Some(character::Alignment::Good));
+}

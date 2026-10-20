@@ -155,6 +155,10 @@ impl<'a> Read<'a> {
                 }
             }
         }
+        if options.is_empty() {
+            // Nothing false to say: the truth is all that is left.
+            options = truthful.into_iter().map(|m| (m, true)).collect();
+        }
         let reason = storyteller::Reason::Information {
             player: player.clone(),
             character: self.state.believed(player).name(),
@@ -209,7 +213,7 @@ impl<'a> Read<'a> {
         let mut options = vec![self.state.character(target)];
         if let Some(m) = self.misregistration(target) {
             for kind in m.kinds {
-                for c in self.in_play(*kind) {
+                for c in self.misregistration_options(*kind) {
                     if !options.iter().any(|o| character::same(*o, c)) {
                         options.push(c);
                     }
@@ -235,7 +239,10 @@ impl<'a> Read<'a> {
         if let Some(m) = self.misregistration(target) {
             for misregistered in m.kinds {
                 let answers: Vec<Option<character::Ref>> = if *misregistered == kind {
-                    self.in_play(kind).into_iter().map(Some).collect()
+                    self.misregistration_options(kind)
+                        .into_iter()
+                        .map(Some)
+                        .collect()
                 } else {
                     vec![None]
                 };
@@ -280,7 +287,7 @@ impl<'a> Read<'a> {
 
     /// Characters of `kind` a player may misregister as: those on the script,
     /// or the in-play ones when no script is recorded.
-    fn in_play(&self, kind: character::Kind) -> Vec<character::Ref> {
+    fn misregistration_options(&self, kind: character::Kind) -> Vec<character::Ref> {
         if !self.state.script().is_empty() {
             return self
                 .state
