@@ -212,7 +212,7 @@ test("information highlights the players and characters it names", async ({ page
 
 test("a script can be chosen and is kept in the URL", async ({ page }) => {
   await open(page);
-  await expect(page.locator("#script option")).toHaveText(["Trouble Brewing"]);
+  await expect(page.locator("#script option").first()).toHaveText("Trouble Brewing");
   await expect(page.locator("#script")).toHaveValue("trouble_brewing");
   await expect(page).toHaveURL(/#script=trouble_brewing&seed=36&players=8$/);
   // An unknown script in the URL falls back to the first one.
@@ -291,5 +291,21 @@ test("no text overlaps the communication arrow", async ({ page }) => {
       }
     });
     expect(blocked, `step ${i + 2}`).toBeNull();
+  }
+});
+
+test("every script can be picked and played to the end", async ({ page }) => {
+  await open(page);
+  const options = page.locator("#script option");
+  const ids = await options.evaluateAll((os) => os.map((o) => o.value));
+  expect(ids.length).toBeGreaterThan(1);
+  for (const id of ids) {
+    await page.locator("#script").selectOption(id);
+    await page.locator("#load").click();
+    await expect(page).toHaveURL(new RegExp(`#script=${id}&seed=36&players=8$`));
+    // 8 residents, plus any Travellers the script offers.
+    expect(await page.locator(".seat").count()).toBeGreaterThanOrEqual(8);
+    await page.keyboard.press("End");
+    await expect(page.locator("#log .winner")).toHaveText(/^Game over: /);
   }
 });

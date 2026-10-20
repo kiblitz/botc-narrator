@@ -273,3 +273,64 @@ fn games_with_every_outsider_terminate_and_are_well_formed() {
     }
     assert!(finished >= 100, "only {finished} of 120 games finished");
 }
+
+#[test]
+fn every_script_simulates_cleanly_across_seeds_and_player_counts() {
+    let scripts = script::all();
+    let files = std::fs::read_dir("data/scripts")
+        .unwrap()
+        .filter(|f| f.as_ref().unwrap().path().extension() == Some("json".as_ref()))
+        .count();
+    assert_eq!(
+        scripts.len(),
+        files,
+        "every script in data/scripts is registered"
+    );
+    // Ten games per player count (5 to 15).
+    let games: u64 = 110;
+    // Most games must end with a winner rather than at the day limit.
+    let min_winners = games * 8 / 10;
+    let mut failures = Vec::new();
+    for script in &scripts {
+        let mut finished = 0;
+        let mut seated: std::collections::HashSet<&'static str> = std::collections::HashSet::new();
+        for seed in 0..games {
+            let players = sim::MIN_PLAYERS + (seed as usize % 11);
+            let run = std::panic::AssertUnwindSafe(|| sim::simulate(seed, players, script));
+            let Ok(trace) = std::panic::catch_unwind(run) else {
+                failures.push(format!(
+                    "{}: seed {seed}, {players} players panicked",
+                    script.id
+                ));
+                continue;
+            };
+            assert!(!trace.steps.is_empty());
+            for step in &trace.steps {
+                assert!(step.snapshot < trace.snapshots.len());
+            }
+            // The first snapshot is the deal, before setup abilities change
+            // characters (the player dealt Lil' Monsta becomes a Minion).
+            seated.extend(trace.snapshots[0].iter().map(|s| s.character));
+            finished += u64::from(trace.winner.is_some());
+        }
+        for c in &script.characters {
+            if !c.kind().storyteller_side() && !seated.contains(c.name()) {
+                failures.push(format!("{}: {} never set up", script.id, c.name()));
+            }
+        }
+        if finished < min_winners {
+            failures.push(format!(
+                "{}: only {finished} of {games} games reached a winner",
+                script.id
+            ));
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "{}",
+        failures.join(
+            "
+"
+        )
+    );
+}

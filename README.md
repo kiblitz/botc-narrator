@@ -1,6 +1,6 @@
 # botc-narrator
 
-A Blood on the Clocktower storyteller engine in Rust, with the 22 Trouble Brewing characters and more being added (see [docs/adding-characters.md](docs/adding-characters.md)).
+A Blood on the Clocktower storyteller engine in Rust, with every character on the scripts in `data/scripts` (see [docs/adding-characters.md](docs/adding-characters.md) to add more).
 
 ## Design
 
@@ -144,7 +144,7 @@ Minions: the Harpy wakes at 26 / 17 (officially 26.5 / 17.5, after the Fearmonge
 
 ## Simulator site
 
-`site/` is a static page that generates random, plausible Trouble Brewing games in the browser (the engine compiled to WebAssembly from `web/`) and lets you step through them. Players sit in a circle; each step shows who is awake, what they were told or asked, storyteller decisions and public events. Click a player to see everything they know so far, or switch the view to one player's point of view to hide what they couldn't see. Pick a script (only Trouble Brewing so far; new scripts in `script::all()` appear automatically). Games are reproducible from `#script=...&seed=...&players=...` in the URL. Information steps highlight the players and characters they name.
+`site/` is a static page that generates random, plausible games of any registered script in the browser (the engine compiled to WebAssembly from `web/`) and lets you step through them. Players sit in a circle; each step shows who is awake, what they were told or asked, storyteller decisions and public events. Click a player to see everything they know so far, or switch the view to one player's point of view to hide what they couldn't see. Pick a script: every script in `script::all()` is listed, and a test plays each one across many seeds and player counts. Games are reproducible from `#script=...&seed=...&players=...` in the URL. Information steps highlight the players and characters they name.
 
 Generation (`sim.rs`) uses legal setups for 5-15 players (`setup::choose`), players who act on simple heuristics (evil targets good), a random storyteller, daily nominations with a majority vote (no ghost votes; vote weights apply), up to two Travellers with random alignments when the script has them, mad players who break madness with a fixed probability, players who "may choose" choosing no-one now and then (the Po charging), and night deaths announced at dawn. Day actions such as the Slayer's shot are public.
 

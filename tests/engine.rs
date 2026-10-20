@@ -951,7 +951,7 @@ fn trouble_brewing_loads_from_its_json() {
     let tb = common::trouble_brewing();
     assert_eq!(tb.name, "Trouble Brewing");
     assert_eq!(tb.characters.len(), 22);
-    assert_eq!(script::all().len(), 1);
+    assert_eq!(script::all()[0].id, "trouble_brewing");
 }
 
 #[test]

@@ -7,11 +7,28 @@ use std::fmt;
 use crate::character;
 use crate::characters;
 
+/// A script's id and JSON, read from `data/scripts/<id>.json`.
+macro_rules! script {
+    ($id:literal) => {
+        ($id, include_str!(concat!("../data/scripts/", $id, ".json")))
+    };
+}
+
 /// The playable scripts: id and script JSON (official character ids).
-const SCRIPTS: &[(&str, &str)] = &[(
-    "trouble_brewing",
-    include_str!("../data/scripts/trouble_brewing.json"),
-)];
+const SCRIPTS: &[(&str, &str)] = &[
+    script!("trouble_brewing"),
+    script!("a_lleech_of_distrust"),
+    script!("bad_moon_rising"),
+    script!("catfishing"),
+    script!("extension_cord"),
+    script!("harold_holt_s_revenge"),
+    script!("laissez_un_faire"),
+    script!("no_roles_barred"),
+    script!("separation_of_church_and_state"),
+    script!("the_midnight_oasis"),
+    script!("the_minotaur_s_labyrinth"),
+    script!("trust"),
+];
 
 /// An edition: its characters and night orders.
 pub struct Script {
