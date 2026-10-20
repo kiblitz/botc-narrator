@@ -65,6 +65,26 @@ pub enum Choice {
     },
 }
 
+impl Choice {
+    /// Players this option names.
+    pub fn players(&self) -> Vec<&player::Id> {
+        match self {
+            Choice::Player(p) => vec![p],
+            Choice::Character(_) => Vec::new(),
+            Choice::Info { message, .. } => message.players(),
+        }
+    }
+
+    /// Characters this option names.
+    pub fn characters(&self) -> Vec<&'static str> {
+        match self {
+            Choice::Player(_) => Vec::new(),
+            Choice::Character(name) => vec![*name],
+            Choice::Info { message, .. } => message.characters(),
+        }
+    }
+}
+
 impl fmt::Display for Choice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

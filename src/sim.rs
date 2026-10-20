@@ -443,7 +443,13 @@ impl table::Io for Recorder {
             decision.options.len(),
             picked.join(", ")
         );
-        self.push(Kind::Decision, None, text, Audience::Storyteller);
+        let step = self.push(Kind::Decision, None, text, Audience::Storyteller);
+        for &i in picks {
+            let choice = &decision.options[i];
+            step.players
+                .extend(choice.players().iter().map(ToString::to_string));
+            step.characters.extend(choice.characters());
+        }
     }
 }
 

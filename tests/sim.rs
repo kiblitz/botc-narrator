@@ -199,3 +199,21 @@ fn communication_steps_say_which_way_they_go() {
     assert_eq!(flow.from, sim::Endpoint::Player("Bram".into()));
     assert_eq!(flow.to, sim::Endpoint::Player("Esme".into()));
 }
+
+#[test]
+fn decisions_carry_the_players_and_characters_they_chose() {
+    let trace = simulate(7, 8);
+    let step = trace
+        .steps
+        .iter()
+        .find(|s| s.kind == sim::Kind::Decision && s.text.contains("one is the Spy"))
+        .expect("investigator decision");
+    assert_eq!(step.players, ["Esme", "Cleo"]);
+    assert_eq!(step.characters, ["Spy"]);
+    let bluffs = trace
+        .steps
+        .iter()
+        .find(|s| s.kind == sim::Kind::Decision && s.text.starts_with("demon bluffs"))
+        .expect("bluffs decision");
+    assert_eq!(bluffs.characters.len(), 3);
+}
