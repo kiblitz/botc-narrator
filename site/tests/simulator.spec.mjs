@@ -180,3 +180,16 @@ test("play toggles to pause and back", async ({ page }) => {
   await page.locator("#play").click();
   await expect(page.locator("#play .play")).toBeVisible();
 });
+
+test("votes highlight the nominee and everyone who voted", async ({ page }) => {
+  await open(page);
+  // Seed 7 / 8 players: on day 1, Bram nominates Esme and six players vote.
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("ArrowRight"); // nomination
+  await page.keyboard.press("ArrowRight"); // vote
+  await expect(page.locator("#caption")).toContainText("6 votes for Esme");
+  await expect(page.locator('.seat[data-name="Esme"]')).toHaveClass(/nominee/);
+  await expect(page.locator(".seat.voted")).toHaveCount(6);
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".seat.voted")).toHaveCount(0);
+});

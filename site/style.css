@@ -225,3 +225,9 @@ li.future { opacity: 0.35; }
 #play.playing .pause { display: inline; }
 /* Lift speech bubbles above the bluff crown. */
 .seat:has(.bluffs) .bubble { margin-bottom: calc(var(--token, 84px) * 0.32); }
+
+/* Votes: the nominee gets a dashed ring, voters a raised hand. */
+.seat.nominee .token { outline: 3px dashed var(--gold); outline-offset: 5px; }
+.seat.voted .token { box-shadow: 0 0 0 4px #e8a04a, 0 0 16px #e8a04a; }
+.seat.voted .name::before { content: "✋ "; }
+#log-area h2 { position: sticky; top: -0.75rem; background: var(--panel); padding: 0.75rem 0 0.25rem; margin-top: -0.75rem; z-index: 1; }

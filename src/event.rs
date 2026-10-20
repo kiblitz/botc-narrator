@@ -43,7 +43,7 @@ pub enum Event {
     },
     Voted {
         nominee: player::Id,
-        votes: usize,
+        voters: Vec<player::Id>,
         needed: usize,
     },
     Note(String),
@@ -67,9 +67,9 @@ impl fmt::Display for Event {
             ),
             Event::Voted {
                 nominee,
-                votes,
+                voters,
                 needed,
-            } => write!(f, "{votes} votes for {nominee} ({needed} needed)"),
+            } => write!(f, "{} votes for {nominee} ({needed} needed)", voters.len()),
             Event::Note(text) => f.write_str(text),
             Event::Won(alignment) => write!(f, "{alignment} wins!"),
         }

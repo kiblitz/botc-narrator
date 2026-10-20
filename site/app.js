@@ -115,7 +115,7 @@ function render() {
   caption.className = step.audience === "storyteller" ? "storyteller" : "";
   caption.replaceChildren();
   if (step.player && hasSpeaker(step)) caption.append(el("span", "who", `${step.player}: `));
-  caption.append(step.text);
+  caption.append(describe(step));
 
   for (const div of board.querySelectorAll(".seat")) {
     const seat = snapshot.find((s) => s.name === div.dataset.name);
@@ -129,6 +129,10 @@ function render() {
     div.classList.toggle("dead", dead);
     div.classList.toggle("awake", awake.has(seat.name) && (pov === "" || pov === seat.name));
     div.classList.toggle("active", step.player === seat.name);
+    // On a vote, the nominee is marked and everyone who raised a hand glows.
+    const isVote = step.kind === "vote";
+    div.classList.toggle("nominee", isVote && step.player === seat.name);
+    div.classList.toggle("voted", isVote && (step.voters ?? []).includes(seat.name));
     div.classList.toggle("selected", selected === seat.name);
     renderToken(div.querySelector(".token"), known ? seat.character : null);
     const reminders = div.querySelector(".reminders");
@@ -199,6 +203,13 @@ function renderToken(token, character) {
   token.replaceChildren(img, el("span", "label", character));
 }
 
+/** A step's text; votes also list who raised a hand. */
+function describe(step) {
+  if (step.kind !== "vote") return step.text;
+  const voters = step.voters ?? [];
+  return `${step.text}: ${voters.length ? voters.join(", ") : "no hands"}`;
+}
+
 /** Steps said to or by a player, shown with their name. */
 function hasSpeaker(step) {
   return ["wake", "sleep", "tell", "ask"].includes(step.kind);
@@ -209,7 +220,7 @@ function logItem(step, current) {
   if (isPhase(step)) li.classList.add("phase");
   if (current) li.classList.add("current");
   if (step.player && hasSpeaker(step)) li.append(el("span", "who", `${step.player}: `));
-  li.append(step.text);
+  li.append(describe(step));
   return li;
 }
 

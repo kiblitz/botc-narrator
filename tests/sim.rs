@@ -105,3 +105,26 @@ fn demon_bluffs_are_recorded_with_the_step_they_were_told() {
     // Too few players: no demon info, so no bluffs.
     assert!(sim::simulate(7, 5).bluffs.is_none());
 }
+
+#[test]
+fn vote_steps_name_the_nominee_and_voters() {
+    let trace = sim::simulate(7, 8);
+    let votes: Vec<_> = trace
+        .steps
+        .iter()
+        .filter(|s| s.kind == sim::Kind::Vote)
+        .collect();
+    assert!(!votes.is_empty());
+    for step in votes {
+        assert!(step.player.is_some());
+        let count: usize = step.text.split(' ').next().unwrap().parse().unwrap();
+        assert_eq!(step.voters.len(), count, "{}", step.text);
+        let alive = &trace.snapshots[step.snapshot];
+        for voter in &step.voters {
+            assert!(
+                alive.iter().any(|s| &s.name == voter && s.alive),
+                "{voter} cannot vote"
+            );
+        }
+    }
+}

@@ -151,6 +151,8 @@ pub enum Kind {
     /// A player died; public deaths are announced (at dawn for night deaths)
     /// without their cause.
     Death,
+    /// A vote on a nomination: `player` is the nominee, `voters` raised hands.
+    Vote,
     Event,
     Decision,
 }
@@ -163,6 +165,9 @@ pub struct Step {
     pub text: String,
     pub audience: Audience,
     pub snapshot: usize,
+    /// Who raised a hand, on vote steps.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub voters: Vec<String>,
 }
 
 fn seats(view: &game::State) -> Vec<Seat> {
@@ -204,6 +209,7 @@ impl Recorder {
             text,
             audience,
             snapshot: self.snapshots.len() - 1,
+            voters: Vec::new(),
         });
     }
 
@@ -330,9 +336,17 @@ impl table::Io for Recorder {
                     self.push(Kind::Death, Some(player), text, Audience::Public);
                 }
             }
-            event::Event::Nominated { .. }
-            | event::Event::Executed(_)
-            | event::Event::Voted { .. } => self.push(Kind::Event, None, text, Audience::Public),
+            event::Event::Nominated { .. } | event::Event::Executed(_) => {
+                self.push(Kind::Event, None, text, Audience::Public)
+            }
+            event::Event::Voted {
+                nominee, voters, ..
+            } => {
+                self.push(Kind::Vote, Some(nominee), text, Audience::Public);
+                if let Some(step) = self.steps.last_mut() {
+                    step.voters = voters.iter().map(ToString::to_string).collect();
+                }
+            }
             event::Event::Won(_) => {
                 // A night kill can end the game before dawn.
                 self.announce_night_deaths();
@@ -439,11 +453,12 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
             narrator::end_day(ctx);
             return; // the Virgin executed the nominator
         }
-        let votes = votes(ctx.state(), &nominee, rng);
+        let voters = voters(ctx.state(), &nominee, rng);
+        let votes = voters.len();
         let needed = ctx.state().alive_ids().len().div_ceil(2);
         ctx.record(event::Event::Voted {
             nominee: nominee.clone(),
-            votes,
+            voters,
             needed,
         });
         if votes >= needed {
@@ -470,10 +485,10 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
 
 /// Living players vote (ghost votes are not modelled): evil players back good
 /// nominees, good players are split.
-fn votes(state: &game::State, nominee: &player::Id, rng: &mut impl Rng) -> usize {
+fn voters(state: &game::State, nominee: &player::Id, rng: &mut impl Rng) -> Vec<player::Id> {
     state
         .alive_ids()
-        .iter()
+        .into_iter()
         .filter(|voter| {
             let p = match (state.is_evil(voter), state.is_evil(nominee)) {
                 (true, false) => EVIL_VOTES_GOOD,
@@ -482,7 +497,7 @@ fn votes(state: &game::State, nominee: &player::Id, rng: &mut impl Rng) -> usize
             };
             rng.random_bool(p)
         })
-        .count()
+        .collect()
 }
 
 /// [`simulate`], serialized as JSON for the web viewer.
