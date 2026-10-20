@@ -5,6 +5,8 @@
   --text: #ebe7f5;
   --muted: #9c96b3;
   --good: #4f8fe8;
+  --townsfolk: #2f68c4;
+  --outsider: #86b9f3;
   --evil: #e0505a;
   --gold: #e8c26a;
   --night: #2a3560;
@@ -101,9 +103,10 @@ main {
   overflow-wrap: anywhere;
   background: #ece3cf;
   color: #2a2233;
-  border: 4px solid var(--good);
+  border: 4px solid var(--townsfolk);
   transition: box-shadow 0.25s, opacity 0.25s;
 }
+.seat.outsider .token { border-color: var(--outsider); }
 .seat.evil .token { border-color: var(--evil); }
 .seat.hidden .token { border-color: var(--line); background: #3a3550; color: var(--muted); font-size: 22px; }
 .seat.awake .token { box-shadow: 0 0 0 4px var(--gold), 0 0 22px var(--gold); }

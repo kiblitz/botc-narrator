@@ -117,3 +117,12 @@ for (const [width, height, players] of [
     }
   });
 }
+
+test("townsfolk and outsiders get different shades of blue", async ({ page }) => {
+  await open(page);
+  const border = (name) =>
+    page.locator(`.seat[data-name="${name}"] .token`).evaluate((e) => getComputedStyle(e).borderTopColor);
+  // Seed 7 / 8 players: Ada is the Washerwoman, Bram the Butler.
+  expect(await border("Ada")).toBe("rgb(47, 104, 196)");
+  expect(await border("Bram")).toBe("rgb(134, 185, 243)");
+});

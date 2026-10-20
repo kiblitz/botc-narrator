@@ -117,6 +117,7 @@ function render() {
     const known = pov === "" || pov === seat.name;
     div.className = "seat";
     div.classList.toggle("evil", known && seat.alignment === "Evil");
+    div.classList.toggle("outsider", known && seat.kind === "Outsider");
     div.classList.toggle("hidden", !known);
     // Players only see deaths once they are announced.
     const dead = pov === "" ? !seat.alive : game.announced[index].has(seat.name);
