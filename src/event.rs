@@ -18,7 +18,8 @@ pub enum Event {
     PhaseBegan(game::Phase),
     Nominated {
         nominee: player::Id,
-        nominator: player::Id,
+        /// `None` when the storyteller nominates (the Bishop).
+        nominator: Option<player::Id>,
     },
     Executed(player::Id),
     Died {
@@ -70,9 +71,17 @@ pub enum Event {
         player: player::Id,
         reminder: game::Reminder,
     },
+    FabledMarked {
+        fabled: &'static str,
+        effect: game::Effect,
+    },
+    SeatsSwapped(player::Id, player::Id),
+    GhostVoteSpent(player::Id),
     Voted {
         nominee: player::Id,
         voters: Vec<player::Id>,
+        /// The votes counted, after vote weights (Bureaucrat, Beggar).
+        votes: usize,
         needed: usize,
     },
     Note(String),
@@ -85,7 +94,14 @@ impl fmt::Display for Event {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Event::PhaseBegan(phase) => write!(f, "=== {phase} ==="),
-            Event::Nominated { nominee, nominator } => write!(f, "{nominator} nominates {nominee}"),
+            Event::Nominated {
+                nominee,
+                nominator: Some(nominator),
+            } => write!(f, "{nominator} nominates {nominee}"),
+            Event::Nominated {
+                nominee,
+                nominator: None,
+            } => write!(f, "the storyteller nominates {nominee}"),
             Event::Executed(p) => write!(f, "{p} is executed"),
             Event::Died { player, cause } => write!(f, "{player} dies ({cause:?})"),
             Event::Revived(player) => write!(f, "{player} is alive again"),
@@ -118,11 +134,15 @@ impl fmt::Display for Event {
                 "{} ({}) removes {}'s {} token",
                 reminder.placed_by, reminder.source, player, reminder.effect
             ),
+            Event::FabledMarked { fabled, effect } => write!(f, "the {fabled} is marked: {effect}"),
+            Event::SeatsSwapped(a, b) => write!(f, "{a} and {b} swap seats"),
+            Event::GhostVoteSpent(p) => write!(f, "{p} gives away their vote token"),
             Event::Voted {
                 nominee,
-                voters,
+                votes,
                 needed,
-            } => write!(f, "{} votes for {nominee} ({needed} needed)", voters.len()),
+                ..
+            } => write!(f, "{votes} votes for {nominee} ({needed} needed)"),
             Event::Note(text) => f.write_str(text),
             Event::Announced(text) => write!(f, "Announcement: {text}"),
             Event::Won(alignment) => write!(f, "{alignment} wins!"),

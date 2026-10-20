@@ -23,7 +23,8 @@ pub const DEMON_INFO_ORDER: u32 = 9;
 /// (`game::State::script`), then every player's setup ability runs (the Drunk is
 /// told who they believe they are), then the setup ability of each believed
 /// character (a Drunk who believes they are the Fortune Teller gets a red
-/// herring).
+/// herring). Last, the script's Fabled and Loric are put in play and do their
+/// storyteller-side setup.
 pub fn setup(ctx: &mut ctx::Write<'_>, script: &script::Script) {
     ctx.set_script(script.characters.clone());
     let players: Vec<(player::Id, character::Ref)> = ctx
@@ -43,6 +44,18 @@ pub fn setup(ctx: &mut ctx::Write<'_>, script: &script::Script) {
         .collect();
     for (id, character) in believers {
         character.on_setup(ctx, &id);
+    }
+    let fabled: Vec<character::Ref> = script
+        .characters
+        .iter()
+        .copied()
+        .filter(|c| c.kind().storyteller_side())
+        .collect();
+    for f in &fabled {
+        ctx.add_fabled(*f);
+    }
+    for f in fabled {
+        f.fabled_setup(ctx);
     }
 }
 
@@ -140,7 +153,8 @@ pub fn demon_info(ctx: &mut ctx::Write<'_>, script: &script::Script) {
 /// to the table as one batch; read-write actions are sync points. When a
 /// character's turn comes, every player who has its ability then
 /// (`game::State::abilities`, so abilities gained or lost earlier tonight
-/// count) acts if it `wakes_tonight`.
+/// count) acts if it `wakes_tonight`. A player with an `ActsTwice` token
+/// (the Barista) acts twice in a row.
 pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32) {
     let mut i = 0;
     while i < order.len() {
@@ -153,29 +167,32 @@ pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32)
             None => {}
             Some(character::NightAction::ReadWrite(f)) => {
                 for id in acting(ctx.state(), c) {
-                    let state = ctx.state();
-                    if state.winner().is_none()
-                        && state.has_ability(&id, c.id())
-                        && c.wakes_tonight(state, &id)
-                    {
-                        f(ctx, &id, night);
+                    for _ in 0..times(ctx.state(), &id) {
+                        let state = ctx.state();
+                        if state.winner().is_none()
+                            && state.has_ability(&id, c.id())
+                            && c.wakes_tonight(state, &id)
+                        {
+                            f(ctx, &id, night);
+                        }
                     }
                 }
             }
             Some(character::NightAction::ReadOnly(f)) => {
                 // Read-only actions cannot change who acts: gather the run.
-                let mut batch: Vec<(player::Id, character::ReadOnlyFn)> = acting(ctx.state(), c)
-                    .into_iter()
-                    .map(|id| (id, f))
-                    .collect();
+                let mut batch: Vec<(player::Id, character::ReadOnlyFn)> = Vec::new();
+                add_turns(ctx.state(), &mut batch, c, f);
                 // Characters nobody acts for do not interrupt the run.
                 while let Some(next) = order.get(i) {
-                    let actors = acting(ctx.state(), *next);
                     match next.night_action() {
                         Some(character::NightAction::ReadOnly(g)) => {
-                            batch.extend(actors.into_iter().map(|id| (id, g)))
+                            add_turns(ctx.state(), &mut batch, *next, g)
                         }
-                        Some(character::NightAction::ReadWrite(_)) if !actors.is_empty() => break,
+                        Some(character::NightAction::ReadWrite(_))
+                            if !acting(ctx.state(), *next).is_empty() =>
+                        {
+                            break;
+                        }
                         _ => {}
                     }
                     i += 1;
@@ -191,6 +208,29 @@ pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32)
                     ctx.io().batch_ended();
                 }
             }
+        }
+    }
+}
+
+/// How many times `player` acts at each of their turns tonight.
+fn times(state: &game::State, player: &player::Id) -> usize {
+    if state.has_effect(player, game::Effect::ActsTwice) {
+        2
+    } else {
+        1
+    }
+}
+
+/// Adds the read-only turns of everyone acting for `c` to `batch`.
+fn add_turns(
+    state: &game::State,
+    batch: &mut Vec<(player::Id, character::ReadOnlyFn)>,
+    c: character::Ref,
+    f: character::ReadOnlyFn,
+) {
+    for id in acting(state, c) {
+        for _ in 0..times(state, &id) {
+            batch.push((id.clone(), f));
         }
     }
 }
@@ -215,11 +255,51 @@ pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id, ability: charac
     }
 }
 
-/// End of day: active players' day-end abilities (the Mayor) fire.
+/// End of day: active players' day-end abilities (the Mayor) fire, then the
+/// Fabled and Loric dusk abilities.
 pub fn end_day(ctx: &mut ctx::Write<'_>) {
     for (id, ability) in ctx.active_abilities() {
         ability.on_day_end(ctx, &id);
     }
+    for f in ctx.state().fabled().to_vec() {
+        f.fabled_dusk(ctx);
+    }
+}
+
+/// Whom the storyteller nominates today, if a living, functioning player's
+/// ability says only the storyteller nominates (the Bishop); `None` if the
+/// players nominate.
+pub fn storyteller_nominations(ctx: &mut ctx::Write<'_>) -> Option<Vec<player::Id>> {
+    for (id, ability) in ctx.active_abilities() {
+        if !ctx.state().is_alive(&id) || ctx.state().is_malfunctioning(&id) {
+            continue;
+        }
+        if let Some(nominees) = ability.storyteller_nominations(&mut ctx.read(), &id) {
+            return Some(nominees);
+        }
+    }
+    None
+}
+
+/// Living, functioning players who may nominate again after the day's first
+/// execution (the Butcher), in seat order.
+pub fn nominate_again(state: &game::State) -> Vec<player::Id> {
+    state
+        .alive_ids()
+        .into_iter()
+        .filter(|id| {
+            !state.is_malfunctioning(id) && state.abilities(id).iter().any(|c| c.nominates_again())
+        })
+        .collect()
+}
+
+/// The storyteller nominates `nominee` (when only the storyteller may): the
+/// nominee's abilities that react to a nominator do not fire.
+pub fn storyteller_nominates(ctx: &mut ctx::Write<'_>, nominee: &player::Id) {
+    ctx.record(event::Event::Nominated {
+        nominee: nominee.clone(),
+        nominator: None,
+    });
 }
 
 /// A nomination: the nominee's abilities react (the Virgin), then the
@@ -227,7 +307,7 @@ pub fn end_day(ctx: &mut ctx::Write<'_>) {
 pub fn nominate(ctx: &mut ctx::Write<'_>, nominator: &player::Id, nominee: &player::Id) {
     ctx.record(event::Event::Nominated {
         nominee: nominee.clone(),
-        nominator: nominator.clone(),
+        nominator: Some(nominator.clone()),
     });
     for (id, ability) in ctx.abilities_of(std::slice::from_ref(nominee)) {
         ability.on_nominated(ctx, &id, nominator);
@@ -237,22 +317,58 @@ pub fn nominate(ctx: &mut ctx::Write<'_>, nominator: &player::Id, nominee: &play
     }
 }
 
-/// A tallied vote: recorded, then every player's `on_vote` abilities react.
+/// A vote: the hands raised are counted with their weights (`tally`),
+/// recorded, then every player's `on_vote` abilities react. Returns the votes
+/// counted.
 pub fn vote(
     ctx: &mut ctx::Write<'_>,
     nominee: &player::Id,
     voters: Vec<player::Id>,
     needed: usize,
-) {
+) -> usize {
+    // A hand that counts for nothing (a Beggar without a token) is no vote.
+    let voters: Vec<player::Id> = voters
+        .into_iter()
+        .filter(|v| weight(ctx.state(), v) > 0)
+        .collect();
+    let votes = tally(ctx.state(), &voters);
     ctx.record(event::Event::Voted {
         nominee: nominee.clone(),
         voters: voters.clone(),
+        votes,
         needed,
     });
     let everyone = ctx.state().seat_order();
     for (id, ability) in ctx.abilities_of(&everyone) {
         ability.on_vote(ctx, &id, nominee, &voters);
     }
+    votes
+}
+
+/// How many votes `voters` count for: each starts at 1, and every
+/// functioning player's abilities may change it
+/// (`character::Def::vote_weight`).
+pub fn tally(state: &game::State, voters: &[player::Id]) -> usize {
+    let total: i32 = voters.iter().map(|v| weight(state, v)).sum();
+    usize::try_from(total).unwrap_or(0)
+}
+
+/// How much `voter`'s vote counts (see [`tally`]).
+fn weight(state: &game::State, voter: &player::Id) -> i32 {
+    let holders: Vec<(player::Id, character::Ref)> = state
+        .seat_order()
+        .into_iter()
+        .filter(|id| !state.is_malfunctioning(id))
+        .flat_map(|id| {
+            state
+                .abilities(&id)
+                .into_iter()
+                .map(move |c| (id.clone(), c))
+        })
+        .collect();
+    holders
+        .iter()
+        .fold(1, |weight, (id, c)| c.vote_weight(state, id, voter, weight))
 }
 
 /// Asks the table whether each living mad player broke their madness; for

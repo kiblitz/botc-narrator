@@ -39,6 +39,11 @@ pub trait Io {
         self.ask(player, prompt, candidates, max)
     }
 
+    /// Ask a player a yes/no question (whether they agree); no by default.
+    fn ask_yes_no(&mut self, _player: &player::Id, _prompt: &str) -> bool {
+        false
+    }
+
     /// Ask a player to choose one of `options` (characters); returns its
     /// index. Invalid answers are replaced by the first option.
     fn ask_character(

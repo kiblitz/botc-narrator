@@ -29,6 +29,16 @@ pub enum Effect {
     Drunk,
     Protected,
     AbilityUsed,
+    /// Sober and healthy: poison and drunkenness have no effect, and
+    /// information is true (the Barista).
+    Sober,
+    /// The player's night abilities act twice (the Barista).
+    ActsTwice,
+    /// A dead player whose ability works as if they were alive (the Bone
+    /// Collector): they wake for it at night.
+    AbilityRestored,
+    /// The player can only die by execution (the Storm Catcher).
+    ExecutionOnly,
     /// Mad about being this character (by name): the player should try to
     /// convince the group of it, or the ability that placed the token may
     /// punish them (see `narrator::check_madness`).
@@ -155,6 +165,8 @@ pub struct Player {
     /// Whether the player has lost their own character's ability.
     pub lost_ability: bool,
     pub alignment: character::Alignment,
+    /// The alignment the player was seated with.
+    pub starting_alignment: character::Alignment,
     pub alive: bool,
     pub ghost_vote: bool,
     pub reminders: Vec<Reminder>,
@@ -172,6 +184,8 @@ impl Player {
 pub struct State {
     seats: Vec<Player>,
     fabled: Vec<character::Ref>,
+    /// Storyteller-side tokens on Fabled and Loric (by character id).
+    fabled_tokens: Vec<(&'static str, Effect)>,
     script: Vec<character::Ref>,
     phase: Phase,
     deaths_tonight: Vec<player::Id>,
@@ -202,6 +216,7 @@ impl State {
                 gained: Vec::new(),
                 lost_ability: false,
                 alignment: seat.alignment,
+                starting_alignment: seat.alignment,
                 alive: true,
                 ghost_vote: false,
                 reminders: Vec::new(),
@@ -210,6 +225,7 @@ impl State {
         Self {
             seats,
             fabled: Vec::new(),
+            fabled_tokens: Vec::new(),
             script: Vec::new(),
             phase: Phase::Setup,
             deaths_tonight: Vec::new(),
@@ -271,6 +287,7 @@ impl State {
                     && self.is_alive(&r.placed_by)
                     && !self.is_malfunctioning(&r.placed_by)
             })
+            || self.has_effect(id, Effect::AbilityRestored)
     }
 
     pub fn character(&self, id: &player::Id) -> character::Ref {
@@ -313,9 +330,16 @@ impl State {
         &self.script
     }
 
-    /// Storyteller-side Fabled characters in play.
+    /// Storyteller-side Fabled and Loric characters in play.
     pub fn fabled(&self) -> &[character::Ref] {
         &self.fabled
+    }
+
+    /// Whether the in-play Fabled or Loric `fabled` has an `effect` token.
+    pub fn fabled_has(&self, fabled: character::Ref, effect: Effect) -> bool {
+        self.fabled_tokens
+            .iter()
+            .any(|(id, e)| *id == fabled.id() && *e == effect)
     }
 
     /// Seated players who are not Travellers: the count setups and the
@@ -355,10 +379,19 @@ impl State {
     /// Poisoned or drunk: the player's ability has no effect and any
     /// information they receive may be false. A player who believes they are
     /// a character they are not (the Drunk) counts as drunk.
+    /// Sobriety cancels poison and drunkenness tokens, but a player who
+    /// believes they are a character they are not stays malfunctioning.
     pub fn is_malfunctioning(&self, id: &player::Id) -> bool {
         self.player(id).believes.is_some()
-            || self.has_effect(id, Effect::Poisoned)
-            || self.has_effect(id, Effect::Drunk)
+            || (!self.is_sober(id)
+                && (self.has_effect(id, Effect::Poisoned) || self.has_effect(id, Effect::Drunk)))
+    }
+
+    /// Sober and healthy: a `Sober` token (the Barista) or an ability that is
+    /// `always_sober` (the Beggar). Poison and drunkenness do not affect a
+    /// sober player; only the `Sober` token also makes information true.
+    pub fn is_sober(&self, id: &player::Id) -> bool {
+        self.has_effect(id, Effect::Sober) || self.abilities(id).iter().any(|c| c.always_sober())
     }
 
     /// Living players with an ability that counts as the demon
@@ -478,12 +511,33 @@ impl State {
         }
     }
 
+    pub(crate) fn mark_fabled(&mut self, fabled: character::Ref, effect: Effect) {
+        self.fabled_tokens.push((fabled.id(), effect));
+    }
+
     /// Returns whether the token was there.
     pub(crate) fn remove_reminder(&mut self, target: &player::Id, reminder: &Reminder) -> bool {
         let reminders = &mut self.player_mut(target).reminders;
         let before = reminders.len();
         reminders.retain(|r| r != reminder);
         reminders.len() != before
+    }
+
+    pub(crate) fn swap_seats(&mut self, a: &player::Id, b: &player::Id) {
+        let i = self.seat_index(a);
+        let j = self.seat_index(b);
+        self.seats.swap(i, j);
+    }
+
+    fn seat_index(&self, id: &player::Id) -> usize {
+        self.seats
+            .iter()
+            .position(|p| &p.id == id)
+            .unwrap_or_else(|| panic!("unknown player {id}"))
+    }
+
+    pub(crate) fn spend_ghost_vote(&mut self, id: &player::Id) {
+        self.player_mut(id).ghost_vote = false;
     }
 
     pub(crate) fn remove_reminders(&mut self, placed_by: &player::Id, expiry: Expiry) {

@@ -87,6 +87,11 @@ Override only the hooks the ability uses (the full list is in the README,
 | gains or loses an ability | `ctx.gain_ability`, `ctx.lose_ability` (acts the same night if its turn is still to come) |
 | alternate demon / forced false info | hooks `counts_as_demon`, `forces_false_info` |
 | day ability | hook `day_action`; the simulator offers every unused one each day |
+| ask a player yes/no | `ctx.ask_yes_no` (the Harlot's visit) |
+| sober / acts twice / restored / execution-only | `game::Effect::Sober`, `ActsTwice`, `AbilityRestored`, `ExecutionOnly` with `mark`; hook `always_sober` |
+| votes and nominations | hooks `vote_weight`, `storyteller_nominations`, `nominates_again`; `ctx.remove_reminder`, `ctx.spend_ghost_vote` |
+| seats | `ctx.swap_seats` |
+| Fabled and Loric | hooks `fabled_setup`, `fabled_dusk`, `permits_alignment_change`, `lies_to`; storyteller tokens `ctx.mark_fabled` / `State::fabled_has`; `storyteller::Reason::Fabled` |
 
 ## Worked examples
 
@@ -105,6 +110,8 @@ Override only the hooks the ability uses (the full list is in the README,
   Townsfolk at every phase change), **Po** (`ask_up_to` and a charge token),
   **Legion** (`duplicates_in_setup`, one voice for the group), **Lil' Monsta**
   (a carried ability: `transform` + `gain_ability`).
+- Travellers, Fabled and Loric (`bureaucrat.rs`, `harlot.rs`, `knaves.rs`, ...):
+  tests in `tests/travellers.rs`.
 - Trouble Brewing (`imp.rs`, `monk.rs`, `empath.rs`, ...) are a few lines each.
 
 ## Tests

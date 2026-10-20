@@ -44,6 +44,11 @@ pub enum Reason {
         character: &'static str,
         question: &'static str,
     },
+    /// A choice a Fabled or Loric leaves to the storyteller.
+    Fabled {
+        character: &'static str,
+        question: &'static str,
+    },
 }
 
 impl fmt::Display for Reason {
@@ -76,6 +81,10 @@ impl fmt::Display for Reason {
                 character,
                 question,
             } => write!(f, "{character} {player}: {question}"),
+            Reason::Fabled {
+                character,
+                question,
+            } => write!(f, "{character}: {question}"),
         }
     }
 }

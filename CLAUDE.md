@@ -17,6 +17,8 @@ Rust Blood on the Clocktower storyteller engine. Read README.md for the architec
 - A player who believes they are a character they are not (`Player::believes`) acts as it but is malfunctioning. Hooks run for every ability a player has (`State::abilities`: own unless lost, believed, gained).
 - Any death (demon, execution, ability) goes through `ctx::Write::kill`, where abilities may prevent or redirect it (`intercept_death`). Setup counts come from `setup_counts` adjustments applied by `setup::choose`.
 
+- Fabled and Loric (Knaves, Storm Catcher are Loric per the wiki) are storyteller-side `character::Kind`s: every one listed on a script is in play; they act through the `fabled_*` hooks, which take no player. Travellers are seated at setup with a chosen alignment (`game::Seat::traveller`); the simulator adds up to two when the script lists Travellers.
+
 - Adding a character is one file `src/characters/<id>.rs` plus one `registry!` line, with no engine edits: compose `ability` building blocks; if a character family needs engine support, add a general mechanism (generic `storyteller::Reason::Ability`, `info::Message` variants), never a special case. Guide: `docs/adding-characters.md`.
 
 ## Conventions

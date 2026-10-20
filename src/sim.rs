@@ -44,10 +44,16 @@ const BREAKS_MADNESS: f64 = 0.3;
 /// Chance a player who "may choose" chooses no-one (the Po charging up, a
 /// player chosen by the Al-Hadikhia choosing death).
 const CHOOSES_NO_ONE: f64 = 0.2;
+/// Chance a player agrees when asked (the Harlot's visit, another Matron swap).
+const AGREES: f64 = 0.5;
+/// At most this many Travellers join a game whose script has them.
+const MAX_TRAVELLERS: usize = 2;
+/// Chance a Traveller is evil.
+const EVIL_TRAVELLER: f64 = 0.4;
 
-const NAMES: [&str; MAX_PLAYERS] = [
+const NAMES: [&str; MAX_PLAYERS + MAX_TRAVELLERS] = [
     "Ada", "Bram", "Cleo", "Dev", "Esme", "Finn", "Gus", "Hana", "Ivo", "Juno", "Kit", "Lux",
-    "Mira", "Nico", "Oona",
+    "Mira", "Nico", "Oona", "Pip", "Quin",
 ];
 
 /// A legal setup from `script` (see `setup::choose`) in random seat order.
@@ -62,6 +68,37 @@ pub fn setup(
         .iter()
         .zip(characters)
         .map(|(name, c)| (player::Id::new(*name), c))
+        .collect()
+}
+
+/// Up to `MAX_TRAVELLERS` of the script's Travellers, each with a random
+/// alignment, seated after the `residents` players.
+pub fn travellers(
+    rng: &mut impl Rng,
+    residents: usize,
+    script: &script::Script,
+) -> Vec<game::Seat> {
+    let available: Vec<character::Ref> = script
+        .characters
+        .iter()
+        .copied()
+        .filter(|c| c.kind() == character::Kind::Traveller)
+        .collect();
+    if available.is_empty() {
+        return Vec::new();
+    }
+    let count = rng.random_range(0..=MAX_TRAVELLERS.min(available.len()));
+    available
+        .choose_multiple(rng, count)
+        .zip(&NAMES[residents.min(MAX_PLAYERS)..])
+        .map(|(c, name)| {
+            let alignment = if rng.random_bool(EVIL_TRAVELLER) {
+                character::Alignment::Evil
+            } else {
+                character::Alignment::Good
+            };
+            game::Seat::traveller(player::Id::new(*name), *c, alignment)
+        })
         .collect()
 }
 
@@ -382,9 +419,12 @@ impl table::Io for Recorder {
                 }
             }
             event::Event::Nominated { nominee, nominator } => {
-                let step = self.push(Kind::Event, Some(nominator), text, Audience::Public);
+                let step = self.push(Kind::Event, nominator.as_ref(), text, Audience::Public);
                 step.flow = Some(Flow {
-                    from: Endpoint::Player(nominator.to_string()),
+                    from: match nominator {
+                        Some(p) => Endpoint::Player(p.to_string()),
+                        None => Endpoint::Storyteller,
+                    },
                     to: Endpoint::Player(nominee.to_string()),
                 });
             }
@@ -393,6 +433,9 @@ impl table::Io for Recorder {
             }
             event::Event::Announced(_) => {
                 self.push(Kind::Event, None, text, Audience::Public);
+            }
+            event::Event::SeatsSwapped(a, _) | event::Event::GhostVoteSpent(a) => {
+                self.push(Kind::Event, Some(a), text, Audience::Public);
             }
             event::Event::Executed(_) => {
                 self.push(Kind::Event, None, text, Audience::Public);
@@ -422,7 +465,9 @@ impl table::Io for Recorder {
             event::Event::KillRedirected { to, .. } => {
                 self.push(Kind::Event, Some(to), text, Audience::Storyteller);
             }
-            event::Event::Note(_) | event::Event::FabledAdded(_) => {
+            event::Event::Note(_)
+            | event::Event::FabledAdded(_)
+            | event::Event::FabledMarked { .. } => {
                 self.push(Kind::Event, None, text, Audience::Storyteller);
             }
         }
@@ -445,6 +490,23 @@ impl table::Io for Recorder {
 
     fn broke_madness(&mut self, _player: &player::Id, _about: &'static str) -> bool {
         self.rng.random_bool(BREAKS_MADNESS)
+    }
+
+    fn ask_yes_no(&mut self, player: &player::Id, prompt: &str) -> bool {
+        let yes = self.rng.random_bool(AGREES);
+        let answer = if yes { "yes" } else { "no" };
+        let audience = match self.phase {
+            game::Phase::Day(_) => Audience::Public,
+            _ => Audience::Player,
+        };
+        let step = self.push(
+            Kind::Ask,
+            Some(player),
+            format!("{prompt} {answer}"),
+            audience,
+        );
+        step.flow = Some(Flow::from_player(player));
+        yes
     }
 
     fn decided(&mut self, decision: &storyteller::Decision, picks: &[usize]) {
@@ -471,7 +533,12 @@ impl table::Io for Recorder {
 /// Plays a whole random game with `players` seats.
 pub fn simulate(seed: u64, players: usize, script: &script::Script) -> Trace {
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-    let mut state = game::State::new(setup(&mut rng, players, script));
+    let mut seated: Vec<game::Seat> = setup(&mut rng, players, script)
+        .into_iter()
+        .map(|(id, c)| game::Seat::new(id, c))
+        .collect();
+    seated.extend(travellers(&mut rng, players, script));
+    let mut state = game::State::seated(seated);
     let mut storyteller = storyteller::Random::seeded(rng.random());
     let mut table = Recorder {
         rng: rand::rngs::StdRng::seed_from_u64(rng.random()),
@@ -525,32 +592,43 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
     }
     let mut best: Option<(player::Id, usize)> = None;
     let mut tied = false;
-    let mut nominators: Vec<player::Id> = ctx.state().alive_ids();
-    nominators.shuffle(rng);
     let mut nominated: Vec<player::Id> = Vec::new();
-    for nominator in nominators.into_iter().take(rng.random_range(1..=3)) {
-        if ctx.state().winner().is_some() || !ctx.state().is_alive(&nominator) {
-            continue;
+    let storyteller_nominates = narrator::storyteller_nominations(ctx);
+    let players_nominate = storyteller_nominates.is_none();
+    let nominations: Vec<(Option<player::Id>, Option<player::Id>)> = match storyteller_nominates {
+        // Only the storyteller nominates (the Bishop).
+        Some(nominees) => nominees.into_iter().map(|n| (None, Some(n))).collect(),
+        None => {
+            let mut nominators: Vec<player::Id> = ctx.state().alive_ids();
+            nominators.shuffle(rng);
+            let count = rng.random_range(1..=3);
+            nominators
+                .into_iter()
+                .take(count)
+                .map(|n| (Some(n), None))
+                .collect()
         }
-        let state = ctx.state();
-        let choices: Vec<player::Id> = state
-            .alive_except(&nominator)
-            .into_iter()
-            .filter(|p| !nominated.contains(p) && !(state.is_evil(&nominator) && state.is_evil(p)))
-            .collect();
-        let Some(nominee) = choices.choose(rng).cloned() else {
-            continue;
+    };
+    for (nominator, nominee) in nominations {
+        if ctx.state().winner().is_some() {
+            break;
+        }
+        let nominee = match (&nominator, nominee) {
+            (_, Some(nominee)) => nominee,
+            (Some(nominator), None) => {
+                match pick_nominee(ctx.state(), nominator, &nominated, rng) {
+                    Some(nominee) => nominee,
+                    None => continue,
+                }
+            }
+            (None, None) => continue,
         };
         nominated.push(nominee.clone());
-        narrator::nominate(ctx, &nominator, &nominee);
-        if !ctx.state().is_alive(&nominator) || ctx.state().executed_today().is_some() {
+        let Some(votes) = nominate_and_vote(ctx, nominator.as_ref(), &nominee, rng) else {
             narrator::end_day(ctx);
             return; // the Virgin executed the nominator
-        }
-        let voters = voters(ctx.state(), &nominee, rng);
-        let votes = voters.len();
-        let needed = ctx.state().alive_ids().len().div_ceil(2);
-        narrator::vote(ctx, &nominee, voters, needed);
+        };
+        let needed = needed(ctx.state());
         if votes >= needed {
             match &best {
                 Some((_, top)) if votes < *top => {}
@@ -567,6 +645,19 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
         && ctx.state().winner().is_none()
     {
         ctx.execute(&nominee);
+        // After the first execution, the Butcher may nominate again (once:
+        // a second execution does not allow a third), unless only the
+        // storyteller nominates.
+        if players_nominate
+            && let Some(nominator) = narrator::nominate_again(ctx.state()).first()
+            && ctx.state().winner().is_none()
+            && let Some(nominee) = pick_nominee(ctx.state(), nominator, &nominated, rng)
+            && let Some(votes) = nominate_and_vote(ctx, Some(nominator), &nominee, rng)
+            && votes >= needed(ctx.state())
+            && ctx.state().winner().is_none()
+        {
+            ctx.execute(&nominee);
+        }
     }
     if ctx.state().winner().is_none() {
         narrator::check_madness(ctx);
@@ -574,6 +665,54 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
     if ctx.state().winner().is_none() {
         narrator::end_day(ctx);
     }
+}
+
+/// Votes needed to execute: half the living players, rounded up.
+fn needed(state: &game::State) -> usize {
+    state.alive_ids().len().div_ceil(2)
+}
+
+/// A living player `nominator` may nominate who was not nominated today
+/// (evil players do not nominate evil players).
+fn pick_nominee(
+    state: &game::State,
+    nominator: &player::Id,
+    nominated: &[player::Id],
+    rng: &mut impl Rng,
+) -> Option<player::Id> {
+    if !state.is_alive(nominator) {
+        return None;
+    }
+    let choices: Vec<player::Id> = state
+        .alive_except(nominator)
+        .into_iter()
+        .filter(|p| !nominated.contains(p) && !(state.is_evil(nominator) && state.is_evil(p)))
+        .collect();
+    choices.choose(rng).cloned()
+}
+
+/// Nominates `nominee` (by the storyteller when `nominator` is `None`) and
+/// holds the vote; returns the votes counted, or `None` if the nomination
+/// itself ended the day (the Virgin).
+fn nominate_and_vote(
+    ctx: &mut ctx::Write<'_>,
+    nominator: Option<&player::Id>,
+    nominee: &player::Id,
+    rng: &mut impl Rng,
+) -> Option<usize> {
+    let executed_before = ctx.state().executed_today().is_some();
+    match nominator {
+        Some(nominator) => narrator::nominate(ctx, nominator, nominee),
+        None => narrator::storyteller_nominates(ctx, nominee),
+    }
+    let ended = nominator.is_some_and(|n| !ctx.state().is_alive(n))
+        || (!executed_before && ctx.state().executed_today().is_some());
+    if ended {
+        return None;
+    }
+    let voters = voters(ctx.state(), nominee, rng);
+    let needed = needed(ctx.state());
+    Some(narrator::vote(ctx, nominee, voters, needed))
 }
 
 /// Living players vote (ghost votes are not modelled): evil players back good

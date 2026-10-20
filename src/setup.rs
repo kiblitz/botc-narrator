@@ -61,7 +61,7 @@ impl Counts {
             character::Kind::Outsider => self.outsiders,
             character::Kind::Minion => self.minions,
             character::Kind::Demon => self.demons,
-            character::Kind::Traveller | character::Kind::Fabled => 0,
+            character::Kind::Traveller | character::Kind::Fabled | character::Kind::Loric => 0,
         }
     }
 
@@ -73,7 +73,7 @@ impl Counts {
             character::Kind::Outsider => counts.outsiders = n,
             character::Kind::Minion => counts.minions = n,
             character::Kind::Demon => counts.demons = n,
-            character::Kind::Traveller | character::Kind::Fabled => {
+            character::Kind::Traveller | character::Kind::Fabled | character::Kind::Loric => {
                 panic!("{kind} is not part of the setup counts")
             }
         }
@@ -114,7 +114,7 @@ struct Pick {
 /// with Townsfolk.
 pub fn choose(rng: &mut impl Rng, players: usize, script: &script::Script) -> Vec<character::Ref> {
     let players = players.clamp(MIN_PLAYERS, MAX_PLAYERS);
-    let base = Counts::base(players);
+    let base = with_fabled(rng, Counts::base(players), script);
     let mut picks: Vec<Pick> = Vec::new();
     for _ in 0..MAX_ROUNDS {
         let counts = adjusted(base, &picks);
@@ -152,6 +152,18 @@ pub fn choose(rng: &mut impl Rng, players: usize, script: &script::Script) -> Ve
         }
     }
     picks.into_iter().map(|p| p.character).collect()
+}
+
+/// `base` adjusted by the script's Fabled and Loric, which are all in play
+/// (the Sentinel: one more or one fewer Outsider), each option at random.
+fn with_fabled(rng: &mut impl Rng, base: Counts, script: &script::Script) -> Counts {
+    script
+        .characters
+        .iter()
+        .filter(|c| c.kind().storyteller_side())
+        .fold(base, |counts, f| {
+            *f.setup_counts(counts).choose(rng).unwrap_or(&counts)
+        })
 }
 
 /// `base` with every pick's chosen adjustment applied in pick order.

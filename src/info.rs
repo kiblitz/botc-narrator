@@ -29,6 +29,14 @@ pub enum Message {
         evil: Vec<player::Id>,
     },
     Bluffs(Vec<&'static str>),
+    Alignment(character::Alignment),
+    /// The character is not in play.
+    NotInPlay(&'static str),
+    /// "This character selected you", and what it did.
+    Selected {
+        by: &'static str,
+        effect: &'static str,
+    },
     Grimoire(Vec<(player::Id, &'static str)>),
     /// A player, pointed at.
     Player(player::Id),
@@ -64,7 +72,10 @@ impl Message {
             | Message::YesNo(_)
             | Message::Character(_)
             | Message::Characters(_)
-            | Message::Bluffs(_) => Vec::new(),
+            | Message::Bluffs(_)
+            | Message::Alignment(_)
+            | Message::NotInPlay(_)
+            | Message::Selected { .. } => Vec::new(),
         }
     }
 
@@ -74,6 +85,7 @@ impl Message {
             Message::OneOf { character, .. }
             | Message::Character(character)
             | Message::Is { character, .. } => vec![*character],
+            Message::Selected { by, .. } | Message::NotInPlay(by) => vec![*by],
             Message::Bluffs(names) | Message::Characters(names) => names.clone(),
             Message::Grimoire(seats) => seats.iter().map(|(_, c)| *c).collect(),
             Message::Count { .. }
@@ -82,6 +94,7 @@ impl Message {
             | Message::Group { .. }
             | Message::Player(_)
             | Message::Direction(_)
+            | Message::Alignment(_)
             | Message::Winning(_) => Vec::new(),
         }
     }
@@ -109,6 +122,9 @@ impl fmt::Display for Message {
             } => write!(f, "{}: {count} {noun}", join(players)),
             Message::Team { evil } => write!(f, "Evil: {}", join(evil)),
             Message::Bluffs(names) => write!(f, "Bluffs: {}", join(names)),
+            Message::Alignment(alignment) => write!(f, "{alignment}"),
+            Message::NotInPlay(name) => write!(f, "The {name} is not in play"),
+            Message::Selected { by, effect } => write!(f, "The {by} selected you: {effect}"),
             Message::Grimoire(seats) => {
                 let seats: Vec<String> = seats.iter().map(|(p, c)| format!("{p}={c}")).collect();
                 f.write_str(&seats.join(", "))

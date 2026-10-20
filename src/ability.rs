@@ -275,6 +275,7 @@ pub fn noun(kind: character::Kind) -> &'static str {
         character::Kind::Demon => "demons",
         character::Kind::Traveller => "travellers",
         character::Kind::Fabled => "fabled",
+        character::Kind::Loric => "loric",
     }
 }
 

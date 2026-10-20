@@ -97,6 +97,11 @@ impl<'a> Read<'a> {
         }
     }
 
+    /// Ask a player a yes/no question (do they agree?).
+    pub fn ask_yes_no(&mut self, player: &player::Id, prompt: &str) -> bool {
+        self.io.ask_yes_no(player, prompt)
+    }
+
     /// Ask a player to choose one of `options` (characters).
     pub fn ask_character(
         &mut self,
@@ -166,7 +171,11 @@ impl<'a> Read<'a> {
         misinformation: Vec<info::Message>,
     ) -> Option<info::Message> {
         let malfunctioning = self.state.is_malfunctioning(player);
-        let must_lie = !misinformation.is_empty() && self.forced_false(player);
+        let forced = !misinformation.is_empty() && self.forced_false(player);
+        // A malfunctioning player may be told either anyway, so a lying
+        // storyteller (Knaves) is only asked about for a functioning one.
+        let must_lie = forced
+            || (!malfunctioning && !misinformation.is_empty() && self.lying_storyteller(player));
         let mut options: Vec<(info::Message, bool)> = if must_lie {
             Vec::new()
         } else {
@@ -291,6 +300,9 @@ impl<'a> Read<'a> {
     /// Whether a living, functioning player's ability forces `receiver`'s
     /// information to be false (`character::Def::forces_false_info`).
     fn forced_false(&self, receiver: &player::Id) -> bool {
+        if self.state.has_effect(receiver, game::Effect::Sober) {
+            return false;
+        }
         self.state.alive_ids().iter().any(|id| {
             !self.state.is_malfunctioning(id)
                 && self
@@ -299,6 +311,21 @@ impl<'a> Read<'a> {
                     .iter()
                     .any(|c| c.forces_false_info(self.state, id, receiver))
         })
+    }
+
+    /// Whether an in-play Fabled or Loric has a lying storyteller give
+    /// `receiver` this information (`character::Def::lies_to`). A sober
+    /// player (the Barista) always gets the truth.
+    fn lying_storyteller(&mut self, receiver: &player::Id) -> bool {
+        if self.state.has_effect(receiver, game::Effect::Sober) {
+            return false;
+        }
+        let fabled = self.state.fabled().to_vec();
+        let mut lies = false;
+        for f in fabled {
+            lies |= f.lies_to(self, receiver);
+        }
+        lies
     }
 
     /// How `target` may misregister: never while malfunctioning.
@@ -479,6 +506,27 @@ impl<'a> Write<'a> {
         self.record(event::Event::Revived(target.clone()));
     }
 
+    /// Puts a storyteller-side token on an in-play Fabled or Loric.
+    pub fn mark_fabled(&mut self, fabled: character::Ref, effect: game::Effect) {
+        self.state.mark_fabled(fabled, effect);
+        self.record(event::Event::FabledMarked {
+            fabled: fabled.name(),
+            effect,
+        });
+    }
+
+    /// Two players swap seats (the Matron).
+    pub fn swap_seats(&mut self, a: &player::Id, b: &player::Id) {
+        self.state.swap_seats(a, b);
+        self.record(event::Event::SeatsSwapped(a.clone(), b.clone()));
+    }
+
+    /// A dead player gives away their vote token (to the Beggar).
+    pub fn spend_ghost_vote(&mut self, player: &player::Id) {
+        self.state.spend_ghost_vote(player);
+        self.record(event::Event::GhostVoteSpent(player.clone()));
+    }
+
     /// Tell `target` they are `character`, which they are not (or, with
     /// `None`, that they are their real character again).
     pub fn set_believed(&mut self, target: &player::Id, character: Option<character::Ref>) {
@@ -505,13 +553,29 @@ impl<'a> Write<'a> {
         });
     }
 
-    /// `target` changes alignment (their character stays).
-    pub fn set_alignment(&mut self, target: &player::Id, alignment: character::Alignment) {
+    /// `target` changes alignment (their character stays), unless an
+    /// in-play Fabled forbids it (`character::Def::permits_alignment_change`).
+    /// Returns whether it changed.
+    pub fn set_alignment(&mut self, target: &player::Id, alignment: character::Alignment) -> bool {
+        if self.state.alignment(target) == alignment {
+            return false;
+        }
+        let refused = self
+            .state
+            .fabled()
+            .iter()
+            .find(|f| !f.permits_alignment_change(self.state, target, alignment));
+        if let Some(f) = refused {
+            let note = format!("{target} stays {} ({})", alignment.opposite(), f.name());
+            self.note(note);
+            return false;
+        }
         self.state.set_alignment(target, alignment);
         self.record(event::Event::AlignmentChanged {
             player: target.clone(),
             alignment,
         });
+        true
     }
 
     /// The script being played (see `game::State::script`).
@@ -519,19 +583,19 @@ impl<'a> Write<'a> {
         self.state.set_script(characters);
     }
 
-    /// Put a Fabled character in play (it is never seated).
+    /// Put a Fabled or Loric character in play (it is never seated).
     pub fn add_fabled(&mut self, fabled: character::Ref) {
-        assert_eq!(
-            fabled.kind(),
-            character::Kind::Fabled,
-            "{} is not Fabled",
+        assert!(
+            fabled.kind().storyteller_side(),
+            "{} is not Fabled or Loric",
             fabled.name()
         );
         self.state.add_fabled(fabled);
         self.record(event::Event::FabledAdded(fabled.name()));
     }
 
-    /// Attempt to kill `target`. Monk protection stops demon kills; then every
+    /// Attempt to kill `target`. Monk protection stops demon kills, and an
+    /// `ExecutionOnly` token every death but execution; then every
     /// functioning living player's abilities may prevent or redirect the
     /// death (`character::Def::intercept_death`). Returns whether someone died.
     pub fn kill(&mut self, target: &player::Id, cause: event::Cause) -> bool {
@@ -540,6 +604,17 @@ impl<'a> Write<'a> {
         }
         if cause == event::Cause::Demon
             && let Some(by) = self.state.effect_source(target, game::Effect::Protected)
+        {
+            self.record(event::Event::KillPrevented {
+                player: target.clone(),
+                by,
+            });
+            return false;
+        }
+        if cause != event::Cause::Execution
+            && let Some(by) = self
+                .state
+                .effect_source(target, game::Effect::ExecutionOnly)
         {
             self.record(event::Event::KillPrevented {
                 player: target.clone(),
@@ -673,6 +748,10 @@ impl<'a> Write<'a> {
         max: usize,
     ) -> Vec<player::Id> {
         self.read().ask_up_to(player, prompt, candidates, max)
+    }
+
+    pub fn ask_yes_no(&mut self, player: &player::Id, prompt: &str) -> bool {
+        self.read().ask_yes_no(player, prompt)
     }
 
     pub fn ask_character(

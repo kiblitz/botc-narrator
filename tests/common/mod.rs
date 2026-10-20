@@ -33,6 +33,8 @@ pub struct Recorder {
     answers: VecDeque<Vec<player::Id>>,
     /// Players who break their madness whenever asked.
     pub breaks_madness: Vec<player::Id>,
+    /// Answers to yes/no questions, in order; then "no".
+    pub yes_no: VecDeque<bool>,
     pub log: String,
 }
 
@@ -90,6 +92,15 @@ impl table::Io for Recorder {
         ));
     }
 
+    fn ask_yes_no(&mut self, player: &player::Id, prompt: &str) -> bool {
+        let yes = self.yes_no.pop_front().unwrap_or(false);
+        self.line(format!(
+            "  {player}? {prompt} => {}",
+            if yes { "yes" } else { "no" }
+        ));
+        yes
+    }
+
     fn broke_madness(&mut self, player: &player::Id, about: &'static str) -> bool {
         let broke = self.breaks_madness.contains(player);
         self.line(format!("  {player} mad about {about}: broke = {broke}"));
@@ -119,6 +130,21 @@ impl Game {
             table: Recorder::default(),
             storyteller: storyteller::Scripted::default(),
         }
+    }
+
+    /// A game with explicit seats (Travellers with their alignment).
+    pub fn seated(seats: Vec<game::Seat>) -> Self {
+        Self {
+            state: game::State::seated(seats),
+            table: Recorder::default(),
+            storyteller: storyteller::Scripted::default(),
+        }
+    }
+
+    /// Queue answers for the next yes/no questions.
+    pub fn yes_no(&mut self, answers: &[bool]) -> &mut Self {
+        self.table.yes_no = answers.iter().copied().collect();
+        self
     }
 
     /// Queue answers for the next player questions, one entry per question.
@@ -164,7 +190,12 @@ pub fn grimoire(state: &game::State) -> String {
         if let Some(believed) = p.believes {
             let _ = write!(out, " (believes {})", believed.name());
         }
-        if p.alignment != p.character.kind().alignment().unwrap_or(p.alignment) {
+        if p.alignment
+            != p.character
+                .kind()
+                .alignment()
+                .unwrap_or(character::Alignment::Good)
+        {
             let _ = write!(out, " ({})", p.alignment);
         }
         for ability in &p.gained {

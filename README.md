@@ -59,7 +59,9 @@ Each player also has:
 - **abilities** (`State::abilities`): their own character's (unless lost), the believed character's and any gained ones (`ctx::Write::gain_ability` / `lose_ability`). Night actions and every player hook run for each ability; who acts is decided when each character's turn comes, so an ability gained earlier that night wakes in its own place in the night order. Once-per-game and other tokens are kept per ability (`source`).
 - an **alignment** set at seating (`game::Seat`): the character's, or chosen for a Traveller.
 
-Character kinds are Townsfolk, Outsider, Minion, Demon, **Traveller** (seated, chosen alignment, outside the setup counts) and **Fabled** (storyteller-side: `ctx::Write::add_fabled`, never seated).
+Character kinds are Townsfolk, Outsider, Minion, Demon, **Traveller** (seated, chosen alignment, outside the setup counts) **Fabled** and **Loric** (storyteller-side: never seated; every Fabled and Loric on a script is put in play by `narrator::setup`, and its `setup_counts` apply to the setup).
+
+Reminder tokens with rules meaning beyond poison and protection: `Sober` (sober, healthy and true info, the Barista; a character may also be `always_sober`, the Beggar), `ActsTwice` (night actions run twice), `AbilityRestored` (a dead player's ability works until dusk, the Bone Collector) and `ExecutionOnly` (only execution kills, the Storm Catcher). Votes are tallied by `narrator::vote` with each functioning ability's `vote_weight` (Bureaucrat x3, a Beggar without a token 0). Players may answer yes/no questions (`table::Io::ask_yes_no`: the Harlot's visit, another Matron swap). `ctx::Write::swap_seats` reorders the circle.
 
 ### Adding characters and scripts
 
@@ -79,6 +81,10 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `misregistration` | how it may register falsely |
 | `counts_as_demon` | whether a living holder keeps evil in the game (good wins when none lives; a Lil' Monsta-like carrier gains such an ability) |
 | `forces_false_info` | makes other players' information false (Vortox) |
+| `always_sober` | the player can never be drunk or poisoned (Beggar) |
+| `vote_weight` | how much a vote counts (Bureaucrat, Beggar) |
+| `storyteller_nominations`, `nominates_again` | only the storyteller nominates, and whom (Bishop); a second nomination after the day's first execution (Butcher) |
+| `fabled_setup`, `fabled_dusk`, `permits_alignment_change`, `lies_to` | Fabled and Loric (no player): setup (Storm Catcher), dusk (Knaves switch), vetoing alignment changes (Spirit of Ivory), a lying storyteller for a player's information (Knaves) |
 
 Extra deaths at other times are plain `ctx::Write::kill` calls from any hook.
 
@@ -88,7 +94,9 @@ A script is a JSON file in `data/scripts/<id>.json` in the standard script forma
 
 ### Not yet modelled
 
-Butler voting restriction, nomination/voting rules, and reminder tokens in the Spy's grimoire view. Misinformation for "one of these two is the X" only offers characters in play, not the whole script. Abilities cannot yet modify votes (vote weight, dead votes, Butler); a believed character makes every ability of that player malfunction (right for the Drunk, not for a Lunatic who gains another ability); nothing can veto a win. The Saint's loss fires on execution before any ability can prevent the death. The simulator's player view shows a Drunk their real character (it does not read `believes` yet). The Fang Gu's jump only notices Monk protection (other ways an Outsider would survive still let it jump). A Cerenovus execution is judged once, at the end of the day. The Mathematician's count is an approximation: the engine does not record which abilities misfired, so any number up to how many other players are malfunctioning counts as true and the storyteller picks. The Chambermaid counts a player as woken by their ability if one of their abilities has a turn tonight that it wakes for, judged when she acts (a player who dies before a later turn still counts). The Seamstress passes by pointing at herself. The Dreamer may be shown the Vortox, and the Grandmother does not yet trigger the Leviathan jinx.
+Travellers: they are seated at setup only (no joining later, no exile). The Bishop's storyteller nominates one opposing player a day (not everyone on the final day), and storyteller nominations do not trigger the Virgin. The Barista's "works twice" repeats night actions only and does not refresh a used once-per-game ability; the Bone Collector's restored player acts with their ability until dusk (night wakes and every hook) but used once-per-game abilities stay used. Only one Butcher's second nomination happens per day. The Harlot's storyteller is never offered the deaths when the chosen player is a demon. Fabled and Loric: the Storm Catcher's evil players learn the named player at setup, before the first night, and the protection stays with that player; the Knaves' players choose a storyteller for each piece of ability information, and the two storytellers' choices (who lies, whether to switch) are one decision each. The Bureaucrat combined with a Thief is not modelled.
+
+Nominating a Traveller's exile, and reminder tokens in the Spy's grimoire view. Misinformation for "one of these two is the X" only offers characters in play, not the whole script. Dead players' votes in the simulator and the Butler's voting restriction are not modelled; a believed character makes every ability of that player malfunction (right for the Drunk, not for a Lunatic who gains another ability); nothing can veto a win. The Saint's loss fires on execution before any ability can prevent the death. The simulator's player view shows a Drunk their real character (it does not read `believes` yet). The Fang Gu's jump only notices Monk protection (other ways an Outsider would survive still let it jump). A Cerenovus execution is judged once, at the end of the day. The Mathematician's count is an approximation: the engine does not record which abilities misfired, so any number up to how many other players are malfunctioning counts as true and the storyteller picks. The Chambermaid counts a player as woken by their ability if one of their abilities has a turn tonight that it wakes for, judged when she acts (a player who dies before a later turn still counts). The Seamstress passes by pointing at herself. The Dreamer may be shown the Vortox, and the Grandmother does not yet trigger the Leviathan jinx.
 
 Demons:
 
@@ -107,7 +115,7 @@ Demons:
 
 `site/` is a static page that generates random, plausible Trouble Brewing games in the browser (the engine compiled to WebAssembly from `web/`) and lets you step through them. Players sit in a circle; each step shows who is awake, what they were told or asked, storyteller decisions and public events. Click a player to see everything they know so far, or switch the view to one player's point of view to hide what they couldn't see. Pick a script (only Trouble Brewing so far; new scripts in `script::all()` appear automatically). Games are reproducible from `#script=...&seed=...&players=...` in the URL. Information steps highlight the players and characters they name.
 
-Generation (`sim.rs`) uses legal setups for 5-15 players (`setup::choose`), players who act on simple heuristics (evil targets good), a random storyteller, daily nominations with a majority vote (no ghost votes), mad players who break madness with a fixed probability, players who "may choose" choosing no-one now and then (the Po charging), and night deaths announced at dawn. Day actions such as the Slayer's shot are public.
+Generation (`sim.rs`) uses legal setups for 5-15 players (`setup::choose`), players who act on simple heuristics (evil targets good), a random storyteller, daily nominations with a majority vote (no ghost votes; vote weights apply), up to two Travellers with random alignments when the script has them, mad players who break madness with a fixed probability, players who "may choose" choosing no-one now and then (the Po charging), and night deaths announced at dawn. Day actions such as the Slayer's shot are public.
 
 ```sh
 sh scripts/serve-web.sh              # build the wasm and serve at http://localhost:8080

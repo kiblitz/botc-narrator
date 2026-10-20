@@ -48,6 +48,7 @@ fn know(kind: character::Kind) -> game::Effect {
         character::Kind::Demon => "Know: Demon",
         character::Kind::Traveller => "Know: Traveller",
         character::Kind::Fabled => "Know: Fabled",
+        character::Kind::Loric => "Know: Loric",
     })
 }
 

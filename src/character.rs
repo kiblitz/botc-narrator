@@ -17,6 +17,8 @@ pub enum Kind {
     Traveller,
     /// A storyteller-side character: never seated (see `game::State::fabled`).
     Fabled,
+    /// A storyteller-side rule, in play like a Fabled (Knaves, Storm Catcher).
+    Loric,
 }
 
 impl Kind {
@@ -35,13 +37,18 @@ impl Kind {
         match self {
             Kind::Townsfolk | Kind::Outsider => Some(Alignment::Good),
             Kind::Minion | Kind::Demon => Some(Alignment::Evil),
-            Kind::Traveller | Kind::Fabled => None,
+            Kind::Traveller | Kind::Fabled | Kind::Loric => None,
         }
     }
 
     /// Townsfolk, Outsider, Minion or Demon: counted by the setup.
     pub fn in_setup(self) -> bool {
         self.alignment().is_some()
+    }
+
+    /// Fabled or Loric: in play on the storyteller's side, never seated.
+    pub fn storyteller_side(self) -> bool {
+        matches!(self, Kind::Fabled | Kind::Loric)
     }
 }
 
@@ -222,6 +229,68 @@ pub trait Def: Sync {
     /// The ability that made `mad` mad (a `game::Effect::Mad` token placed by
     /// `me`) learns that they broke madness.
     fn on_madness_broken(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _mad: &player::Id) {}
+
+    /// Whether a player with this character can never be drunk or poisoned
+    /// (the Beggar: "you are sober & healthy").
+    fn always_sober(&self) -> bool {
+        false
+    }
+
+    /// How much `voter`'s vote counts while `me` (functioning) has this
+    /// ability, given the `weight` so far (1 for an ordinary vote): the
+    /// Bureaucrat's chosen player counts 3, a Beggar without a token 0.
+    fn vote_weight(
+        &self,
+        _state: &game::State,
+        _me: &player::Id,
+        _voter: &player::Id,
+        weight: i32,
+    ) -> i32 {
+        weight
+    }
+
+    /// Whom the storyteller nominates today, if this ability (held by a
+    /// living, functioning `me`) says only the storyteller nominates (the
+    /// Bishop). `None` leaves nominations to the players.
+    fn storyteller_nominations(
+        &self,
+        _ctx: &mut ctx::Read<'_>,
+        _me: &player::Id,
+    ) -> Option<Vec<player::Id>> {
+        None
+    }
+
+    /// Whether `me` may nominate again after the day's first execution (the
+    /// Butcher).
+    fn nominates_again(&self) -> bool {
+        false
+    }
+
+    // Storyteller-side hooks, for Fabled and Loric in play
+    // (`game::State::fabled`): they belong to no player.
+
+    /// Before the first night, after the players' setup (Storm Catcher).
+    fn fabled_setup(&self, _ctx: &mut ctx::Write<'_>) {}
+
+    /// When the day ends (Knaves might switch).
+    fn fabled_dusk(&self, _ctx: &mut ctx::Write<'_>) {}
+
+    /// Whether `target` may become `to` (the Spirit of Ivory caps extra evil
+    /// players). A refused change does not happen.
+    fn permits_alignment_change(
+        &self,
+        _state: &game::State,
+        _target: &player::Id,
+        _to: Alignment,
+    ) -> bool {
+        true
+    }
+
+    /// Whether `receiver`'s next ability information comes from a lying
+    /// storyteller (Knaves). Asked once per piece of information.
+    fn lies_to(&self, _ctx: &mut ctx::Read<'_>, _receiver: &player::Id) -> bool {
+        false
+    }
 
     fn misregistration(&self) -> Option<Misregistration> {
         None
