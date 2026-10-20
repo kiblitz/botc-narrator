@@ -1,7 +1,17 @@
 use rand::SeedableRng;
 
 use botc_narrator::character;
+use botc_narrator::script;
 use botc_narrator::sim;
+use botc_narrator::trouble_brewing;
+
+fn simulate(seed: u64, players: usize) -> sim::Trace {
+    sim::simulate(seed, players, &trouble_brewing::script())
+}
+
+fn simulate_json(seed: u64, players: usize) -> String {
+    sim::simulate_json(seed, players, "trouble_brewing").expect("known script")
+}
 
 fn counts(seats: &[(botc_narrator::player::Id, character::Ref)]) -> [usize; 4] {
     let mut counts = [0; 4];
@@ -27,7 +37,7 @@ fn setups_follow_trouble_brewing_counts() {
     for seed in 0..40 {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         for (players, [t, o, m, d]) in expected {
-            let seats = sim::setup(&mut rng, players);
+            let seats = sim::setup(&mut rng, players, &trouble_brewing::script());
             assert_eq!(seats.len(), players);
             let has_baron = seats.iter().any(|(_, c)| c.id() == "baron");
             let shift = if has_baron { 2.min(3 - o) } else { 0 };
@@ -50,7 +60,7 @@ fn simulated_games_are_well_formed_and_deterministic() {
     let mut finished = 0;
     for seed in 0..60 {
         let players = sim::MIN_PLAYERS + (seed as usize % 11);
-        let trace = sim::simulate(seed, players);
+        let trace = simulate(seed, players);
         assert_eq!(trace.players.len(), players);
         assert!(!trace.steps.is_empty());
         for step in &trace.steps {
@@ -65,10 +75,7 @@ fn simulated_games_are_well_formed_and_deterministic() {
         if trace.winner.is_some() {
             finished += 1;
         }
-        assert_eq!(
-            sim::simulate_json(seed, players),
-            sim::simulate_json(seed, players)
-        );
+        assert_eq!(simulate_json(seed, players), simulate_json(seed, players));
     }
     assert!(
         finished >= 50,
@@ -79,7 +86,7 @@ fn simulated_games_are_well_formed_and_deterministic() {
 #[test]
 fn every_death_is_announced_publicly() {
     for seed in 0..60 {
-        let trace = sim::simulate(seed, sim::MIN_PLAYERS + (seed as usize % 11));
+        let trace = simulate(seed, sim::MIN_PLAYERS + (seed as usize % 11));
         let final_seats = trace.snapshots.last().expect("snapshots");
         for seat in final_seats.iter().filter(|s| !s.alive) {
             let announced = trace.steps.iter().any(|s| {
@@ -95,7 +102,7 @@ fn every_death_is_announced_publicly() {
 #[test]
 fn demon_bluffs_are_recorded_with_the_step_they_were_told() {
     // 7+ players always get demon info on night 1.
-    let trace = sim::simulate(7, 8);
+    let trace = simulate(7, 8);
     let bluffs = trace.bluffs.expect("bluffs");
     assert_eq!(bluffs.characters.len(), 3);
     let step = &trace.steps[bluffs.step];
@@ -103,12 +110,12 @@ fn demon_bluffs_are_recorded_with_the_step_they_were_told() {
     assert_eq!(step.player.as_deref(), Some(bluffs.demon.as_str()));
     assert!(step.text.starts_with("Bluffs: "));
     // Too few players: no demon info, so no bluffs.
-    assert!(sim::simulate(7, 5).bluffs.is_none());
+    assert!(simulate(7, 5).bluffs.is_none());
 }
 
 #[test]
 fn vote_steps_name_the_nominee_and_voters() {
-    let trace = sim::simulate(7, 8);
+    let trace = simulate(7, 8);
     let votes: Vec<_> = trace
         .steps
         .iter()
@@ -131,7 +138,7 @@ fn vote_steps_name_the_nominee_and_voters() {
 
 #[test]
 fn information_steps_carry_the_players_and_characters_they_name() {
-    let trace = sim::simulate(7, 8);
+    let trace = simulate(7, 8);
     // Ada (Washerwoman) learns "Bram and Gus: one is the Investigator".
     let step = trace
         .steps
@@ -150,4 +157,15 @@ fn information_steps_carry_the_players_and_characters_they_name() {
     for name in &ask.players {
         assert!(ask.text.contains(name.as_str()));
     }
+}
+
+#[test]
+fn scripts_are_listed_and_unknown_ones_rejected() {
+    let listed: Vec<serde_json::Value> = serde_json::from_str(&sim::scripts_json()).unwrap();
+    assert_eq!(listed.len(), script::all().len());
+    assert_eq!(listed[0]["id"], "trouble_brewing");
+    assert_eq!(listed[0]["name"], "Trouble Brewing");
+    assert!(sim::simulate_json(1, 8, "no_such_script").is_err());
+    let trace: serde_json::Value = serde_json::from_str(&simulate_json(1, 8)).unwrap();
+    assert_eq!(trace["script"], "trouble_brewing");
 }

@@ -54,7 +54,7 @@ test("loading a seed is reproducible and shareable", async ({ page }) => {
   await page.locator("#seed").fill("123");
   await page.locator("#players").selectOption("12");
   await page.locator("#load").click();
-  await expect(page).toHaveURL(/#seed=123&players=12$/);
+  await expect(page).toHaveURL(/#script=trouble_brewing&seed=123&players=12$/);
   expect(await page.locator("#log").innerText()).toBe(first);
 });
 
@@ -208,4 +208,14 @@ test("information highlights the players and characters it names", async ({ page
   await expect(page.locator("#log .current .char-ref")).toHaveText("Investigator");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".seat.mentioned")).toHaveCount(0);
+});
+
+test("a script can be chosen and is kept in the URL", async ({ page }) => {
+  await open(page);
+  await expect(page.locator("#script option")).toHaveText(["Trouble Brewing"]);
+  await expect(page.locator("#script")).toHaveValue("trouble_brewing");
+  await expect(page).toHaveURL(/#script=trouble_brewing&seed=7&players=8$/);
+  // An unknown script in the URL falls back to the first one.
+  await open(page, "#script=nope&seed=7&players=8");
+  await expect(page.locator("#script")).toHaveValue("trouble_brewing");
 });

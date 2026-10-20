@@ -3,6 +3,7 @@ use crate::script;
 
 pub fn script() -> script::Script {
     script::Script {
+        id: "trouble_brewing",
         name: "Trouble Brewing",
         characters: vec![
             &characters::washerwoman::Def,

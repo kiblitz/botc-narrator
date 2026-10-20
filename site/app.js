@@ -28,10 +28,12 @@ let selected = null;
 /** Index into `visibleSteps()` of the current step. */
 let cursor = 0;
 let timer = null;
+/** The scripts the engine offers: `[{ id, name }]`. */
+let scripts = [];
 
-function load(seed, players) {
+function load(seed, players, script) {
   stop();
-  const trace = JSON.parse(botcWeb.simulate(seed, players));
+  const trace = JSON.parse(botcWeb.simulate(seed, players, script));
   // Who is awake, and whose deaths the table has heard about, after each step.
   const awake = [];
   const announced = [];
@@ -45,13 +47,14 @@ function load(seed, players) {
     awake.push(now);
     announced.push(dead);
   }
-  game = { seed, players, trace, awake, announced };
+  game = { seed, players, script, trace, awake, announced };
   pov = "";
   selected = null;
   cursor = 0;
   $("seed").value = seed;
   $("players").value = players;
-  history.replaceState(null, "", `#seed=${seed}&players=${players}`);
+  $("script").value = script;
+  history.replaceState(null, "", `#script=${script}&seed=${seed}&players=${players}`);
   const povSelect = $("pov");
   povSelect.replaceChildren(new Option("Storyteller (everything)", ""));
   for (const seat of trace.players) povSelect.add(new Option(`${seat.name} (${seat.character})`, seat.name));
@@ -340,7 +343,9 @@ function fromHash() {
   const params = new URLSearchParams(location.hash.slice(1));
   const seed = Number.parseInt(params.get("seed"), 10);
   const players = Number.parseInt(params.get("players"), 10);
+  const script = params.get("script");
   return {
+    script: scripts.some((s) => s.id === script) ? script : scripts[0].id,
     seed: Number.isFinite(seed) && seed >= 0 ? seed : randomSeed(),
     players: players >= MIN_PLAYERS && players <= MAX_PLAYERS ? players : 8,
   };
@@ -348,12 +353,15 @@ function fromHash() {
 
 async function main() {
   await botcWeb.default();
+  scripts = JSON.parse(botcWeb.scripts());
+  for (const s of scripts) $("script").add(new Option(s.name, s.id));
   for (let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++) $("players").add(new Option(String(n), String(n)));
   $("controls").addEventListener("submit", (e) => {
     e.preventDefault();
-    load(Number($("seed").value) >>> 0, Number($("players").value));
+    load(Number($("seed").value) >>> 0, Number($("players").value), $("script").value);
   });
-  $("random").addEventListener("click", () => load(randomSeed(), Number($("players").value)));
+  $("random").addEventListener("click", () =>
+    load(randomSeed(), Number($("players").value), $("script").value));
   $("pov").addEventListener("change", (e) => {
     // Keep the position in the game: find the last visible step at or before the current one.
     const current = visibleSteps()[cursor].index;
@@ -383,8 +391,8 @@ async function main() {
     e.preventDefault();
   });
   new ResizeObserver(sizeSeats).observe($("board"));
-  const { seed, players } = fromHash();
-  load(seed, players);
+  const { script, seed, players } = fromHash();
+  load(seed, players, script);
   document.body.dataset.ready = "true";
 }
 

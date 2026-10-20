@@ -20,9 +20,9 @@ use crate::game;
 use crate::info;
 use crate::narrator;
 use crate::player;
+use crate::script;
 use crate::storyteller;
 use crate::table;
-use crate::trouble_brewing;
 
 use crate::characters;
 
@@ -56,12 +56,16 @@ fn distribution(players: usize) -> (usize, usize, usize) {
     }
 }
 
-/// A legal Trouble Brewing setup in random seat order. The Drunk is left out
-/// because it is not modelled yet, so with only three Outsiders available the
-/// Baron adds fewer than two when the base count already has two.
-pub fn setup(rng: &mut impl Rng, players: usize) -> Vec<(player::Id, character::Ref)> {
+/// A legal setup from `script` in random seat order, using the standard
+/// character counts. The Drunk is left out because it is not modelled yet, so
+/// with only three Trouble Brewing Outsiders available the Baron adds fewer
+/// than two when the base count already has two.
+pub fn setup(
+    rng: &mut impl Rng,
+    players: usize,
+    script: &script::Script,
+) -> Vec<(player::Id, character::Ref)> {
     let players = players.clamp(MIN_PLAYERS, MAX_PLAYERS);
-    let script = trouble_brewing::script();
     let of_kind = |kind: character::Kind| -> Vec<character::Ref> {
         script
             .characters
@@ -102,6 +106,8 @@ pub fn setup(rng: &mut impl Rng, players: usize) -> Vec<(player::Id, character::
 #[derive(Clone, Debug, Serialize)]
 pub struct Trace {
     pub seed: u64,
+    /// The script's id.
+    pub script: &'static str,
     pub players: Vec<Seat>,
     /// Grimoire snapshots; each step refers to one by index.
     pub snapshots: Vec<Vec<Seat>>,
@@ -398,9 +404,9 @@ impl table::Io for Recorder {
 }
 
 /// Plays a whole random game with `players` seats.
-pub fn simulate(seed: u64, players: usize) -> Trace {
+pub fn simulate(seed: u64, players: usize, script: &script::Script) -> Trace {
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-    let mut state = game::State::new(setup(&mut rng, players));
+    let mut state = game::State::new(setup(&mut rng, players, script));
     let mut storyteller = storyteller::Random::seeded(rng.random());
     let mut table = Recorder {
         rng: rand::rngs::StdRng::seed_from_u64(rng.random()),
@@ -413,13 +419,12 @@ pub fn simulate(seed: u64, players: usize) -> Trace {
     };
     table.sync(&state);
     let initial = seats(&state);
-    let script = trouble_brewing::script();
 
     let mut ctx = ctx::Write::new(&mut state, &mut table, &mut storyteller);
     narrator::setup(&mut ctx);
     while ctx.state().winner().is_none() {
         match ctx.advance_phase() {
-            game::Phase::Night(_) => narrator::run_night(&mut ctx, &script),
+            game::Phase::Night(_) => narrator::run_night(&mut ctx, script),
             game::Phase::Day(day) if day > MAX_DAYS => break,
             game::Phase::Day(_) => day(&mut ctx, &mut rng),
             game::Phase::Setup => {}
@@ -427,6 +432,7 @@ pub fn simulate(seed: u64, players: usize) -> Trace {
     }
     Trace {
         seed,
+        script: script.id,
         players: initial,
         snapshots: table.snapshots,
         steps: table.steps,
@@ -518,7 +524,27 @@ fn voters(state: &game::State, nominee: &player::Id, rng: &mut impl Rng) -> Vec<
         .collect()
 }
 
-/// [`simulate`], serialized as JSON for the web viewer.
-pub fn simulate_json(seed: u64, players: usize) -> String {
-    serde_json::to_string(&simulate(seed, players)).expect("traces serialize")
+/// [`simulate`] with the script named by `script_id`, serialized as JSON for
+/// the web viewer.
+pub fn simulate_json(seed: u64, players: usize, script_id: &str) -> Result<String, String> {
+    let script = script::by_id(script_id).ok_or_else(|| format!("unknown script {script_id:?}"))?;
+    Ok(serde_json::to_string(&simulate(seed, players, &script)).expect("traces serialize"))
+}
+
+#[derive(Serialize)]
+struct ScriptInfo {
+    id: &'static str,
+    name: &'static str,
+}
+
+/// The available scripts as JSON: `[{ "id", "name" }]`.
+pub fn scripts_json() -> String {
+    let scripts: Vec<ScriptInfo> = script::all()
+        .iter()
+        .map(|s| ScriptInfo {
+            id: s.id,
+            name: s.name,
+        })
+        .collect();
+    serde_json::to_string(&scripts).expect("scripts serialize")
 }
