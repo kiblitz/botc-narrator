@@ -33,7 +33,7 @@ fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
     if let Some(target) = ctx.ask_one(me, "Who do you want to protect?", &candidates)
         && !ctx.state().is_malfunctioning(me)
     {
-        let reminder = game::Reminder::new(&Def, game::Effect::Protected, game::Expiry::Dusk);
+        let reminder = game::Reminder::new(&Def, me, game::Effect::Protected, game::Expiry::Dusk);
         ctx.place_reminder(&target, reminder);
     }
     ctx.sleep(me);

@@ -247,8 +247,7 @@ impl<'a> Write<'a> {
     fn die(&mut self, target: &player::Id, cause: event::Cause) {
         self.state.mark_dead(target);
         // A dead player's ability stops: tokens it placed until dusk are removed.
-        let source = self.state.character(target).id();
-        self.state.remove_reminders(source, game::Expiry::Dusk);
+        self.state.remove_reminders(target, game::Expiry::Dusk);
         self.record(event::Event::Died {
             player: target.clone(),
             cause: cause.clone(),
@@ -278,7 +277,9 @@ impl<'a> Write<'a> {
         self.die(target, event::Cause::Execution);
     }
 
+    /// `target` becomes `into`; their old ability's lingering tokens are removed.
     pub fn transform(&mut self, target: &player::Id, into: character::Ref) {
+        self.state.remove_reminders(target, game::Expiry::Dusk);
         self.state.set_character(target, into);
         self.record(event::Event::Transformed {
             player: target.clone(),

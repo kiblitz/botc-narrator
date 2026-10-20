@@ -653,3 +653,21 @@ fn small_games_skip_minion_and_demon_info() {
     assert!(!transcript.contains("Evil:"), "{transcript}");
     assert!(!transcript.contains("Bluffs:"), "{transcript}");
 }
+
+#[test]
+fn poison_ends_when_the_poisoner_becomes_the_imp() {
+    let mut g = common::Game::new(&[
+        ("Imp", &imp::Def),
+        ("Poisoner", &poisoner::Def),
+        ("Chef", &chef::Def),
+        ("Empath", &empath::Def),
+        ("Monk", &monk::Def),
+    ]);
+    g.run(|ctx| {
+        ctx.advance_phase();
+        ctx.advance_phase();
+    });
+    g.answers(&[&["Chef"], &["Chef"], &["Imp"]]).run(night);
+    assert_eq!(g.state.character(&p("Poisoner")).id(), "imp");
+    assert!(!g.state.has_effect(&p("Chef"), game::Effect::Poisoned));
+}

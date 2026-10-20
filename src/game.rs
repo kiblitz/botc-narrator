@@ -40,20 +40,28 @@ pub enum Expiry {
     Never,
 }
 
-/// A grimoire reminder token. Each `(source, effect)` token exists once:
+/// A grimoire reminder token. Each player's `effect` token exists once:
 /// placing it again moves it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Reminder {
     /// Id of the character whose ability placed the token.
     pub source: &'static str,
+    /// The player whose ability placed the token.
+    pub placed_by: player::Id,
     pub effect: Effect,
     pub expiry: Expiry,
 }
 
 impl Reminder {
-    pub fn new(source: character::Ref, effect: Effect, expiry: Expiry) -> Self {
+    pub fn new(
+        source: character::Ref,
+        placed_by: &player::Id,
+        effect: Effect,
+        expiry: Expiry,
+    ) -> Self {
         Self {
             source: source.id(),
+            placed_by: placed_by.clone(),
             effect,
             expiry,
         }
@@ -258,15 +266,15 @@ impl State {
     pub(crate) fn place_reminder(&mut self, target: &player::Id, reminder: Reminder) {
         for p in &mut self.seats {
             p.reminders
-                .retain(|r| (r.source, r.effect) != (reminder.source, reminder.effect));
+                .retain(|r| (&r.placed_by, r.effect) != (&reminder.placed_by, reminder.effect));
         }
         self.player_mut(target).reminders.push(reminder);
     }
 
-    pub(crate) fn remove_reminders(&mut self, source: &str, expiry: Expiry) {
+    pub(crate) fn remove_reminders(&mut self, placed_by: &player::Id, expiry: Expiry) {
         for p in &mut self.seats {
             p.reminders
-                .retain(|r| r.source != source || r.expiry != expiry);
+                .retain(|r| &r.placed_by != placed_by || r.expiry != expiry);
         }
     }
 
