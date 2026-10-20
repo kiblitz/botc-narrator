@@ -1,6 +1,6 @@
 # botc-narrator
 
-A Blood on the Clocktower storyteller engine in Rust, with the 22 Trouble Brewing characters.
+A Blood on the Clocktower storyteller engine in Rust, with the 22 Trouble Brewing characters and more being added (see [docs/adding-characters.md](docs/adding-characters.md)).
 
 ## Design
 
@@ -86,7 +86,7 @@ A script is a JSON file in `data/scripts/<id>.json` in the standard script forma
 
 ### Not yet modelled
 
-Butler voting restriction, nomination/voting rules, and reminder tokens in the Spy's grimoire view. Misinformation for "one of these two is the X", and misregistration, only offer characters in play, not the whole script. The Saint's loss fires on execution before any ability can prevent the death. The simulator's player view shows a Drunk their real character (it does not read `believes` yet).
+Butler voting restriction, nomination/voting rules, and reminder tokens in the Spy's grimoire view. Misinformation for "one of these two is the X", and misregistration, only offer characters in play, not the whole script. The Saint's loss fires on execution before any ability can prevent the death. The simulator's player view shows a Drunk their real character (it does not read `believes` yet). The Fang Gu's jump only notices Monk protection (other ways an Outsider would survive still let it jump). A Cerenovus execution is judged once, at the end of the day.
 
 ## Simulator site
 
