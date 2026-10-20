@@ -632,6 +632,7 @@ impl State {
         let p = self.player_mut(id);
         p.alive = true;
         p.ghost_vote = false;
+        self.deaths_tonight.retain(|d| d != id);
     }
 
     pub(crate) fn mark_executed(&mut self, id: &player::Id) {

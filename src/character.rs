@@ -166,6 +166,13 @@ pub trait Def: Sync {
         vec![counts]
     }
 
+    /// Ids of characters that must be in play with this one ("[+the
+    /// Damsel]"): if one is on the script but was not picked, it replaces a
+    /// Townsfolk at setup.
+    fn requires(&self) -> &'static [&'static str] {
+        &[]
+    }
+
     /// Whether extra slots of this character's kind are filled with copies of
     /// it (Legion, Riot) when the setup counts ask for more than are available.
     fn duplicates_in_setup(&self) -> bool {

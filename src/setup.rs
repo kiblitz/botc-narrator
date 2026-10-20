@@ -151,7 +151,35 @@ pub fn choose(rng: &mut impl Rng, players: usize, script: &script::Script) -> Ve
             break;
         }
     }
-    picks.into_iter().map(|p| p.character).collect()
+    let mut characters: Vec<character::Ref> = picks.into_iter().map(|p| p.character).collect();
+    add_required(rng, script, &mut characters);
+    characters
+}
+
+/// Each character a pick `requires` that is on the script but not picked
+/// replaces a random Townsfolk that is not itself required or requiring.
+fn add_required(rng: &mut impl Rng, script: &script::Script, characters: &mut Vec<character::Ref>) {
+    let required: Vec<character::Ref> = characters
+        .iter()
+        .flat_map(|c| c.requires())
+        .filter_map(|id| script.characters.iter().copied().find(|c| c.id() == *id))
+        .collect();
+    for needed in required {
+        if characters.iter().any(|c| character::same(*c, needed)) {
+            continue;
+        }
+        let replaceable: Vec<usize> = (0..characters.len())
+            .filter(|&i| {
+                let c = characters[i];
+                c.kind() == character::Kind::Townsfolk
+                    && c.requires().is_empty()
+                    && !characters.iter().any(|o| o.requires().contains(&c.id()))
+            })
+            .collect();
+        if let Some(&i) = replaceable.choose(rng) {
+            characters[i] = needed;
+        }
+    }
 }
 
 /// `base` adjusted by the script's Fabled and Loric, which are all in play

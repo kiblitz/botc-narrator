@@ -100,6 +100,42 @@ pub fn died_today(state: &game::State) -> Vec<player::Id> {
         .collect()
 }
 
+/// Players who nominated since the current day began (or during the last
+/// day, if it is night), in nomination order.
+pub fn nominators_today(state: &game::State) -> Vec<player::Id> {
+    today(state)
+        .iter()
+        .filter_map(|e| match e {
+            event::Event::Nominated { nominator, .. } => nominator.clone(),
+            _ => None,
+        })
+        .collect()
+}
+
+/// What `me` publicly claimed today (or during the last day, if it is
+/// night): pairs of a player and the name of the character `me` said they
+/// are (names, since events compare by value). Claims are not tagged with
+/// the ability that made them.
+pub fn claims_today(state: &game::State, me: &player::Id) -> Vec<(player::Id, &'static str)> {
+    today(state)
+        .iter()
+        .filter_map(|e| match e {
+            event::Event::Claimed { player, claims } if player == me => Some(claims.clone()),
+            _ => None,
+        })
+        .flatten()
+        .collect()
+}
+
+/// `me` publicly claims that each of `claims` is that character.
+pub fn claim(ctx: &mut ctx::Write<'_>, me: &player::Id, claims: Vec<(player::Id, character::Ref)>) {
+    let claims = claims.into_iter().map(|(p, c)| (p, c.name())).collect();
+    ctx.record(event::Event::Claimed {
+        player: me.clone(),
+        claims,
+    });
+}
+
 /// Characters of `kind` on the script that nobody is, or believes they are.
 pub fn not_in_play(state: &game::State, kind: character::Kind) -> Vec<character::Ref> {
     state
@@ -443,6 +479,30 @@ pub fn used_tonight(state: &game::State, me: &player::Id, source: character::Ref
                 _ => false,
             })
         })
+}
+
+/// Every player `source`'s ability (held by `me`) has ever put an `effect`
+/// token on, in the order they were marked.
+pub fn ever_marked(
+    state: &game::State,
+    me: &player::Id,
+    source: character::Ref,
+    effect: game::Effect,
+) -> Vec<player::Id> {
+    state
+        .history()
+        .iter()
+        .filter_map(|e| match e {
+            event::Event::ReminderPlaced { player, reminder }
+                if &reminder.placed_by == me
+                    && reminder.source == source.id()
+                    && reminder.effect == effect =>
+            {
+                Some(player.clone())
+            }
+            _ => None,
+        })
+        .collect()
 }
 
 /// Whether `me` has used `source`'s once-per-game ability.

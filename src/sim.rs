@@ -242,8 +242,10 @@ struct Recorder {
     rng: rand::rngs::StdRng,
     view: game::State,
     phase: game::Phase,
-    /// Night deaths, announced publicly when the day begins.
-    unannounced: Vec<player::Id>,
+    /// Night deaths and revivals, announced publicly when the day begins.
+    unannounced: Vec<(Kind, player::Id, String)>,
+    /// Players awake now; by day, those privately visiting the storyteller.
+    awake: Vec<player::Id>,
     bluffs: Option<Bluffs>,
     snapshots: Vec<Vec<Seat>>,
     steps: Vec<Step>,
@@ -273,9 +275,17 @@ impl Recorder {
     }
 
     fn announce_night_deaths(&mut self) {
-        for dead in std::mem::take(&mut self.unannounced) {
-            let text = format!("{dead} died in the night");
-            self.push(Kind::Death, Some(&dead), text, Audience::Public);
+        for (kind, player, text) in std::mem::take(&mut self.unannounced) {
+            self.push(kind, Some(&player), text, Audience::Public);
+        }
+    }
+
+    /// A player's answer is public by day (the Slayer's shot, the Juggler's
+    /// guesses) unless they are privately visiting the storyteller.
+    fn answer_audience(&self, player: &player::Id) -> Audience {
+        match self.phase {
+            game::Phase::Day(_) if !self.awake.contains(player) => Audience::Public,
+            _ => Audience::Player,
         }
     }
 
@@ -322,21 +332,22 @@ impl Recorder {
 
 impl table::Io for Recorder {
     fn wake(&mut self, player: &player::Id) {
-        self.push(
-            Kind::Wake,
-            Some(player),
-            format!("{player} wakes"),
-            Audience::Player,
-        );
+        // By day, waking is a private visit to the storyteller (the Savant).
+        let text = match self.phase {
+            game::Phase::Day(_) => format!("{player} visits the storyteller"),
+            _ => format!("{player} wakes"),
+        };
+        self.awake.push(player.clone());
+        self.push(Kind::Wake, Some(player), text, Audience::Player);
     }
 
     fn sleep(&mut self, player: &player::Id) {
-        self.push(
-            Kind::Sleep,
-            Some(player),
-            format!("{player} sleeps"),
-            Audience::Player,
-        );
+        let text = match self.phase {
+            game::Phase::Day(_) => format!("{player} returns from the storyteller"),
+            _ => format!("{player} sleeps"),
+        };
+        self.awake.retain(|p| p != player);
+        self.push(Kind::Sleep, Some(player), text, Audience::Player);
     }
 
     fn tell(&mut self, player: &player::Id, message: &info::Message) {
@@ -371,11 +382,7 @@ impl table::Io for Recorder {
         let answer = self.answer(player, candidates, count);
         let names: Vec<&str> = answer.iter().map(player::Id::as_str).collect();
         let text = format!("{prompt} {}", names.join(", "));
-        // Day abilities (the Slayer's shot) are public.
-        let audience = match self.phase {
-            game::Phase::Day(_) => Audience::Public,
-            _ => Audience::Player,
-        };
+        let audience = self.answer_audience(player);
         let step = self.push(Kind::Ask, Some(player), text, audience);
         step.players = answer.iter().map(ToString::to_string).collect();
         step.flow = Some(Flow::from_player(player));
@@ -412,7 +419,8 @@ impl table::Io for Recorder {
                 // The cause is the storyteller's; the table only learns who died.
                 self.push(Kind::Event, Some(player), text, Audience::Storyteller);
                 if let game::Phase::Night(_) = self.phase {
-                    self.unannounced.push(player.clone());
+                    let text = format!("{player} died in the night");
+                    self.unannounced.push((Kind::Death, player.clone(), text));
                 } else {
                     let text = format!("{player} dies");
                     self.push(Kind::Death, Some(player), text, Audience::Public);
@@ -429,7 +437,19 @@ impl table::Io for Recorder {
                 });
             }
             event::Event::Revived(player) => {
-                self.push(Kind::Event, Some(player), text, Audience::Public);
+                self.push(Kind::Event, Some(player), text, Audience::Storyteller);
+                let public = format!("{player} is alive again");
+                if let game::Phase::Night(_) = self.phase {
+                    // Died and came back tonight: the table hears of neither.
+                    let before = self.unannounced.len();
+                    self.unannounced
+                        .retain(|(kind, p, _)| *kind != Kind::Death || p != player);
+                    if self.unannounced.len() == before {
+                        self.unannounced.push((Kind::Event, player.clone(), public));
+                    }
+                } else {
+                    self.push(Kind::Event, Some(player), public, Audience::Public);
+                }
             }
             event::Event::Announced(_) => {
                 self.push(Kind::Event, None, text, Audience::Public);
@@ -462,6 +482,11 @@ impl table::Io for Recorder {
             | event::Event::ReminderRemoved { player, .. } => {
                 self.push(Kind::Event, Some(player), text, Audience::Storyteller);
             }
+            event::Event::Claimed { player, claims } => {
+                let step = self.push(Kind::Event, Some(player), text, Audience::Public);
+                step.players = claims.iter().map(|(p, _)| p.to_string()).collect();
+                step.characters = claims.iter().map(|(_, c)| *c).collect();
+            }
             event::Event::KillRedirected { to, .. } => {
                 self.push(Kind::Event, Some(to), text, Audience::Storyteller);
             }
@@ -482,7 +507,7 @@ impl table::Io for Recorder {
         let answer = self.rng.random_range(0..options.len());
         let name = options[answer].name();
         let text = format!("{prompt} {name}");
-        let step = self.push(Kind::Ask, Some(player), text, Audience::Player);
+        let step = self.push(Kind::Ask, Some(player), text, self.answer_audience(player));
         step.characters = vec![name];
         step.flow = Some(Flow::from_player(player));
         answer
@@ -545,6 +570,7 @@ pub fn simulate(seed: u64, players: usize, script: &script::Script) -> Trace {
         view: state.clone(),
         phase: game::Phase::Setup,
         unannounced: Vec::new(),
+        awake: Vec::new(),
         bluffs: None,
         snapshots: Vec::new(),
         steps: Vec::new(),

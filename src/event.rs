@@ -77,6 +77,12 @@ pub enum Event {
     },
     SeatsSwapped(player::Id, player::Id),
     GhostVoteSpent(player::Id),
+    /// A player publicly claimed that these players are these characters
+    /// (the Juggler's guesses, the Gossip's statement).
+    Claimed {
+        player: player::Id,
+        claims: Vec<(player::Id, &'static str)>,
+    },
     Voted {
         nominee: player::Id,
         voters: Vec<player::Id>,
@@ -137,6 +143,13 @@ impl fmt::Display for Event {
             Event::FabledMarked { fabled, effect } => write!(f, "the {fabled} is marked: {effect}"),
             Event::SeatsSwapped(a, b) => write!(f, "{a} and {b} swap seats"),
             Event::GhostVoteSpent(p) => write!(f, "{p} gives away their vote token"),
+            Event::Claimed { player, claims } => {
+                let claims: Vec<String> = claims
+                    .iter()
+                    .map(|(p, c)| format!("{p} is the {c}"))
+                    .collect();
+                write!(f, "{player} claims: {}", claims.join(", "))
+            }
             Event::Voted {
                 nominee,
                 votes,

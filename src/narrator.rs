@@ -86,8 +86,9 @@ pub fn run_night(ctx: &mut ctx::Write<'_>, script: &script::Script) {
     }
 }
 
-/// The evil team as the minions and demon learn it: Travellers are not in
-/// it, and players whose ability joins it (the Magician) are.
+/// The evil team as the minions and demon learn it: the evil Minions and
+/// Demons (not evil Travellers, nor a Townsfolk turned evil), and players
+/// whose ability joins it (the Magician).
 fn evil_team(state: &game::State) -> info::Message {
     info::Message::Team {
         evil: state
@@ -95,7 +96,10 @@ fn evil_team(state: &game::State) -> info::Message {
             .iter()
             .filter(|p| {
                 let evil = p.alignment == character::Alignment::Evil
-                    && p.character.kind() != character::Kind::Traveller;
+                    && matches!(
+                        p.character.kind(),
+                        character::Kind::Minion | character::Kind::Demon
+                    );
                 let joins = !state.is_malfunctioning(&p.id)
                     && state.abilities(&p.id).iter().any(|c| c.joins_evil_info());
                 evil || joins

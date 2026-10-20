@@ -80,17 +80,21 @@ Override only the hooks the ability uses (the full list is in the README,
 | "today" | `today` (the day's events), `died_today` |
 | longer-lasting tokens | `game::Expiry::Night(n)` (until night `n`), `Expiry::Death` (while the placer's ability lasts) |
 | keep a player asleep tonight | `game::Effect::DoesNotWake` (Exorcist) |
+| everyone an ability ever marked | `ever_marked` |
 | storyteller choices | `storyteller_agrees`, `storyteller_picks_player`, `storyteller_picks_character` |
 | setup modifier | `setup_counts` with `setup::Counts::shift_outsiders` / `with` |
 | not-in-play characters, the script | `not_in_play`, `ctx.state().script()` |
 | madness | `game::Effect::Mad(name)` + `on_madness_broken` |
-| "died today" | `died_today` |
+| "died today", "nominated today" | `died_today`, `nominators_today` |
+| a public claim ("X is the Y"), read back that night | `claim`, `claims_today` |
+| what the player was told | `ctx.inform` returns the chosen message |
+| "[+the Damsel]" | hook `requires` |
 | becomes another character / alignment | `ctx.transform`, `ctx.set_alignment`, `ctx.set_believed` |
 | gains or loses an ability | `ctx.gain_ability`, `ctx.lose_ability` (acts the same night if its turn is still to come) |
 | alternate demon / forced false info | hooks `counts_as_demon`, `forces_false_info` |
 | evil info / no Demon in the game | hooks `joins_evil_info` (Magician), `hides_evil_info` + `narrator::evil_info` (Poppy Grower), `demonless` (Atheist) |
 | survive a death | hook `intercept_death` returning `Prevent` (Fool, Sailor, Tea Lady, Pacifist, Innkeeper); the dying player's own abilities are asked last |
-| day ability | hook `day_action`; the simulator offers every unused one each day |
+| day ability | hook `day_action`; the simulator offers every unused one each day; a private visit to the storyteller is `ctx.wake(me)` ... `ctx.sleep(me)` (answers inside it are private) |
 | ask a player yes/no | `ctx.ask_yes_no` (the Harlot's visit) |
 | sober / acts twice / restored / execution-only | `game::Effect::Sober`, `ActsTwice`, `AbilityRestored`, `ExecutionOnly` with `mark`; hook `always_sober` |
 | votes and nominations | hooks `vote_weight`, `storyteller_nominations`, `nominates_again`; `ctx.remove_reminder`, `ctx.spend_ghost_vote` |

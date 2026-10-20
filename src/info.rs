@@ -45,6 +45,18 @@ pub enum Message {
         player: player::Id,
         character: &'static str,
     },
+    /// "This player is good / evil."
+    IsAligned {
+        player: player::Id,
+        alignment: character::Alignment,
+    },
+    /// Advice for the listener's team: trust this player, or do not.
+    Advice {
+        player: player::Id,
+        trust: bool,
+    },
+    /// Several statements given together (the Savant's two).
+    Statements(Vec<Message>),
     /// Which way round the circle something is.
     Direction(Direction),
     /// Which alignment is winning; `None` for neither.
@@ -77,8 +89,14 @@ impl Message {
             Message::Team { evil } => evil.iter().collect(),
             Message::Group { players, .. } => players.iter().collect(),
             Message::Grimoire(seats) => seats.iter().map(|(p, _)| p).collect(),
-            Message::Player(player) | Message::Is { player, .. } => vec![player],
             Message::Direction(_) | Message::Winning(_) => Vec::new(),
+            Message::Player(player)
+            | Message::Is { player, .. }
+            | Message::IsAligned { player, .. }
+            | Message::Advice { player, .. } => vec![player],
+            Message::Statements(statements) => {
+                statements.iter().flat_map(Message::players).collect()
+            }
             Message::Count { .. }
             | Message::YesNo(_)
             | Message::Character(_)
@@ -100,6 +118,9 @@ impl Message {
             Message::Selected { by, .. } | Message::NotInPlay(by) => vec![*by],
             Message::Bluffs(names) | Message::Characters(names) => names.clone(),
             Message::Grimoire(seats) => seats.iter().map(|(_, c)| *c).collect(),
+            Message::Statements(statements) => {
+                statements.iter().flat_map(Message::characters).collect()
+            }
             Message::Count { .. }
             | Message::YesNo(_)
             | Message::Team { .. }
@@ -107,7 +128,9 @@ impl Message {
             | Message::Player(_)
             | Message::Direction(_)
             | Message::Alignment(_)
-            | Message::Winning(_) => Vec::new(),
+            | Message::Winning(_)
+            | Message::IsAligned { .. }
+            | Message::Advice { .. } => Vec::new(),
             Message::Accuracy(_) => Vec::new(),
         }
     }
@@ -149,14 +172,28 @@ impl fmt::Display for Message {
             Message::Winning(Some(alignment)) => write!(f, "{alignment} is winning"),
             Message::Winning(None) => f.write_str("Neither team is winning"),
             Message::Accuracy(accuracy) => fmt::Debug::fmt(accuracy, f),
+            Message::IsAligned { player, alignment } => write!(f, "{player} is {alignment}"),
+            Message::Advice {
+                player,
+                trust: true,
+            } => write!(f, "Trust {player}"),
+            Message::Advice {
+                player,
+                trust: false,
+            } => write!(f, "Do not trust {player}"),
+            Message::Statements(statements) => f.write_str(&join_with(statements, "; ")),
         }
     }
 }
 
 fn join<T: fmt::Display>(items: &[T]) -> String {
+    join_with(items, ", ")
+}
+
+fn join_with<T: fmt::Display>(items: &[T], separator: &str) -> String {
     items
         .iter()
         .map(ToString::to_string)
         .collect::<Vec<_>>()
-        .join(", ")
+        .join(separator)
 }

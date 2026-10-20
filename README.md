@@ -74,6 +74,7 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `night_action`, `wakes_tonight` | what it does at its turn; whether it wakes tonight (default: alive), checked when the turn comes |
 | `day_action` | a public day ability (Slayer) |
 | `setup_counts`, `duplicates_in_setup` | how it changes the setup counts (Baron: +2 Outsiders; options for "+0 or +1"); copies filling extra slots (Legion, Riot) |
+| `requires` | characters that must be in play with it ("[+the Damsel]"): `setup::choose` swaps one in for a Townsfolk |
 | `on_setup` | storyteller setup choices before the first night (Drunk, Fortune Teller red herring); `game::State::script` is set by then |
 | `on_night_start`, `on_day_start`, `on_day_end` | phase changes, for living players |
 | `on_nominated`, `on_nominates`, `on_vote` | the nominee, the nominator, everyone after a vote |
@@ -111,10 +112,11 @@ Demons:
 - The Leviathan's evil win on a second good execution is judged at dusk.
 - Poison from the No Dashii, Vigormortis, Lleech and Pukka is updated at phase changes and deaths, not the moment the demon becomes drunk or a neighbour changes character.
 - A regurgitated or revived player does not regain used abilities.
-- Revivals and the Al-Hadikhia's choices are announced at once rather than at dawn.
+- The Al-Hadikhia's choices are announced at once rather than at dawn.
 - The Pukka's and Shabaloth's tokens are only updated when they act or die (a Pukka that loses its ability some other way leaves its victim poisoned).
 - Lil' Monsta is not a player, so a poisoned or drunk babysitter still lets a player die (a deliberate reading of the rules).
 - Demon jinxes are not modelled.
+Free-form day abilities are narrowed to typed choices: the Gossip's statement and the Artist's question are "this player is this character" (the Artist is never told "I don't know"), the Savant's statements are about one other player's alignment or character (when malfunctioning, both true or both false is the opposite of one of the storyteller's two picks), and the Fisherman's advice is whom to trust. The Gossip's statement is judged at night, against the characters then. The Juggler guesses only on day 1 (not a later first day as the Juggler), always as many distinct players as they can, up to 5. The Professor and the Huntsman cannot decline while there is someone to choose. The Town Crier ignores Traveller exiles only because exiles are not modelled. The High Priestess sits at 50 / 69, right after the Spy, since the clocktower.online numbering lacks her. In the simulator's player view a revived player still looks dead.
 
 ## Simulator site
 
