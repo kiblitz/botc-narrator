@@ -51,6 +51,9 @@ fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
     ctx.transform(&target, into);
     // The only Demon may have stopped being one.
     ctx.check_win();
+    if ctx.state().winner().is_some() {
+        return;
+    }
     ctx.wake(&target);
     ctx.tell(&target, &info::Message::Character(into.name()));
     ctx.sleep(&target);
