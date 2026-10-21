@@ -341,3 +341,49 @@ test("custom names are used for the seats and kept in the URL", async ({ page })
   await expect(page.locator("#names")).toHaveValue("Alice,Bob,Carol");
   await expect(page.locator(".seat").nth(1)).toHaveAttribute("data-name", "Bob");
 });
+
+test("small scripts only offer player counts they can seat", async ({ page }) => {
+  await open(page, "#script=a_lleech_of_distrust&seed=1&players=15");
+  const counts = await page.locator("#players option").allInnerTexts();
+  const max = Number(counts.at(-1));
+  expect(max).toBeLessThan(15);
+  await expect(page.locator(".seat")).toHaveCount(max);
+  await page.locator("#script").selectOption("trouble_brewing");
+  await expect(page.locator("#players option").last()).toHaveText("15");
+});
+
+test("a Lunatic's bluffs appear around the Lunatic", async ({ page }) => {
+  // Seed 5180090 / 8 players on A Lleech of Distrust: Hana is the Lunatic.
+  await open(page, "#script=a_lleech_of_distrust&seed=5180090&players=8");
+  await page.keyboard.press("Shift+ArrowRight"); // Night 1 (after setup)
+  await page.keyboard.press("Shift+ArrowRight"); // Day 1
+  await expect(page.locator("#phase")).toHaveText("Day 1");
+  await expect(page.locator('.seat[data-name="Hana"] .bluff')).toHaveCount(3);
+});
+
+test("drunk, marionette and lunatic show what they think they are", async ({ page }) => {
+  // Seed 5180090 / 8 players on A Lleech of Distrust: Finn is the Drunk,
+  // Esme the Marionette, Hana the Lunatic.
+  await open(page, "#script=a_lleech_of_distrust&seed=5180090&players=8");
+  await page.keyboard.press("Shift+ArrowRight");
+  for (const name of ["Finn", "Esme", "Hana"]) {
+    await expect(page.locator(`.seat[data-name="${name}"] .belief`)).toHaveCount(1);
+  }
+  const believed = await page.locator('.seat[data-name="Finn"] .belief').getAttribute("title");
+  // In the Drunk's own view, their token is the believed character.
+  await page.locator("#pov").selectOption("Finn");
+  await expect(page.locator('.seat[data-name="Finn"] .token')).toHaveAttribute(
+    "title",
+    believed.replace("Thinks they are the ", ""),
+  );
+  await expect(page.locator(".belief")).toHaveCount(0);
+});
+
+test("a madness reminder shows Mad and the character's icon", async ({ page }) => {
+  // Seed 5180090 / 8 players on A Lleech of Distrust: the Pixie becomes mad.
+  await open(page, "#script=a_lleech_of_distrust&seed=5180090&players=8");
+  await page.keyboard.press("End");
+  const mad = page.locator(".reminder", { hasText: "Mad" }).first();
+  await expect(mad).toHaveText("Mad");
+  await expect(mad.locator("img")).toHaveCount(1);
+});

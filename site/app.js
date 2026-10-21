@@ -36,7 +36,19 @@ function customNames() {
   return $("names").value.split(",").map((n) => n.trim()).filter((n) => n !== "");
 }
 
+/** Player counts the script can seat: small scripts cannot fill big games. */
+function fillPlayerCounts(scriptId) {
+  const select = $("players");
+  const max = scripts.find((s) => s.id === scriptId)?.max_players ?? MAX_PLAYERS;
+  const current = Number(select.value) || 8;
+  select.replaceChildren();
+  for (let n = MIN_PLAYERS; n <= max; n++) select.add(new Option(String(n), String(n)));
+  select.value = String(Math.min(current, max));
+}
+
 function load(seed, players, script) {
+  fillPlayerCounts(script);
+  players = Math.min(players, scripts.find((s) => s.id === script)?.max_players ?? MAX_PLAYERS);
   const names = customNames();
   const trace = JSON.parse(botcWeb.simulate(seed, players, script, names));
   // Who is awake, and whose deaths the table has heard about, after each step.
@@ -151,10 +163,15 @@ function render() {
       mentioned.length < snapshot.length && mentioned.includes(seat.name),
     );
     div.classList.toggle("selected", selected === seat.name);
-    renderToken(div.querySelector(".token"), known ? seat.character : null);
+    // A player who believes they are another character (Drunk, Marionette,
+    // Lunatic) sees that character in their own view; the storyteller sees
+    // the real one, with the believed one beside it.
+    const own = pov === seat.name && seat.believes ? seat.believes : seat.character;
+    renderToken(div.querySelector(".token"), known ? own : null);
+    renderBelief(div, pov === "" ? seat.believes : null);
     const reminders = div.querySelector(".reminders");
     reminders.replaceChildren(
-      ...(pov === "" ? seat.reminders : []).map((r) => el("span", `reminder ${r}`, r)),
+      ...(pov === "" ? seat.reminders : []).map(reminderChip),
     );
     renderBluffs(div, index);
   }
@@ -169,13 +186,42 @@ function render() {
  * The demon's bluffs as small tokens in a crown hugging the top of the demon's
  * token (clear of the name below it), once the demon has been told them.
  */
+/** A reminder token: its label, then the icon of the character it names. */
+function reminderChip(reminder) {
+  const chip = el("span", `reminder ${reminder.label.replace(/\W/g, "")}`, reminder.label);
+  if (reminder.character) {
+    chip.title = `${reminder.label} ${reminder.character}`.trim();
+    const img = el("img");
+    img.alt = reminder.character;
+    img.src = iconUrl(reminder.character);
+    img.addEventListener("error", () => img.replaceWith(` ${reminder.character}`));
+    chip.append(img);
+  }
+  return chip;
+}
+
+/** A small token beside the seat: the character this player thinks they are. */
+function renderBelief(div, character) {
+  div.querySelector(".belief")?.remove();
+  if (!character) return;
+  const token = el("div", "belief");
+  token.title = `Thinks they are the ${character}`;
+  const img = el("img");
+  img.alt = character;
+  img.src = iconUrl(character);
+  img.addEventListener("error", () => img.replaceWith(character.slice(0, 2)));
+  token.append(img);
+  div.append(token);
+}
+
 function renderBluffs(div, index) {
   div.querySelector(".bluffs")?.remove();
-  const bluffs = game.trace.bluffs;
-  const visible = bluffs && div.dataset.name === bluffs.demon && index >= bluffs.step
-    && (pov === "" || pov === bluffs.demon);
+  // Bluffs stay with whoever was told them (the demon, or a Lunatic), even
+  // after a starpass.
+  const name = div.dataset.name;
+  const bluffs = game.trace.bluffs.find((b) => b.player === name);
+  const visible = bluffs && index >= bluffs.step && (pov === "" || pov === name);
   if (!visible) return;
-  // Bluffs stay with the demon who was told them, even after a starpass.
   const ring = el("div", "bluffs");
   const top = -Math.PI / 2;
   const spread = 0.85; // radians between bluffs
@@ -428,7 +474,7 @@ async function main() {
   await botcWeb.default();
   scripts = JSON.parse(botcWeb.scripts());
   for (const s of scripts) $("script").add(new Option(s.name, s.id));
-  for (let n = MIN_PLAYERS; n <= MAX_PLAYERS; n++) $("players").add(new Option(String(n), String(n)));
+  $("script").addEventListener("change", () => fillPlayerCounts($("script").value));
   $("controls").addEventListener("submit", (e) => {
     e.preventDefault();
     load(Number($("seed").value) >>> 0, Number($("players").value), $("script").value);

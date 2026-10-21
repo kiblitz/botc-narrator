@@ -301,3 +301,22 @@ li.future { opacity: 0.35; }
 .script-character { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.3rem 0; }
 .script-character img { width: 40px; height: 40px; object-fit: contain; flex: none; }
 .script-character p { margin: 0.1rem 0 0; color: var(--muted); font-size: 0.9rem; }
+
+/* What a Drunk, Marionette or Lunatic thinks they are: a small token at the
+   lower right of their own. */
+.belief {
+  position: absolute;
+  left: calc(50% + var(--token, 84px) * 0.3);
+  top: calc(var(--token, 84px) * 0.62);
+  width: calc(var(--token, 84px) * 0.42);
+  height: calc(var(--token, 84px) * 0.42);
+  border-radius: 50%;
+  background: #ece3cf;
+  border: 2px dashed var(--townsfolk);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: #2a2233;
+  z-index: 1;
+}
+.belief img { width: 100%; height: 100%; object-fit: contain; }
+.reminder { display: inline-flex; align-items: center; gap: 2px; }
+.reminder img { width: 14px; height: 14px; object-fit: contain; background: #ece3cf; border-radius: 50%; }

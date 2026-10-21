@@ -106,14 +106,34 @@ fn every_death_is_announced_publicly() {
 fn demon_bluffs_are_recorded_with_the_step_they_were_told() {
     // 7+ players always get demon info on night 1.
     let trace = simulate(7, 8);
-    let bluffs = trace.bluffs.expect("bluffs");
+    let bluffs = &trace.bluffs[0];
     assert_eq!(bluffs.characters.len(), 3);
     let step = &trace.steps[bluffs.step];
     assert_eq!(step.kind, sim::Kind::Tell);
-    assert_eq!(step.player.as_deref(), Some(bluffs.demon.as_str()));
+    assert_eq!(step.player.as_deref(), Some(bluffs.player.as_str()));
     assert!(step.text.starts_with("Bluffs: "));
     // Too few players: no demon info, so no bluffs.
-    assert!(simulate(7, 5).bluffs.is_none());
+    assert!(simulate(7, 5).bluffs.is_empty());
+}
+
+#[test]
+fn a_lunatic_gets_their_own_bluffs() {
+    let script = script::by_id("catfishing").expect("Catfishing has a Lunatic");
+    let trace = (0..300)
+        .map(|seed| sim::simulate(seed, 9, &script))
+        .find(|t| t.players.iter().any(|p| p.character == "Lunatic") && t.bluffs.len() == 2)
+        .expect("a Lunatic game with demon info");
+    let lunatic = trace
+        .players
+        .iter()
+        .find(|p| p.character == "Lunatic")
+        .unwrap();
+    assert!(trace.bluffs.iter().any(|b| b.player == lunatic.name));
+    for bluffs in &trace.bluffs {
+        let step = &trace.steps[bluffs.step];
+        assert_eq!(step.player.as_deref(), Some(bluffs.player.as_str()));
+        assert!(step.text.starts_with("Bluffs: "));
+    }
 }
 
 #[test]
@@ -257,9 +277,14 @@ fn games_with_every_outsider_terminate_and_are_well_formed() {
         for step in &trace.steps {
             assert!(step.snapshot < trace.snapshots.len());
         }
-        if let Some(bluffs) = &trace.bluffs {
-            let demon = trace.players.iter().find(|s| s.name == bluffs.demon);
-            assert_eq!(demon.map(|s| s.kind), Some(character::Kind::Demon));
+        // Bluffs go to the demon, or to a Lunatic who thinks they are one.
+        for bluffs in &trace.bluffs {
+            let told = trace.players.iter().find(|s| s.name == bluffs.player);
+            let told = told.expect("seated");
+            assert!(
+                told.kind == character::Kind::Demon || told.character == "Lunatic",
+                "{told:?}"
+            );
         }
         for seat in &trace.players {
             if !seen.contains(&seat.character) {
@@ -420,4 +445,51 @@ fn believed_characters_are_told_with_an_arrow_and_highlighted() {
     assert_eq!(step.players.len(), 1);
     let flow = step.flow.expect("arrow");
     assert_eq!(flow.from, sim::Endpoint::Storyteller);
+}
+
+#[test]
+fn small_scripts_cap_the_player_count_and_simulate_full_tables() {
+    let lleech = script::by_id("a_lleech_of_distrust").unwrap();
+    let max = sim::max_players(&lleech);
+    assert!(max < sim::MAX_PLAYERS, "12 characters cannot seat 15");
+    for seed in 0..20 {
+        assert_eq!(sim::simulate(seed, max, &lleech).players.len(), max);
+    }
+    assert_eq!(
+        sim::max_players(&common::trouble_brewing()),
+        sim::MAX_PLAYERS
+    );
+}
+
+#[test]
+fn a_demon_with_no_bluffs_left_is_told_so() {
+    // Seed 5180090, 8 players: a Drunk and a Lunatic leave no good character
+    // of this small script out of play.
+    let lleech = script::by_id("a_lleech_of_distrust").unwrap();
+    let trace = sim::simulate(5180090, 8, &lleech);
+    let empty = trace
+        .steps
+        .iter()
+        .find(|s| s.text.starts_with("Bluffs: none"));
+    assert!(
+        empty.is_some(),
+        "{:?}",
+        trace
+            .bluffs
+            .iter()
+            .map(|b| &b.characters)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn madness_reminders_name_the_character_separately() {
+    let script = script::by_id("catfishing").unwrap();
+    let mad = (0..200)
+        .flat_map(|seed| sim::simulate(seed, 9, &script).snapshots)
+        .flatten()
+        .flat_map(|seat| seat.reminders)
+        .find(|r| r.label == "Mad")
+        .expect("a madness token in some game");
+    assert!(mad.character.is_some(), "{mad:?}");
 }

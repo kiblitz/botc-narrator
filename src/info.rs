@@ -167,6 +167,9 @@ impl fmt::Display for Message {
                 noun,
             } => write!(f, "{}: {count} {noun}", join(players)),
             Message::Team { evil } => write!(f, "Evil: {}", join(evil)),
+            Message::Bluffs(names) if names.is_empty() => {
+                f.write_str("Bluffs: none (every good character on the script is in play)")
+            }
             Message::Bluffs(names) => write!(f, "Bluffs: {}", join(names)),
             Message::Alignment(alignment) => write!(f, "{alignment}"),
             Message::NotInPlay(name) => write!(f, "The {name} is not in play"),

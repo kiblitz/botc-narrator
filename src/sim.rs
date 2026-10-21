@@ -149,15 +149,18 @@ pub struct Trace {
     pub snapshots: Vec<Vec<Seat>>,
     pub steps: Vec<Step>,
     pub winner: Option<character::Alignment>,
-    /// The bluffs shown to the demon, if any.
-    pub bluffs: Option<Bluffs>,
+    /// The bluffs each player was shown, in the order they learned them: the
+    /// demon (once, even with several demons) and anyone who believes they
+    /// are the demon (the Lunatic).
+    pub bluffs: Vec<Bluffs>,
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Bluffs {
-    pub demon: String,
+    /// Who was shown them.
+    pub player: String,
     pub characters: Vec<&'static str>,
-    /// The step at which the demon learned them.
+    /// The step at which they learned them.
     pub step: usize,
 }
 
@@ -171,7 +174,42 @@ pub struct Seat {
     pub kind: character::Kind,
     pub alignment: character::Alignment,
     pub alive: bool,
-    pub reminders: Vec<String>,
+    pub reminders: Vec<ReminderView>,
+}
+
+/// A reminder token as the viewer shows it: a short label, plus the
+/// character it names, if any (shown as an icon: "Mad" + the Slayer).
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ReminderView {
+    pub label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub character: Option<&'static str>,
+}
+
+impl ReminderView {
+    fn of(effect: game::Effect) -> Self {
+        let named = |token: &str| {
+            characters::all()
+                .iter()
+                .map(|c| c.name())
+                .find(|n| *n == token)
+        };
+        match effect {
+            game::Effect::Mad(about) => Self {
+                label: "Mad".to_string(),
+                character: Some(about),
+            },
+            // A token named after a character (the Cannibal's gained ability).
+            game::Effect::Custom(token) if named(token).is_some() => Self {
+                label: String::new(),
+                character: named(token),
+            },
+            effect => Self {
+                label: effect.to_string(),
+                character: None,
+            },
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -265,7 +303,11 @@ fn seats(view: &game::State) -> Vec<Seat> {
             kind: p.character.kind(),
             alignment: p.alignment,
             alive: p.alive,
-            reminders: p.reminders.iter().map(|r| r.effect.to_string()).collect(),
+            reminders: p
+                .reminders
+                .iter()
+                .map(|r| ReminderView::of(r.effect))
+                .collect(),
         })
         .collect()
 }
@@ -283,7 +325,7 @@ struct Recorder {
     unannounced: Vec<(Kind, player::Id, String)>,
     /// Players awake now; by day, those privately visiting the storyteller.
     awake: Vec<player::Id>,
-    bluffs: Option<Bluffs>,
+    bluffs: Vec<Bluffs>,
     snapshots: Vec<Vec<Seat>>,
     steps: Vec<Step>,
 }
@@ -389,14 +431,19 @@ impl table::Io for Recorder {
     }
 
     fn tell(&mut self, player: &player::Id, message: &info::Message) {
-        // Several demons (Legion) all learn the same bluffs: keep the first.
-        // The Lunatic is shown bluffs too; the trace keeps the real Demon's.
+        // Several demons (Legion) all learn the same bluffs: keep the first
+        // demon's. A Lunatic gets their own (false) bluffs.
+        let demons = self.view.demons();
+        let real_demon_told = self
+            .bluffs
+            .iter()
+            .any(|b| demons.iter().any(|d| d.as_str() == b.player));
         if let info::Message::Bluffs(characters) = message
-            && self.bluffs.is_none()
-            && self.view.demons().contains(player)
+            && !(demons.contains(player) && real_demon_told)
+            && !self.bluffs.iter().any(|b| b.player == player.as_str())
         {
-            self.bluffs = Some(Bluffs {
-                demon: player.to_string(),
+            self.bluffs.push(Bluffs {
+                player: player.to_string(),
                 characters: characters.clone(),
                 step: self.steps.len(),
             });
@@ -696,7 +743,7 @@ pub fn simulate_named(
         phase: game::Phase::Setup,
         unannounced: Vec::new(),
         awake: Vec::new(),
-        bluffs: None,
+        bluffs: Vec::new(),
         snapshots: Vec::new(),
         steps: Vec::new(),
     };
@@ -957,6 +1004,8 @@ struct ScriptInfo {
     name: String,
     /// The script's characters, in script order.
     characters: Vec<CharacterInfo>,
+    /// The largest player count the script can fill (see [`max_players`]).
+    max_players: usize,
 }
 
 #[derive(Serialize)]
@@ -964,6 +1013,21 @@ struct CharacterInfo {
     id: &'static str,
     name: &'static str,
     kind: character::Kind,
+}
+
+/// The largest player count (at most [`MAX_PLAYERS`]) for which the script
+/// has enough characters to seat everyone; small scripts cannot fill big
+/// games. Checked over several setups, since setup modifiers vary.
+pub fn max_players(script: &script::Script) -> usize {
+    (MIN_PLAYERS..=MAX_PLAYERS)
+        .take_while(|&n| {
+            (0..8).all(|seed| {
+                let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+                setup(&mut rng, n, script).len() == n
+            })
+        })
+        .last()
+        .unwrap_or(MIN_PLAYERS)
 }
 
 /// The available scripts as JSON: `[{ "id", "name", "characters": [{ "id", "name", "kind" }] }]`.
@@ -982,6 +1046,7 @@ pub fn scripts_json() -> String {
                     kind: c.kind(),
                 })
                 .collect(),
+            max_players: max_players(s),
         })
         .collect();
     serde_json::to_string(&scripts).expect("scripts serialize")
