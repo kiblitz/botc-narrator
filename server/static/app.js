@@ -350,21 +350,36 @@ function makeDraggable(list) {
   });
 }
 
+// The production site, which the bridge scripts default to.
+const SITE = "https://botc.kiblitz.xyz";
+
+/** The one-line commands that run the bridge for this room's pairing code. */
+function bridgeCommands(pairing) {
+  const server = location.origin === SITE ? "" : ` --server ${location.origin}`;
+  return {
+    sh: `curl -fsSL ${location.origin}/bridge.sh | sh -s -- ${pairing}${server}`,
+    powershell: `& ([scriptblock]::Create((irm ${location.origin}/bridge.ps1))) ${pairing}${server}`,
+  };
+}
+
 function bridgeCard(view) {
   const bridge = view.bridge;
-  const command = `botc-bridge ${bridge.pairing} --server ${location.origin}`;
-  return el("div", { class: "card", id: "bridge" },
+  const commands = bridgeCommands(bridge.pairing);
+  const command = (id, label, text) => [
+    el("p", { class: "muted small" }, label),
+    el("pre", { class: "command", id }, text),
+    el("button", { onclick: () => navigator.clipboard && navigator.clipboard.writeText(text) }, "Copy"),
+  ];
+  return el("div", { class: "card stack", id: "bridge" },
     el("h2", {}, "Storyteller"),
     el("p", {},
       el("span", { class: `dot${bridge.connected ? " on" : ""}` }), " ",
-      bridge.connected ? "A computer is connected: its LLM (Codex by default) makes the storyteller's choices." : "No computer connected: the storyteller chooses at random.",
+      bridge.connected ? "AI connected: it makes the storyteller's choices." : "No AI connected: the storyteller chooses at random.",
     ),
-    el("p", { class: "muted small" }, "To let Codex on a computer be the storyteller, run there:"),
-    el("pre", { class: "command", id: "bridge-command" }, command),
-    el("div", { class: "row" },
-      el("button", { onclick: () => navigator.clipboard && navigator.clipboard.writeText(command) }, "Copy"),
-      el("button", { onclick: () => send({ type: "new_pairing" }) }, "New code"),
-    ),
+    el("p", { class: "muted small" }, "To let Codex or Claude Code on a computer be the storyteller, paste one line into a terminal there (needs Node 22+):"),
+    ...command("bridge-command", "macOS, Linux, Git Bash", commands.sh),
+    ...command("bridge-command-powershell", "Windows PowerShell", commands.powershell),
+    el("button", { onclick: () => send({ type: "new_pairing" }) }, "New code"),
   );
 }
 
@@ -535,7 +550,7 @@ function hostDock(view) {
   if (view.stage === "dusk") dock.append(el("button", { class: "primary", id: "start-night", onclick: () => send({ type: "start_night" }) }, "Everyone close your eyes: start the night"));
   const bridge = view.bridge;
   dock.append(el("span", { class: "small muted", style: "flex:none;align-self:center" },
-    el("span", { class: `dot${bridge.connected ? " on" : ""}` }), bridge.connected ? " computer" : " random"));
+    el("span", { class: `dot${bridge.connected ? " on" : ""}` }), bridge.connected ? " AI" : " random"));
   return dock;
 }
 

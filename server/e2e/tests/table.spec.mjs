@@ -69,7 +69,7 @@ test("a table of phones: host, join, seat, start, night prompt, nominate and vot
   // Only the host gets the controls and the bridge's pairing command.
   await expect(players[0].locator("#start")).toHaveCount(0);
   await expect(players[0].locator("#bridge")).toHaveCount(0);
-  await expect(host.locator("#bridge-command")).toContainText("botc-bridge ");
+  await expect(host.locator("#bridge-command")).toContainText("/bridge.sh | sh -s -- ");
 
   // The host drags Esme (last) to the top of the circle...
   const handle = host.locator('#seats .seat[data-name="Esme"] .handle');

@@ -5,11 +5,11 @@
 // Usage (from server/e2e):
 //   [SITE=https://botc.kiblitz.xyz] [BRIDGE="claude -p"] [SHOTS=dir]
 //   [VIDEO=dir] [CODEX_HOME=dir] node live.mjs
-// BRIDGE is the storyteller command (default: the bridge's own, Codex, which
-// uses whichever Codex login CODEX_HOME points at). VIDEO records the host's
-// and the first player's phones.
+// The bridge runs from the host's one-line command; BRIDGE is the storyteller
+// command (default: Codex, using whichever login CODEX_HOME points at, else
+// Claude Code). VIDEO records the host's and the first player's phones.
 import { chromium, devices } from "@playwright/test";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 const SITE = process.env.SITE || "https://botc.kiblitz.xyz";
 const PLAYERS = ["Ada", "Bram", "Cleo", "Dev", "Esme"];
@@ -48,12 +48,13 @@ log("five guests joined");
 await host.getByRole("button", { name: "Move Esme up" }).click();
 await host.waitForTimeout(500);
 
-const pairing = (await host.locator("#bridge-command").innerText()).split(" ")[1];
-const command = process.env.BRIDGE ? ["--", ...process.env.BRIDGE.split(" ")] : [];
-// The built binary itself (cargo build --release -p botc_bridge first), so
-// killing it really stops it, on any exit.
-const bridge = spawn("../../target/release/botc-bridge", [pairing, "--server", SITE, ...command], { stdio: ["ignore", "inherit", "inherit"] });
-process.on("exit", () => bridge.kill());
+// The host's one-line bridge command, run as shown (plus BRIDGE's command).
+const line = (await host.locator("#bridge-command").innerText()) + (process.env.BRIDGE ? ` -- ${process.env.BRIDGE}` : "");
+const bridge = spawn("sh", ["-c", line], { stdio: ["ignore", "inherit", "inherit"], detached: process.platform !== "win32" });
+// The whole tree, on any exit: the shell, Node and the storyteller command.
+const stopBridge = () =>
+  process.platform === "win32" ? spawnSync("taskkill", ["/T", "/F", "/PID", String(bridge.pid)]) : process.kill(-bridge.pid);
+process.on("exit", stopBridge);
 await host.locator("#bridge .dot.on").waitFor({ timeout: 300_000 });
 log("bridge paired");
 await shot(host, "live-1-lobby");
@@ -110,7 +111,6 @@ const bridged = await host.locator("#dock").innerText();
 log("reached day 2; prompts answered:", answered, "dock:", bridged);
 const state = await host.evaluate(() => document.body.className);
 log("host stage:", state);
-bridge.kill();
 // Closing the contexts finishes their videos.
 for (const context of contexts) await context.close();
 await browser.close();
