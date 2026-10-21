@@ -154,10 +154,15 @@ sh scripts/serve-web.sh              # build the wasm and serve at http://localh
 
 Building needs `wasm-pack` and the `wasm32-unknown-unknown` target; the Playwright tests (`site/tests`) run in `scripts/check.sh`.
 
+## Multiplayer web app
+
+`server/` serves <https://botc.kiblitz.xyz>: a host signs in and opens a room, players join by code on their phones, the engine is the storyteller and a paired bridge (`bridge/`, Codex by default) makes its choices. See [docs/webapp.md](docs/webapp.md).
+
 ## Running
 
 ```sh
-sh scripts/check.sh                  # fmt, clippy, tests (the merge gate)
+sh scripts/check.sh                  # fmt, clippy, tests, Playwright, deploy tests (the merge gate)
+bash scripts/deploy.sh               # deploy main to slot1 (deploy/README.md)
 cargo test -- --ignored              # also calls the real Claude Code CLI
 cargo run -- random 42               # demo game, random storyteller, seed 42
 cargo run -- claude                  # demo game with Claude Code as storyteller

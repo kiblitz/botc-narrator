@@ -1,1 +1,39 @@
+# Line endings.
+#
+# Git on Windows checks text files out with CRLF by default. That is harmless
+# for Rust source, but fatal for anything the Fedora VPS executes or parses:
+# a shell script checked out with CRLF fails with
+#
+#     env: 'bash\r': No such file or directory
+#
+# So every file that is copied to the server, or that a Linux tool reads, is
+# pinned to LF regardless of platform.
+
+# Sensible default: Git decides what is text, and normalises it in the repo.
 * text=auto
+
+# Anything the server runs or reads. LF, always, on every platform.
+*.sh text eol=lf
+deploy/*.caddy text eol=lf
+deploy/*.service text eol=lf
+.github/workflows/*.yml text eol=lf
+.github/actions/**/*.yml text eol=lf
+.gitattributes text eol=lf
+
+# Source, manifests and the static web client, for consistency.
+*.rs text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.lock text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.yml text eol=lf
+
+# Never touch binary files.
+*.png binary
+*.wasm binary

@@ -1,0 +1,232 @@
+name: Deploy
+
+# Checks run on the owner's machine (scripts/check.sh) before every merge;
+# this workflow only deploys, on every push to main. While Actions
+# cannot run, scripts/deploy.sh does the same by hand.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never let two deploys stage at once: each scp would overwrite what the other
+# staged. botc-apply refuses a second run anyway; this queues it instead.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+# The job reads the repository and reaches the box over SSH with its own key;
+# it writes nothing to GitHub.
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  DEPLOY_HOST: 5.161.56.133
+  DEPLOY_USER: botc-deploy
+  SITE_HOST: botc.kiblitz.xyz
+  SERVICE: botc
+  APPLY: /usr/local/sbin/botc-apply
+  CADDY_SITE: /usr/local/sbin/botc-caddy-site
+  # The service's own health check, on loopback, straight past Caddy.
+  HEALTH_URL: http://127.0.0.1:8081/health
+  # The path the step below proves is routed to the app rather than swallowed by
+  # the static handler. Named here rather than written into that step so
+  # files_agree.sh can hold it against route::ME (server/src/route.rs):
+  # Caddy answers an unrouted path with the web client, so getting this wrong looks like a
+  # perfectly good 200 instead of a 404.
+  ME_PATH: /api/me
+  # As the deploy account's sudoers rule names it: sudo refuses any other path.
+  SYSTEMCTL: /usr/bin/systemctl
+  # Static musl build: nothing on the VPS has to match the builder's glibc, so
+  # the runner image and Fedora can drift apart without breaking a deploy.
+  TARGET: x86_64-unknown-linux-musl
+  STAGED_BINARY: /var/lib/botc-deploy/staging/botc-server.new
+  STAGED_SITE_CONFIG: /var/lib/botc-deploy/staging/botc.caddy.new
+  STAGED_WWW: /var/lib/botc-deploy/staging/botc-www.tar.gz
+  # What is built and shipped; scripts/deploy.sh names the same.
+  SERVER_PACKAGE: botc_server
+  SERVER_BINARY: botc-server
+  WEB_DIR: server/static
+  # How long the checks after a deploy wait for the service, and for the site.
+  HEALTH_ATTEMPTS: 5
+  HEALTH_RETRY_SECONDS: 3
+  HEALTH_TIMEOUT_SECONDS: 5
+  PUBLIC_CHECK_SECONDS: 15
+
+jobs:
+  deploy:
+    name: build and ship to the VPS
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require current main before running repository code
+        run: test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$(git rev-parse HEAD)"
+
+      - uses: ./.github/actions/accounts-sdk
+        with:
+          key: ${{ secrets.ACCOUNTS_READ_KEY }}
+
+      - name: Install the musl target
+        run: |
+          rustup target add "$TARGET"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends musl-tools
+
+      - name: Cache cargo + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-deploy-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-deploy-
+
+      - name: Build the server
+        run: cargo build --release --locked -p "$SERVER_PACKAGE" --target "$TARGET"
+
+      - name: Package the web client
+        # Plain static files, no build step. An empty index.html or app.js
+        # would deploy a blank page.
+        run: |
+          test -s "$WEB_DIR/index.html"
+          test -s "$WEB_DIR/app.js"
+          tar -czf web.tar.gz -C "$WEB_DIR" .
+
+      - name: Check the binary is actually static
+        # A dynamically linked binary would work on the runner and fail on the
+        # VPS, which is the single most annoying way for a deploy to break.
+        run: |
+          described=$(file "target/$TARGET/release/$SERVER_BINARY")
+          echo "$described"
+          case "$described" in
+            # Rust's musl targets produce a static *PIE*, which `file` reports
+            # as "static-pie linked" -- matching only "statically linked"
+            # rejects a perfectly good binary.
+            *"statically linked"*|*"static-pie linked"*)
+              echo "no dynamic dependencies, good" ;;
+            *)
+              echo "::error::the binary is not statically linked; it may not run on the VPS"
+              exit 1 ;;
+          esac
+
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$DEPLOY_SSH_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "::error::DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS must both be set (see deploy/README.md)"
+            exit 1
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Pinned rather than ssh-keyscan'd: trusting whatever answers on the
+          # day defeats the point of checking the host key at all.
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Ship the binary, the web client and the routing config
+        # The site config rides along because it *is* application routing: the
+        # server's endpoints and Caddy's `@api` matcher have to agree, and
+        # leaving that to a manual step is how an endpoint ships unreachable.
+        # Only botc's own site config -- the shared Caddyfile belongs to the
+        # box, and no app's deploy writes it.
+        run: |
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$(git rev-parse HEAD)"
+          scp "target/$TARGET/release/$SERVER_BINARY" \
+            "$DEPLOY_USER@$DEPLOY_HOST:$STAGED_BINARY"
+          scp deploy/botc.caddy "$DEPLOY_USER@$DEPLOY_HOST:$STAGED_SITE_CONFIG"
+          scp web.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:$STAGED_WWW"
+
+      - name: Check the box runs this commit's deploy scripts
+        # botc-apply and botc-caddy-site reach the box only when setup-vps.sh
+        # is re-run, so a change to either is not deployed by merging it. Say
+        # so, rather than let a fix look deployed while the old script still
+        # runs.
+        run: |
+          expected=$(sha256sum deploy/apply.sh deploy/caddy-site.sh | awk '{print $1}')
+          actual=$(ssh "$DEPLOY_USER@$DEPLOY_HOST" "sha256sum $APPLY $CADDY_SITE" | awk '{print $1}' || true)
+          if [ "$expected" = "$actual" ]; then
+            echo "the box runs this commit's $APPLY and $CADDY_SITE"
+          else
+            echo "::warning::the box's $APPLY or $CADDY_SITE is not this commit's; re-run setup-vps.sh (deploy/README.md)"
+          fi
+
+      - name: Apply the deploy
+        # One command, not a chain: a chain that fails partway leaves the
+        # machine half-updated. `botc-apply` validates what was staged,
+        # installs the site config and web client, replaces the binary and
+        # restarts the service only if the binary changed, and rolls the binary
+        # and web client back if the service does not come up. A service running
+        # the same binary is never restarted.
+        run: ssh "$DEPLOY_USER@$DEPLOY_HOST" "sudo $APPLY"
+
+      - name: Verify the service is healthy
+        # Straight at the app on loopback: this proves the new binary is
+        # serving, independently of DNS or of whether Caddy has a certificate
+        # yet.
+        run: |
+          for attempt in $(seq "$HEALTH_ATTEMPTS"); do
+            if ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+              "curl -fsS --max-time $HEALTH_TIMEOUT_SECONDS $HEALTH_URL"; then
+              echo
+              echo "service is healthy"
+              exit 0
+            fi
+            echo "attempt $attempt: not up yet, retrying..."
+            sleep "$HEALTH_RETRY_SECONDS"
+          done
+          echo "::error::the service did not answer /health after the deploy"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "sudo $SYSTEMCTL status $SERVICE" || true
+          exit 1
+
+      - name: Check the public endpoint
+        # Best-effort: this is the first thing to fail while DNS or the ACME
+        # certificate is still settling, and that should not fail the deploy.
+        continue-on-error: true
+        run: |
+          echo "GET https://$SITE_HOST/health"
+          curl -fsS --max-time "$PUBLIC_CHECK_SECONDS" "https://$SITE_HOST/health" || \
+            echo "::warning::$SITE_HOST is not answering yet (DNS or TLS still pending?)"
+
+      - name: Check the page is the app, not the placeholder
+        continue-on-error: true
+        run: |
+          body=$(curl -s --max-time "$PUBLIC_CHECK_SECONDS" "https://$SITE_HOST/" || true)
+          case "$body" in
+            *"app.js"*)
+              echo "the web client is being served" ;;
+            "")
+              echo "::warning::no response from $SITE_HOST yet" ;;
+            *)
+              echo "::error::/ is not serving the web client"
+              echo "$body" | head -20
+              exit 1 ;;
+          esac
+
+      - name: Check the API is routed, not swallowed by the static handler
+        # Caddy falls back to index.html for unknown paths, so an endpoint
+        # missing from its `@api` matcher answers 200 with the web page instead
+        # of reaching the server at all. Asking who is signed in, with no
+        # cookie, should give the app's own answer; HTML here means a routing
+        # gap.
+        continue-on-error: true
+        run: |
+          body=$(curl -s --max-time "$PUBLIC_CHECK_SECONDS" "https://$SITE_HOST$ME_PATH" || true)
+          case "$body" in
+            "")
+              echo "::warning::no response from $SITE_HOST yet" ;;
+            *"<!doctype html>"*|*"<html"*)
+              echo "::error::/api is being served by the static handler, not the app"
+              echo "add the path to the @api matcher in deploy/botc.caddy"
+              exit 1 ;;
+            *'"signed_in"'*)
+              echo "routed to the app: $body" ;;
+            *)
+              echo "::warning::unexpected answer from $ME_PATH: $body" ;;
+          esac

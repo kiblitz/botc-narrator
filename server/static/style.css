@@ -1,0 +1,144 @@
+/* Phones first: one column, big touch targets, thumbs at the bottom. */
+:root {
+  --bg: #15131c;
+  --panel: #1f1c29;
+  --raised: #2a2638;
+  --line: #34304a;
+  --text: #ebe7f5;
+  --muted: #9c96b3;
+  --good: #4f8fe8;
+  --evil: #e0505a;
+  --gold: #e8c26a;
+  --night: #1b2040;
+  --day: #3a3220;
+  --tap: 3rem;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body {
+  font: 16px/1.45 system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+body.night { background: var(--night); }
+body.day, body.vote, body.dusk { background: var(--day); }
+
+main {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 0.75rem 0.75rem calc(6rem + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+h1 { font-size: 1.4rem; margin: 0.5rem 0; color: var(--gold); text-align: center; }
+h2 { font-size: 1rem; margin: 0 0 0.5rem; color: var(--muted); font-weight: 600; }
+p { margin: 0.25rem 0; }
+.muted { color: var(--muted); }
+.center { text-align: center; }
+.small { font-size: 0.85rem; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  padding: 0.9rem;
+}
+.card.alert { border-color: var(--gold); }
+
+label { display: block; color: var(--muted); font-size: 0.9rem; margin: 0.5rem 0 0.25rem; }
+input, select, button {
+  font: inherit;
+  color: var(--text);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  min-height: var(--tap);
+  padding: 0 0.8rem;
+  width: 100%;
+}
+input.code { text-transform: uppercase; letter-spacing: 0.3em; font-size: 1.4rem; text-align: center; }
+button { cursor: pointer; font-weight: 600; }
+button.primary { background: var(--gold); color: #1a1508; border-color: var(--gold); }
+button.danger { background: var(--evil); border-color: var(--evil); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.chosen { outline: 3px solid var(--gold); outline-offset: -3px; }
+.row { display: flex; gap: 0.5rem; align-items: center; }
+.row > * { flex: 1; }
+.stack { display: flex; flex-direction: column; gap: 0.5rem; }
+.error { color: var(--evil); min-height: 1.2em; }
+
+.code-big {
+  font-size: 2.4rem;
+  letter-spacing: 0.25em;
+  font-weight: 800;
+  color: var(--gold);
+  text-align: center;
+}
+
+/* The lobby's circle: drag the handle, or use the arrows. */
+.seats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.seat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  padding: 0.25rem 0.4rem;
+  min-height: var(--tap);
+  touch-action: pan-y;
+}
+.seat.dragging { opacity: 0.85; border-color: var(--gold); box-shadow: 0 0.4rem 1rem #0008; z-index: 2; position: relative; }
+.seat .name { flex: 1; }
+.seat .handle { touch-action: none; cursor: grab; font-size: 1.3rem; padding: 0 0.4rem; color: var(--muted); user-select: none; }
+.seat button { width: var(--tap); padding: 0; flex: none; }
+.seat .num { width: 1.6rem; color: var(--muted); text-align: right; }
+.dot { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--muted); }
+.dot.on { background: #4fd18b; }
+.badge { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--line); border-radius: 1rem; padding: 0 0.5rem; }
+.dead .name { text-decoration: line-through; color: var(--muted); }
+
+/* My token. */
+.token { display: flex; align-items: center; gap: 0.9rem; cursor: pointer; }
+.token img { width: 4.5rem; height: 4.5rem; border-radius: 50%; background: #f1e7cf; flex: none; }
+.token .hidden-face {
+  width: 4.5rem; height: 4.5rem; border-radius: 50%; flex: none;
+  background: var(--raised); display: grid; place-items: center; color: var(--muted); font-size: 0.8rem; text-align: center;
+}
+.token .character { font-size: 1.3rem; font-weight: 700; }
+.Good { color: var(--good); }
+.Evil { color: var(--evil); }
+
+/* Choices in a prompt. */
+.choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+.choices button { min-height: 3.4rem; }
+.choices img { width: 1.8rem; height: 1.8rem; vertical-align: middle; margin-right: 0.3rem; }
+.countdown { float: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* The log. */
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.log li { padding: 0.45rem 0.6rem; border-radius: 0.5rem; background: var(--raised); }
+.log li.player { border-left: 4px solid var(--gold); }
+.log li.storyteller { border-left: 4px solid var(--evil); opacity: 0.85; }
+.log li.phase { background: transparent; color: var(--muted); text-align: center; font-size: 0.85rem; padding: 0.2rem; }
+.log .who { color: var(--gold); font-weight: 600; }
+.log .what { color: #c9b6ff; font-weight: 600; white-space: nowrap; }
+.log .what img { width: 1.3rem; height: 1.3rem; vertical-align: -0.3rem; margin-right: 0.15rem; }
+
+/* The host's controls sit where a thumb reaches. */
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  padding: 0.6rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom));
+  background: #0d0b12ee; border-top: 1px solid var(--line);
+  display: flex; gap: 0.5rem; justify-content: center;
+}
+.dock > * { max-width: 32rem; }
+
+.banner { text-align: center; font-size: 1.2rem; font-weight: 700; }
+.thinking { text-align: center; color: var(--muted); font-style: italic; }
+.eyes-closed { text-align: center; padding: 2rem 1rem; color: var(--muted); }
+.eyes-closed .moon { font-size: 3rem; }
+pre.command { white-space: pre-wrap; word-break: break-all; background: var(--bg); padding: 0.5rem; border-radius: 0.4rem; margin: 0.4rem 0; font-size: 0.85rem; }

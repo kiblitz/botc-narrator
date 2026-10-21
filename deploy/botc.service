@@ -1,0 +1,78 @@
+# systemd unit for the botc server.
+#
+# Installed at /etc/systemd/system/botc.service by deploy/setup-vps.sh.
+# The binary itself is deployed separately (scripts/deploy.sh, or
+# .github/workflows/deploy.yml), which, through botc-apply, replaces the binary
+# and restarts this unit only if the binary changed -- it never rewrites the
+# unit.
+
+[Unit]
+Description=botc storyteller server
+Documentation=https://github.com/kiblitz/botc-narrator
+# The server binds a socket immediately, so wait for real connectivity rather
+# than merely for the network stack to exist.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=botc
+Group=botc
+
+# Loopback only, on purpose: Caddy is the only thing that should reach the app,
+# and binding 127.0.0.1 means port 8081 needs no firewall rule and cannot be hit
+# directly even if one were opened by accident. The port is this app's claim in
+# slot1's apps.md.
+Environment=BIND_ADDR=127.0.0.1:8081
+Environment=LOG=info
+
+# The origin people reach this server at. The shared sign-in's callback URL is
+# built from it, and it has to match the one registered for the `botc` client
+# in account-manager's config/clients.production.json exactly.
+Environment=PUBLIC_ORIGIN=https://botc.kiblitz.xyz
+
+# No state on disk and no secret of any kind: rooms live in memory, and sign-in
+# is the shared account service's. So no StateDirectory and no EnvironmentFile.
+
+ExecStart=/usr/local/bin/botc-server
+
+# A crash ends the games in progress either way; the useful behaviour is to come
+# back fast so the table can start again.
+Restart=on-failure
+RestartSec=2s
+
+# SIGTERM is what the server's graceful shutdown listens for, and it is already
+# systemd's default stop signal -- this is here to make that coupling explicit.
+KillSignal=SIGTERM
+TimeoutStopSec=10s
+
+# Hardening. The server speaks only IP and writes nothing, so it can be locked
+# down hard without losing anything.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# A leak should take out the unit, not the box, and the box has 2 GB for every
+# app on it.
+MemoryMax=256M
+# A cgroup pids limit -- threads and processes, not tokio tasks. The engine runs
+# one OS thread per active room, so the server caps how many rooms it holds at
+# once well under this, leaving room for the runtime's own threads.
+TasksMax=128
+# systemd's default soft limit is 1024; every phone at every table holds a
+# socket open for the whole game.
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

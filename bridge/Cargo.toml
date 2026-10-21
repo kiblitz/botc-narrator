@@ -1,0 +1,30 @@
+[package]
+name = "botc_bridge"
+version = "0.1.0"
+edition = "2024"
+description = "Connects a computer to a botc room and answers its storyteller decisions with Codex (or any command)"
+publish = false
+
+[[bin]]
+name = "botc-bridge"
+path = "src/main.rs"
+
+# Stands in for `codex exec` in tests: prints a fixed reply.
+[[bin]]
+name = "fake-storyteller"
+path = "src/bin/fake_storyteller.rs"
+test = false
+
+[dependencies]
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["io-util", "macros", "process", "rt-multi-thread", "time"] }
+tokio-tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
+
+[dev-dependencies]
+axum = "0.8"
+botc_server = { path = "../server" }
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+serde_json = "1"

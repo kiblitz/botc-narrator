@@ -1,0 +1,81 @@
+# Caddy site config for botc.
+#
+# Installed at /etc/caddy/sites/botc.caddy, where the box's shared Caddyfile
+# imports it. The VPS hosts several apps, so this file holds botc's own site
+# block and nothing else -- global options belong to the shared file, which is
+# the box's and is installed by slot1's box/bootstrap.sh.
+#
+# Every deploy syncs it, because these routes are part of the application's
+# contract rather than machine configuration -- see the note on `@api` below.
+#
+# Caddy does two jobs here: it serves the static web client *and* proxies the
+# game server, from one name. That is what makes the client need no API base
+# URL, no CORS and no cross-origin cookies.
+#
+# It also obtains and renews the Let's Encrypt certificate, which is not
+# optional: a page served over https:// may only open wss:// sockets, the
+# session cookie is marked Secure, and the shared sign-in only redirects to an
+# https:// callback.
+
+botc.kiblitz.xyz {
+	encode zstd gzip
+
+	# Every path the server owns, in two matchers: short JSON requests, and
+	# WebSockets.
+	#
+	# Both have to be kept in step with the server's router
+	# (server/src/route.rs; deploy/tests/files_agree.sh holds them together):
+	# the static handler below falls back to index.html, so an endpoint missing
+	# from here does not 404 -- it answers with the web page, status 200 and
+	# all. The deploy smoke-tests /health and the API after every deploy to
+	# catch that.
+	@api path /health /api/*
+	@ws path /ws/*
+
+	# No other site may show these pages inside a frame of its own, where a
+	# click meant for it could land somewhere else. For every response.
+	header Content-Security-Policy "frame-ancestors 'none'"
+
+	handle @ws {
+		# /ws/play for phones and /ws/bridge for the storyteller bridge.
+		reverse_proxy 127.0.0.1:8081 {
+			# A player's socket is idle for as long as the table is talking,
+			# so streaming responses get no deadline; the server pings, and
+			# drops a peer that stops answering.
+			flush_interval -1
+			# Caddy is reloaded whenever any app on the box changes its
+			# routing, and a reload closes every proxied socket at once by
+			# default. This keeps a game's sockets open for five more minutes
+			# instead, so another app's deploy does not cut a night short.
+			# Caddy applies it from the reload after the one that loads it.
+			stream_close_delay 5m
+		}
+	}
+
+	handle @api {
+		# Every request the client sends is a few small JSON fields. Anything
+		# far past that is turned away here rather than read into a 2 GB
+		# box's memory.
+		request_body {
+			max_size 64KB
+		}
+		reverse_proxy 127.0.0.1:8081
+	}
+
+	handle {
+		root * /var/www/botc
+		# Single-page-app fallback: the client's own pages (a room code in
+		# the path, say) are answered with index.html.
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Never log authorization callback query strings.
+	log_skip /api/auth/accounts/*
+	log {
+		output file /var/log/caddy/botc.kiblitz.xyz.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}

@@ -21,6 +21,8 @@ Rust Blood on the Clocktower storyteller engine. Read README.md for the architec
 
 - Adding a character is one file `src/characters/<id>.rs` plus one `registry!` line, with no engine edits: compose `ability` building blocks; if a character family needs engine support, add a general mechanism (generic `storyteller::Reason::Ability`, `info::Message` variants), never a special case. Guide: `docs/adding-characters.md`.
 
+- Multiplayer web app (2026-10-21, user: "do it"): `server/` (botc.kiblitz.xyz on slot1, port 8081) + `bridge/` + `server/static/`; docs/webapp.md. The host is a player, never the narrator; the storyteller is the engine plus a bridge running Codex (`codex exec`, configurable) on someone's PC, falling back to `storyteller::Random` so a game never stalls. Only hosting needs sign-in (account-manager, client `botc`); joining is by room code. Rooms are in memory. Sockets authenticate in their first message, never the URL. Bridge pairing codes are host-only (the bridge sees the grimoire).
+
 ## Conventions
 
 - `scripts/check.sh` needs `wasm-pack`, the `wasm32-unknown-unknown` target and node (Playwright tests in `site/tests`). Write Python helper output as UTF-8 (`PYTHONUTF8=1`) on this machine; cp1252 corrupts non-ASCII text.
