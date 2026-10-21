@@ -129,6 +129,9 @@ pub async fn serve(
     timeout: time::Duration,
     log: &mut impl FnMut(&str),
 ) -> Ended {
+    // Which provider TLS uses cannot be left to the build's features: with
+    // more than one compiled in, rustls refuses to guess and panics.
+    let _ = rustls::crypto::ring::default_provider().install_default();
     let url = endpoint(server);
     let (mut socket, _) = match tokio_tungstenite::connect_async(url.as_str()).await {
         Ok(connected) => connected,

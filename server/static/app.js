@@ -368,7 +368,7 @@ function bridgeCard(view) {
     el("h2", {}, "Storyteller"),
     el("p", {},
       el("span", { class: `dot${bridge.connected ? " on" : ""}` }), " ",
-      bridge.connected ? "A computer is connected: Codex makes the storyteller's choices." : "No computer connected: the storyteller chooses at random.",
+      bridge.connected ? "A computer is connected: its LLM (Codex by default) makes the storyteller's choices." : "No computer connected: the storyteller chooses at random.",
     ),
     el("p", { class: "muted small" }, "To let Codex on a computer be the storyteller, run there:"),
     el("pre", { class: "command", id: "bridge-command" }, command),
@@ -546,7 +546,7 @@ function hostDock(view) {
   if (view.stage === "dusk") dock.append(el("button", { class: "primary", id: "start-night", onclick: () => send({ type: "start_night" }) }, "Everyone close your eyes: start the night"));
   const bridge = view.bridge;
   dock.append(el("span", { class: "small muted", style: "flex:none;align-self:center" },
-    el("span", { class: `dot${bridge.connected ? " on" : ""}` }), bridge.connected ? " Codex" : " random"));
+    el("span", { class: `dot${bridge.connected ? " on" : ""}` }), bridge.connected ? " computer" : " random"));
   return dock;
 }
 

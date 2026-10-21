@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 description = "Connects a computer to a botc room and answers its storyteller decisions with Codex (or any command)"
 publish = false
+default-run = "botc-bridge"
 
 [[bin]]
 name = "botc-bridge"
@@ -17,6 +18,8 @@ test = false
 
 [dependencies]
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+# tungstenite's TLS needs one crypto provider chosen; ring, as the server uses.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["io-util", "macros", "process", "rt-multi-thread", "time"] }

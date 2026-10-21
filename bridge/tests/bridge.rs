@@ -180,3 +180,30 @@ async fn a_new_pairing_code_drops_the_old_bridge() {
     })
     .await;
 }
+
+#[test]
+fn the_bridge_reaches_a_secure_server_over_tls_without_panicking() {
+    // A TLS server that is not a botc server: the handshake needs a crypto
+    // provider, then the upgrade fails and the bridge says it was refused
+    // or dropped, and would reconnect; it must not crash.
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_botc-bridge"))
+        .args([
+            "AAAA-BBBB-CCCC-DDDD",
+            "--server",
+            "https://example.com",
+            "--",
+            FAKE,
+        ])
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    std::thread::sleep(time::Duration::from_secs(4));
+    let _ = child.kill();
+    let output = child.wait_with_output().unwrap();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!stderr.contains("panicked"), "{stderr}");
+    assert!(
+        stderr.contains("disconnected") || stderr.contains("refused"),
+        "{stderr}"
+    );
+}

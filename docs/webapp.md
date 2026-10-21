@@ -100,3 +100,5 @@ so reconnecting phones and bridges are never limited. A host whose game is runni
 Not yet modelled: Travellers joining, the
 storyteller's judgement of madness (mad players never break madness), and
 "did you say the word / lose roshambo" are asked to the player themself.
+
+The live site can be played end to end from this machine with `server/e2e/live.mjs` (a bot account hosts; see its header).
