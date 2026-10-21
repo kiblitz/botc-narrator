@@ -22,10 +22,11 @@ pub const DEFAULT_COMMAND: [&str; 6] = [
     "--sandbox=read-only",
     "-",
 ];
-pub const DEFAULT_SERVER: &str = "wss://botc.kiblitz.xyz";
-/// A command that has not answered by now is stopped; the server falls back
-/// to a random choice anyway once its own wait is over.
-pub const COMMAND_TIMEOUT: time::Duration = time::Duration::from_secs(120);
+pub const DEFAULT_SERVER: &str = "https://botc.kiblitz.xyz";
+/// A command that has not answered by now is stopped. Shorter than the
+/// server's wait (90s), so a slow answer never delays the next decision past
+/// the server's patience as well.
+pub const COMMAND_TIMEOUT: time::Duration = time::Duration::from_secs(80);
 /// How long to wait before reconnecting after the connection drops.
 pub const RECONNECT: time::Duration = time::Duration::from_secs(3);
 

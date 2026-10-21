@@ -180,3 +180,73 @@ async fn a_phone_that_reconnects_keeps_its_seat_and_character() {
             .any(|e| e.contains("gone"))
     );
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn guessing_codes_is_stopped_and_seats_take_few_phones() {
+    let base = common::serve(common::quick(), 13).await;
+    let (room, phones, tokens) = common::table(&base, &PLAYERS).await;
+    // A fourth phone on one seat is turned away.
+    let extra = [
+        common::connect(&base, &room, "Ada", &tokens[1]).await,
+        common::connect(&base, &room, "Ada", &tokens[1]).await,
+        common::connect(&base, &room, "Ada", &tokens[1]).await,
+    ];
+    tokio::time::sleep(time::Duration::from_millis(300)).await;
+    let refused = extra
+        .iter()
+        .filter(|p| {
+            p.errors
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|e| e.contains("Too many phones"))
+        })
+        .count();
+    assert_eq!(refused, 1);
+    // Wrong room codes run out, then even a right one waits a minute.
+    let http = common::http();
+    let mut statuses = Vec::new();
+    for _ in 0..61 {
+        let response = http
+            .post(format!("{base}/api/rooms/ZZZZZ/join"))
+            .json(&json!({"name": "Guess"}))
+            .send()
+            .await
+            .unwrap();
+        statuses.push(response.status().as_u16());
+    }
+    assert!(statuses[..60].iter().all(|s| *s == 404), "{statuses:?}");
+    assert_eq!(statuses[60], 429);
+    let right = http
+        .post(format!("{base}/api/rooms/{room}/join"))
+        .json(&json!({"name": "Late"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(right.status(), 429);
+    drop(phones);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_host_cannot_abandon_a_running_game_by_hosting_again() {
+    let base = common::serve(common::quick(), 17).await;
+    let (_room, phones, _) = common::table(&base, &PLAYERS).await;
+    common::until(&phones[0], time::Duration::from_secs(5), |v| {
+        v["seats"].as_array().is_some_and(|s| s.len() == 6)
+    })
+    .await;
+    phones[0].send(json!({"type": "start"}));
+    common::until(&phones[0], time::Duration::from_secs(5), |v| {
+        v["me"].is_object()
+    })
+    .await;
+    let again = common::http()
+        .post(format!("{base}/api/rooms"))
+        .header(botc_server::accounts::FIXTURE_HEADER, common::HOST_ACCOUNT)
+        .json(&json!({"name": "Host"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(again.status(), 409);
+    assert_ne!(phones[1].view()["stage"], "lobby");
+}

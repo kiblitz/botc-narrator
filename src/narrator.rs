@@ -511,3 +511,94 @@ pub fn check_madness(ctx: &mut ctx::Write<'_>) {
         }
     }
 }
+
+/// Votes needed to execute: half the living players, rounded up.
+pub fn votes_needed(state: &game::State) -> usize {
+    state.alive_ids().len().div_ceil(2)
+}
+
+/// The day's block: the nominee with the most votes (at least the votes
+/// needed), unless another nominee tied with them.
+#[derive(Clone, Debug, Default)]
+pub struct Block {
+    best: Option<(player::Id, usize)>,
+    tied: bool,
+}
+
+impl Block {
+    /// A vote on `nominee` counted `votes` of the `needed`.
+    pub fn add(&mut self, nominee: player::Id, votes: usize, needed: usize) {
+        if votes < needed {
+            return;
+        }
+        match &self.best {
+            Some((_, top)) if votes < *top => {}
+            Some((_, top)) if votes == *top => self.tied = true,
+            _ => {
+                self.best = Some((nominee, votes));
+                self.tied = false;
+            }
+        }
+    }
+
+    /// Who is executed at the end of the day, if anyone.
+    pub fn nominee(&self) -> Option<&player::Id> {
+        self.best.as_ref().filter(|_| !self.tied).map(|(p, _)| p)
+    }
+}
+
+/// What follows a nomination.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Nominated {
+    /// The nomination ended the day (the Virgin executed the nominator) or the game.
+    DayEnded,
+    /// There is nothing to vote on: the nomination killed the nominee (the Golem).
+    NoVote,
+    /// The table votes now.
+    Vote,
+}
+
+/// `nominator` nominates `nominee` (the storyteller does when `None`).
+/// A nominator who died nominating (the Witch's curse) still nominated: the
+/// vote goes on.
+pub fn nominate_by(
+    ctx: &mut ctx::Write<'_>,
+    nominator: Option<&player::Id>,
+    nominee: &player::Id,
+) -> Nominated {
+    let executed_before = ctx.state().executed_today().is_some();
+    let alive_before = ctx.state().is_alive(nominee);
+    match nominator {
+        Some(nominator) => nominate(ctx, nominator, nominee),
+        None => storyteller_nominates(ctx, nominee),
+    }
+    if ctx.state().winner().is_some()
+        || (!executed_before && ctx.state().executed_today().is_some())
+    {
+        Nominated::DayEnded
+    } else if alive_before && !ctx.state().is_alive(nominee) {
+        Nominated::NoVote
+    } else {
+        Nominated::Vote
+    }
+}
+
+/// Executes the block's nominee, if any, unless the game is over.
+pub fn execute_block(ctx: &mut ctx::Write<'_>, block: &Block) {
+    if let Some(nominee) = block.nominee().cloned()
+        && ctx.state().winner().is_none()
+    {
+        ctx.execute(&nominee);
+    }
+}
+
+/// The end of a day once executions are done: madness is judged, then the
+/// day-end abilities (`end_day`), unless the game is over.
+pub fn finish_day(ctx: &mut ctx::Write<'_>) {
+    if ctx.state().winner().is_none() {
+        check_madness(ctx);
+    }
+    if ctx.state().winner().is_none() {
+        end_day(ctx);
+    }
+}

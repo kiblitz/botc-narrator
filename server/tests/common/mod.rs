@@ -212,6 +212,9 @@ pub async fn play(phones: &[Phone], within: time::Duration) -> (serde_json::Valu
     let mut nominated_on: Vec<String> = Vec::new();
     let mut ended: Vec<(String, time::Instant)> = Vec::new();
     let mut nights: Vec<(String, time::Instant)> = Vec::new();
+    // Who each phone saw dead when each night began: nobody may be seen
+    // dying before dawn.
+    let mut dead_at_dusk: Vec<(String, String, Vec<String>)> = Vec::new();
     loop {
         assert!(
             time::Instant::now() < deadline,
@@ -226,6 +229,26 @@ pub async fn play(phones: &[Phone], within: time::Duration) -> (serde_json::Valu
             let view = phone.view();
             check_private(&phone.name, &view, &mut played.leaks);
             let phase = view["phase"].as_str().unwrap_or("").to_string();
+            if view["stage"] == "night" && phase.starts_with("Night") && view["winner"].is_null() {
+                let dead: Vec<String> = view["seats"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|s| s["alive"] == false)
+                    .map(|s| s["name"].as_str().unwrap().to_string())
+                    .collect();
+                match dead_at_dusk
+                    .iter()
+                    .find(|(p, n, _)| *p == phone.name && *n == phase)
+                {
+                    None => dead_at_dusk.push((phone.name.clone(), phase.clone(), dead)),
+                    Some((_, _, before)) if *before != dead => played.leaks.push(format!(
+                        "{} saw {dead:?} dead during {phase}, not {before:?}",
+                        phone.name
+                    )),
+                    Some(_) => {}
+                }
+            }
             if let Some(prompt) = view["prompt"].as_object() {
                 let id = prompt["id"].as_u64().unwrap();
                 if !answered.contains(&(phone.name.clone(), id)) {

@@ -6,7 +6,7 @@
 //! arrive meanwhile and matter later (a nomination made while the storyteller
 //! is thinking) are kept for the next wait; stale ones are dropped.
 
-use std::collections::VecDeque;
+use std::collections;
 use std::sync::mpsc;
 use std::time;
 
@@ -82,7 +82,7 @@ pub fn keep_commands(input: &Input) -> Verdict {
 
 pub struct Inbox {
     receiver: mpsc::Receiver<Input>,
-    kept: VecDeque<Input>,
+    kept: collections::VecDeque<Input>,
     closed: bool,
 }
 
@@ -91,7 +91,7 @@ impl Inbox {
         let (sender, receiver) = mpsc::channel();
         let inbox = Inbox {
             receiver,
-            kept: VecDeque::new(),
+            kept: collections::VecDeque::new(),
             closed: false,
         };
         (sender, inbox)
@@ -149,7 +149,14 @@ impl Inbox {
                 Verdict::Take => return Some(input),
                 Verdict::Keep => {
                     if self.kept.len() == MOST_KEPT {
-                        self.kept.pop_front();
+                        // The host's phase commands are never the ones dropped.
+                        let spam = self
+                            .kept
+                            .iter()
+                            .position(|k| !matches!(k, Input::EndDay | Input::StartNight));
+                        if let Some(i) = spam {
+                            self.kept.remove(i);
+                        }
                     }
                     self.kept.push_back(input);
                 }

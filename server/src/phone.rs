@@ -27,8 +27,8 @@ pub struct Table {
     /// How long a player has to answer.
     answer: time::Duration,
     phase: game::Phase,
-    /// Night deaths and revivals, announced when the day begins.
-    unannounced: Vec<(player::Id, String)>,
+    /// Night deaths (true) and revivals (false), announced when the day begins.
+    unannounced: Vec<(player::Id, bool)>,
     next_prompt: u64,
 }
 
@@ -189,14 +189,36 @@ impl Table {
 
     /// The deaths and revivals of the night, now that it is day.
     fn announce_night(&mut self) {
-        for (player, text) in std::mem::take(&mut self.unannounced) {
-            self.log(
-                room::Audience::Public,
-                text,
-                vec![player.to_string()],
-                Vec::new(),
-            );
+        for (player, died) in std::mem::take(&mut self.unannounced) {
+            let text = if died {
+                format!("{player} died in the night")
+            } else {
+                format!("{player} is alive again")
+            };
+            self.announce(&player, died, text);
         }
+    }
+
+    /// Tells the table that `player` died (or lives again): only now do the
+    /// phones show it.
+    fn announce(&self, player: &player::Id, died: bool, text: String) {
+        let name = player.to_string();
+        let phase = self.phase;
+        self.room.update(|state| {
+            if let Some(game) = &mut state.game {
+                game.known_dead.retain(|d| *d != name);
+                if died {
+                    game.known_dead.push(name.clone());
+                }
+                game.log.push(room::Entry {
+                    phase,
+                    audience: room::Audience::Public,
+                    text,
+                    players: vec![name],
+                    characters: Vec::new(),
+                });
+            }
+        });
     }
 
     /// The entries an event makes: public ones for what the table sees, the
@@ -232,30 +254,33 @@ impl Table {
                 // The cause is the storyteller's; the table only learns who died.
                 secret(self);
                 if let game::Phase::Night(_) = self.phase {
-                    self.unannounced
-                        .push((player.clone(), format!("{player} died in the night")));
+                    self.unannounced.push((player.clone(), true));
                 } else {
-                    public(self, format!("{player} dies"));
+                    self.announce(player, true, format!("{player} dies"));
                 }
             }
             event::Event::Revived(player) => {
                 secret(self);
-                let text = format!("{player} is alive again");
                 if let game::Phase::Night(_) = self.phase {
                     // Died and came back tonight: the table hears of neither.
                     let before = self.unannounced.len();
-                    self.unannounced
-                        .retain(|(p, t)| !(p == player && t.ends_with("died in the night")));
+                    self.unannounced.retain(|(p, died)| !(p == player && *died));
                     if self.unannounced.len() == before {
-                        self.unannounced.push((player.clone(), text));
+                        self.unannounced.push((player.clone(), false));
                     }
                 } else {
-                    public(self, text);
+                    self.announce(player, false, format!("{player} is alive again"));
                 }
             }
-            event::Event::Won(_) => {
+            event::Event::Won(alignment) => {
                 // A night kill can end the game before dawn.
                 self.announce_night();
+                let winner = *alignment;
+                self.room.update(|state| {
+                    if let Some(game) = &mut state.game {
+                        game.winner = Some(winner);
+                    }
+                });
                 public(self, text.clone());
             }
             event::Event::Nominated { .. }

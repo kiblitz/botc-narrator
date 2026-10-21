@@ -460,7 +460,10 @@ impl<'a> Write<'a> {
         self.state
     }
 
-    pub(crate) fn io(&mut self) -> &mut dyn table::Io {
+    /// The table itself, for asking players something that is not an
+    /// ability's choice (no `on_choose` hooks run), such as whom the Butcher
+    /// nominates again.
+    pub fn io(&mut self) -> &mut dyn table::Io {
         self.io
     }
 

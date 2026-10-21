@@ -5,11 +5,10 @@
 use botc_narrator::character;
 use botc_narrator::game;
 use botc_narrator::script;
-use serde::Serialize;
 
 use crate::room;
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 pub struct View {
     pub room: String,
     pub you: String,
@@ -25,26 +24,26 @@ pub struct View {
     pub me: Option<Me>,
     pub log: Vec<room::Entry>,
     pub prompt: Option<room::Prompt>,
-    pub vote: Option<VoteView>,
+    pub vote: Option<Vote>,
     pub may_nominate: bool,
     /// Players this player may nominate now.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub nominees: Vec<String>,
     pub day_actions: Vec<room::DayAction>,
     pub thinking: bool,
-    pub bridge: BridgeView,
+    pub bridge: Bridge,
     pub winner: Option<character::Alignment>,
     pub failure: Option<String>,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, serde::Serialize)]
 pub struct ScriptChoice {
     pub id: &'static str,
     pub name: String,
     pub max_players: usize,
 }
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 pub struct Seat {
     pub name: String,
     pub connected: bool,
@@ -58,7 +57,7 @@ pub struct Seat {
     pub alignment: Option<character::Alignment>,
 }
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 pub struct Me {
     /// The character you believe you are (a Drunk sees their Townsfolk).
     pub character: &'static str,
@@ -68,8 +67,8 @@ pub struct Me {
     pub awake: bool,
 }
 
-#[derive(Serialize)]
-pub struct VoteView {
+#[derive(serde::Serialize)]
+pub struct Vote {
     pub nominee: String,
     pub nominator: Option<String>,
     pub needed: usize,
@@ -77,8 +76,8 @@ pub struct VoteView {
     pub hands: Vec<(String, bool)>,
 }
 
-#[derive(Serialize)]
-pub struct BridgeView {
+#[derive(serde::Serialize)]
+pub struct Bridge {
     pub connected: bool,
     /// The host's alone.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -112,6 +111,17 @@ pub fn of(code: &str, state: &room::State, you: &str) -> View {
         });
     let game = state.game.as_ref();
     let over = game.is_some_and(|g| g.stage == room::Stage::Over);
+    // Deaths show only once the table is told (night deaths at dawn); after
+    // the game, the grimoire says.
+    let known_dead = |name: &str| match game {
+        Some(g) if over => g
+            .grimoire
+            .players()
+            .iter()
+            .any(|p| p.id.as_str() == name && !p.alive),
+        Some(g) => g.known_dead.iter().any(|d| d == name),
+        None => false,
+    };
     let seats = state
         .seats
         .iter()
@@ -126,8 +136,8 @@ pub fn of(code: &str, state: &room::State, you: &str) -> View {
                 name: seat.name.clone(),
                 connected: seat.connections > 0,
                 host: state.is_host(&seat.name),
-                alive: player.is_none_or(|p| p.alive),
-                ghost_vote: player.is_some_and(|p| !p.alive && p.ghost_vote),
+                alive: !known_dead(&seat.name),
+                ghost_vote: known_dead(&seat.name) && player.is_some_and(|p| p.ghost_vote),
                 character: player.filter(|_| over).map(|p| p.character.name()),
                 alignment: player.filter(|_| over).map(|p| p.alignment),
             }
@@ -144,7 +154,7 @@ pub fn of(code: &str, state: &room::State, you: &str) -> View {
             character: believed.name(),
             kind: believed.kind(),
             alignment,
-            alive: p.alive,
+            alive: !known_dead(you),
             awake: g.awake.iter().any(|a| a == you),
         })
     });
@@ -198,7 +208,7 @@ pub fn of(code: &str, state: &room::State, you: &str) -> View {
         me,
         log,
         prompt: game.and_then(|g| g.prompts.iter().find(|p| p.player == you).cloned()),
-        vote: game.and_then(|g| g.vote.as_ref()).map(|v| VoteView {
+        vote: game.and_then(|g| g.vote.as_ref()).map(|v| Vote {
             nominee: v.nominee.clone(),
             nominator: v.nominator.clone(),
             needed: v.needed,
@@ -218,7 +228,7 @@ pub fn of(code: &str, state: &room::State, you: &str) -> View {
             })
             .unwrap_or_default(),
         thinking: game.is_some_and(|g| g.thinking),
-        bridge: BridgeView {
+        bridge: Bridge {
             connected: state.bridge.is_some(),
             pairing: host.then(|| state.pairing.clone()),
             bridged: game.map_or(0, |g| g.bridged),

@@ -802,8 +802,7 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
             narrator::day_action(ctx, &player, ability);
         }
     }
-    let mut best: Option<(player::Id, usize)> = None;
-    let mut tied = false;
+    let mut block = narrator::Block::default();
     let mut nominated: Vec<player::Id> = Vec::new();
     let storyteller_nominates = narrator::storyteller_nominations(ctx);
     let players_nominate = storyteller_nominates.is_none();
@@ -845,20 +844,9 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
             narrator::end_day(ctx);
             return; // the Virgin executed the nominator
         };
-        let needed = needed(ctx.state());
-        if votes >= needed {
-            match &best {
-                Some((_, top)) if votes < *top => {}
-                Some((_, top)) if votes == *top => tied = true,
-                _ => {
-                    best = Some((nominee, votes));
-                    tied = false;
-                }
-            }
-        }
+        block.add(nominee, votes, narrator::votes_needed(ctx.state()));
     }
-    if let Some((nominee, _)) = best
-        && !tied
+    if let Some(nominee) = block.nominee().cloned()
         && ctx.state().winner().is_none()
     {
         ctx.execute(&nominee);
@@ -870,25 +858,14 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
             && ctx.state().winner().is_none()
             && let Some(nominee) = pick_nominee(ctx.state(), nominator, &nominated, rng)
             && let Some(votes) = nominate_and_vote(ctx, Some(nominator), &nominee, rng)
-            && votes >= needed(ctx.state())
+            && votes >= narrator::votes_needed(ctx.state())
             && ctx.state().winner().is_none()
         {
             ctx.execute(&nominee);
         }
     }
-    if ctx.state().winner().is_none() {
-        narrator::check_madness(ctx);
-    }
-    if ctx.state().winner().is_none() {
-        narrator::end_day(ctx);
-    }
+    narrator::finish_day(ctx);
 }
-
-/// Votes needed to execute: half the living players, rounded up.
-fn needed(state: &game::State) -> usize {
-    state.alive_ids().len().div_ceil(2)
-}
-
 /// A living player `nominator` may nominate who was not nominated today
 /// (evil players do not nominate evil players).
 fn pick_nominee(
@@ -917,23 +894,13 @@ fn nominate_and_vote(
     nominee: &player::Id,
     rng: &mut impl Rng,
 ) -> Option<usize> {
-    let executed_before = ctx.state().executed_today().is_some();
-    match nominator {
-        Some(nominator) => narrator::nominate(ctx, nominator, nominee),
-        None => narrator::storyteller_nominates(ctx, nominee),
-    }
-    // The Virgin executed the nominator: the day ends. A nominator who died
-    // nominating (the Witch's curse) still nominated: the vote goes on.
-    let ended = ctx.state().winner().is_some()
-        || (!executed_before && ctx.state().executed_today().is_some());
-    if ended {
-        return None;
-    }
-    if !ctx.state().is_alive(nominee) || ctx.state().winner().is_some() {
-        return Some(0); // the Golem killed the nominee: no vote
+    match narrator::nominate_by(ctx, nominator, nominee) {
+        narrator::Nominated::DayEnded => return None,
+        narrator::Nominated::NoVote => return Some(0),
+        narrator::Nominated::Vote => {}
     }
     let voters = voters(ctx.state(), nominee, rng);
-    let needed = needed(ctx.state());
+    let needed = narrator::votes_needed(ctx.state());
     Some(narrator::vote(ctx, nominee, voters, needed))
 }
 

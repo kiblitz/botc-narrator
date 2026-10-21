@@ -6,10 +6,7 @@
 //! with whatever its command printed. The server parses and validates the
 //! reply, so a bridge cannot make an illegal choice.
 
-use serde::Deserialize;
-use serde::Serialize;
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ToServer {
     /// The first message: the pairing code the host was shown.
@@ -24,7 +21,7 @@ pub enum ToServer {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ToBridge {
     /// Paired with room `room`.

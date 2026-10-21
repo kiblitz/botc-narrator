@@ -14,8 +14,6 @@ use axum::http;
 use axum::response;
 use axum::routing;
 use botc_bridge::wire;
-use serde::Deserialize;
-use serde::Serialize;
 
 use crate::accounts;
 use crate::engine;
@@ -45,6 +43,42 @@ pub struct App {
     pub seed: Option<u64>,
     sockets: sync::Arc<atomic::AtomicUsize>,
     bridges: sync::Arc<atomic::AtomicU64>,
+    misses: sync::Arc<Misses>,
+}
+
+/// Wrong room codes, seat tokens and pairing codes, server-wide: past
+/// [`MOST_MISSES`] in a minute, every lookup is refused until the minute is
+/// over, so codes cannot be guessed by brute force.
+#[derive(Default)]
+struct Misses {
+    window: sync::Mutex<Option<(time::Instant, usize)>>,
+}
+
+const MOST_MISSES: usize = 60;
+const MISS_WINDOW: time::Duration = time::Duration::from_secs(60);
+
+impl Misses {
+    fn current(&self) -> sync::MutexGuard<'_, Option<(time::Instant, usize)>> {
+        let mut window = self
+            .window
+            .lock()
+            .unwrap_or_else(sync::PoisonError::into_inner);
+        if window.is_some_and(|(start, _)| start.elapsed() > MISS_WINDOW) {
+            *window = None;
+        }
+        window
+    }
+
+    fn allowed(&self) -> bool {
+        self.current()
+            .is_none_or(|(_, misses)| misses < MOST_MISSES)
+    }
+
+    fn count(&self) {
+        let mut window = self.current();
+        let (start, misses) = window.unwrap_or((time::Instant::now(), 0));
+        *window = Some((start, misses + 1));
+    }
 }
 
 impl App {
@@ -56,6 +90,7 @@ impl App {
             seed,
             sockets: sync::Arc::default(),
             bridges: sync::Arc::default(),
+            misses: sync::Arc::default(),
         }
     }
 
@@ -88,7 +123,7 @@ pub fn router(app: App) -> axum::Router {
     app.gate.router().merge(api)
 }
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 struct Failure {
     error: String,
 }
@@ -113,7 +148,7 @@ fn refused(error: room::Error) -> response::Response {
     refuse(status, error)
 }
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 struct Me {
     signed_in: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -131,13 +166,13 @@ async fn me(
     })
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct Hosting {
     #[serde(default)]
     name: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 struct Seated {
     room: String,
     token: String,
@@ -170,7 +205,7 @@ async fn host(
     }
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct Joining {
     name: String,
 }
@@ -181,7 +216,14 @@ async fn join(
     extract::Path(code): extract::Path<String>,
     response::Json(joining): response::Json<Joining>,
 ) -> response::Response {
+    if !app.misses.allowed() {
+        return refuse(
+            http::StatusCode::TOO_MANY_REQUESTS,
+            "Too many wrong codes; wait a minute.",
+        );
+    }
     let Some(room) = app.rooms.get(&code) else {
+        app.misses.count();
         return refused(room::Error::NoSuchRoom);
     };
     match room.update(|s| s.join(&joining.name)) {
@@ -217,7 +259,7 @@ impl Drop for Counted {
 }
 
 /// What a phone sends.
-#[derive(Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum FromPhone {
     Hello {
@@ -260,7 +302,7 @@ pub enum FromPhone {
 }
 
 /// What a phone is sent.
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum ToPhone<'a> {
     View(&'a view::View),
@@ -321,7 +363,9 @@ async fn phone(app: App, mut socket: ws::WebSocket) {
         room.read(|s| s.seat_of(&token).map(|seat| seat.name.clone()))
             .map(|name| (room, name))
     });
+    let seat = seat.filter(|_| app.misses.allowed());
     let Some((room, name)) = seat else {
+        app.misses.count();
         send(
             &mut socket,
             &ToPhone::Gone {
@@ -331,11 +375,20 @@ async fn phone(app: App, mut socket: ws::WebSocket) {
         .await;
         return;
     };
-    room.update(|s| {
-        if let Some(seat) = s.seats.iter_mut().find(|seat| seat.name == name) {
-            seat.connections += 1;
-        }
-    });
+    let admitted = room.update(
+        |s| match s.seats.iter_mut().find(|seat| seat.name == name) {
+            Some(seat) if seat.connections < room::MOST_PHONES_PER_SEAT => {
+                seat.connections += 1;
+                true
+            }
+            _ => false,
+        },
+    );
+    if !admitted {
+        let message = "Too many phones are connected as this player.".to_string();
+        send(&mut socket, &ToPhone::Error { message }).await;
+        return;
+    }
     let mut changes = room.subscribe();
     changes.mark_changed();
     let mut ping = tokio::time::interval(PING);
@@ -576,10 +629,11 @@ async fn bridge_socket(app: App, mut socket: ws::WebSocket) {
         .await
         .and_then(|t| serde_json::from_str::<wire::ToServer>(&t).ok());
     let room = match pair {
-        Some(wire::ToServer::Pair { code }) => app.rooms.paired(&code),
+        Some(wire::ToServer::Pair { code }) if app.misses.allowed() => app.rooms.paired(&code),
         _ => None,
     };
     let Some(room) = room else {
+        app.misses.count();
         let reason = "That pairing code is not one the host was shown.".to_string();
         send_bridge(&mut socket, &wire::ToBridge::Refused { reason }).await;
         return;

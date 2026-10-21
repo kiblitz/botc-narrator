@@ -74,6 +74,7 @@ pub fn start(
         Ok((script, grimoire, inbox))
     });
     let (script, grimoire, inbox) = started?;
+    let failed = sync::Arc::clone(room);
     let room = sync::Arc::clone(room);
     tracing::info!(room = %room.code, script = script.id, players = grimoire.players().len(), "game starts");
     let spawned = thread::Builder::new()
@@ -81,6 +82,12 @@ pub fn start(
         .spawn(move || run(&room, &script, grimoire, inbox, timing, fallback));
     if let Err(e) = spawned {
         tracing::error!(error = %e, "could not start a game thread");
+        failed.update(|state| {
+            if let Some(game) = &mut state.game {
+                game.stage = room::Stage::Over;
+                game.failure = Some("the server is too busy to run another game".to_string());
+            }
+        });
     }
     Ok(())
 }
@@ -179,30 +186,6 @@ fn set_stage(room: &room::Room, stage: room::Stage) {
     });
 }
 
-/// The day's best vote so far: the nominee with the most votes (at least
-/// the votes needed), unless tied.
-#[derive(Default)]
-struct Block {
-    best: Option<(player::Id, usize)>,
-    tied: bool,
-}
-
-impl Block {
-    fn add(&mut self, nominee: player::Id, votes: usize, needed: usize) {
-        if votes < needed {
-            return;
-        }
-        match &self.best {
-            Some((_, top)) if votes < *top => {}
-            Some((_, top)) if votes == *top => self.tied = true,
-            _ => {
-                self.best = Some((nominee, votes));
-                self.tied = false;
-            }
-        }
-    }
-}
-
 /// A day: players nominate and vote, and use public day abilities, until the
 /// host ends it; then the nominee on the block is executed.
 fn day(
@@ -219,7 +202,7 @@ fn day(
             game.end_requested = false;
         }
     });
-    let mut block = Block::default();
+    let mut block = narrator::Block::default();
     // Only the storyteller nominates today (the Bishop): those votes happen
     // at once, and the players only use day abilities.
     let storyteller_nominates = narrator::storyteller_nominations(ctx);
@@ -229,8 +212,9 @@ fn day(
             return;
         }
         match nominate_and_vote(ctx, room, inbox, timing, None, &nominee) {
-            Some(votes) => block.add(nominee, votes, needed(ctx.state())),
-            None => return narrator::end_day(ctx),
+            Voted::Counted(votes) => block.add(nominee, votes, narrator::votes_needed(ctx.state())),
+            Voted::NoVote => {}
+            Voted::DayEnded => return narrator::end_day(ctx),
         }
     }
     loop {
@@ -252,9 +236,12 @@ fn day(
                     continue;
                 }
                 match nominate_and_vote(ctx, room, inbox, timing, Some(&nominator), &nominee) {
-                    Some(votes) => block.add(nominee, votes, needed(ctx.state())),
+                    Voted::Counted(votes) => {
+                        block.add(nominee, votes, narrator::votes_needed(ctx.state()))
+                    }
+                    Voted::NoVote => {}
                     // The nomination executed the nominator (the Virgin): the day ends.
-                    None => return narrator::end_day(ctx),
+                    Voted::DayEnded => return narrator::end_day(ctx),
                 }
             }
             Some(inbox::Input::DayAction { player, ability }) => {
@@ -269,23 +256,52 @@ fn day(
             return;
         }
     }
-    if let Some((nominee, _)) = block.best
-        && !block.tied
-        && ctx.state().winner().is_none()
-    {
-        ctx.execute(&nominee);
+    narrator::execute_block(ctx, &block);
+    if players_nominate && block.nominee().is_some() {
+        nominate_again(ctx, room, inbox, timing);
     }
-    if ctx.state().winner().is_none() {
-        narrator::check_madness(ctx);
-    }
-    if ctx.state().winner().is_none() {
-        narrator::end_day(ctx);
-    }
+    narrator::finish_day(ctx);
 }
 
-/// Votes needed to execute: half the living players, rounded up.
-fn needed(state: &game::State) -> usize {
-    state.alive_ids().len().div_ceil(2)
+/// After the day's first execution, the Butcher may nominate again (once: a
+/// second execution does not allow a third).
+fn nominate_again(
+    ctx: &mut ctx::Write<'_>,
+    room: &room::Room,
+    inbox: &rc::Rc<cell::RefCell<inbox::Inbox>>,
+    timing: Timing,
+) {
+    let Some(butcher) = narrator::nominate_again(ctx.state()).first().cloned() else {
+        return;
+    };
+    if ctx.state().winner().is_some() {
+        return;
+    }
+    let nominated = room.read(|s| {
+        s.game
+            .as_ref()
+            .map(|g| g.nominees.clone())
+            .unwrap_or_default()
+    });
+    let candidates: Vec<player::Id> = ctx
+        .state()
+        .alive_except(&butcher)
+        .into_iter()
+        .filter(|p| !nominated.iter().any(|n| n == p.as_str()))
+        .collect();
+    let chosen = ctx
+        .io()
+        .ask_up_to(&butcher, "Nominate again? (your ability)", &candidates, 1);
+    let Some(nominee) = chosen.first() else {
+        return;
+    };
+    if let Voted::Counted(votes) =
+        nominate_and_vote(ctx, room, inbox, timing, Some(&butcher), nominee)
+        && votes >= narrator::votes_needed(ctx.state())
+        && ctx.state().winner().is_none()
+    {
+        ctx.execute(nominee);
+    }
 }
 
 /// Whether `nominator` may nominate `nominee` now: a living player who may
@@ -353,9 +369,18 @@ fn refresh(ctx: &ctx::Write<'_>, room: &room::Room, players_nominate: bool) {
     });
 }
 
+/// How a nomination ended.
+enum Voted {
+    /// The nomination ended the day (the Virgin) or the game.
+    DayEnded,
+    /// Nothing to vote on (the Golem killed the nominee).
+    NoVote,
+    /// The votes counted.
+    Counted(usize),
+}
+
 /// Nominates `nominee` (by the storyteller when `nominator` is `None`) and
-/// holds the vote on the phones; returns the votes counted, or `None` if the
-/// nomination itself ended the day (the Virgin).
+/// holds the vote on the phones.
 fn nominate_and_vote(
     ctx: &mut ctx::Write<'_>,
     room: &room::Room,
@@ -363,7 +388,7 @@ fn nominate_and_vote(
     timing: Timing,
     nominator: Option<&player::Id>,
     nominee: &player::Id,
-) -> Option<usize> {
+) -> Voted {
     room.update(|s| {
         if let Some(game) = &mut s.game {
             if let Some(nominator) = nominator {
@@ -373,23 +398,12 @@ fn nominate_and_vote(
             game.nominees.push(nominee.to_string());
         }
     });
-    let executed_before = ctx.state().executed_today().is_some();
-    let alive_before = ctx.state().is_alive(nominee);
-    match nominator {
-        Some(nominator) => narrator::nominate(ctx, nominator, nominee),
-        None => narrator::storyteller_nominates(ctx, nominee),
+    match narrator::nominate_by(ctx, nominator, nominee) {
+        narrator::Nominated::DayEnded => return Voted::DayEnded,
+        narrator::Nominated::NoVote => return Voted::NoVote,
+        narrator::Nominated::Vote => {}
     }
-    // A nominator who died nominating (the Witch's curse) still nominated:
-    // the vote goes on.
-    if ctx.state().winner().is_some()
-        || (!executed_before && ctx.state().executed_today().is_some())
-    {
-        return None;
-    }
-    if alive_before && !ctx.state().is_alive(nominee) {
-        return Some(0); // the Golem killed the nominee: no vote
-    }
-    let needed = needed(ctx.state());
+    let needed = narrator::votes_needed(ctx.state());
     let eligible: Vec<String> = ctx
         .state()
         .players()
@@ -453,5 +467,5 @@ fn nominate_and_vote(
             ctx.spend_ghost_vote(voter);
         }
     }
-    Some(narrator::vote(ctx, nominee, voters, needed))
+    Voted::Counted(narrator::vote(ctx, nominee, voters, needed))
 }

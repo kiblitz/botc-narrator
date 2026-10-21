@@ -52,7 +52,9 @@ cargo run --release -p botc_bridge -- <PAIRING-CODE>
 
 The host's lobby shows the pairing code and the exact command (**Copy**). The
 code is the host's alone, because the bridge sees the whole grimoire; **New
-code** drops the paired bridge. The host sees a green dot while one is connected.
+code** drops the paired bridge. The host sees a green dot while one is connected. Whoever runs the bridge can
+read the grimoire in its prompts, so a host who plays should let someone else's
+computer (or one nobody looks at) be the storyteller.
 
 Each decision is sent as a prompt (the grimoire, the history, the numbered legal
 options) to the command's stdin, and the command's output is parsed for option
@@ -65,7 +67,7 @@ cargo run --release -p botc_bridge -- <PAIRING-CODE> -- claude -p
 ```
 
 Options: `--server URL` (default `https://botc.kiblitz.xyz`), `--timeout SECONDS`
-for the command (default 120). The server waits 90 seconds per decision; if the
+for the command (default 80, under the server's 90). The server waits 90 seconds per decision; if the
 bridge is gone, fails, or answers nonsense, that decision is random and the game
 goes on. The bridge reconnects by itself if the connection drops.
 
@@ -90,6 +92,10 @@ that no phone sees another's secrets), `bridge/tests/bridge.rs` (pairing and
 decisions with a fake `codex`), `server/e2e` (Playwright on phone viewports,
 against `cargo run -p botc_server --example e2e`).
 
-Not yet modelled: Travellers joining, the Butcher's second nomination, the
+Limits: a seat takes at most three phones; past 60 wrong room codes, seat
+tokens or pairing codes in a minute, the server refuses lookups for the rest of
+that minute. A host whose game is running cannot open another room.
+
+Not yet modelled: Travellers joining, the
 storyteller's judgement of madness (mad players never break madness), and
 "did you say the word / lose roshambo" are asked to the player themself.

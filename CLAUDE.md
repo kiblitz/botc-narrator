@@ -5,7 +5,7 @@ Rust Blood on the Clocktower storyteller engine. Read README.md for the architec
 ## Decisions (do not revisit without the user)
 
 - Rewritten from OCaml to Rust (2026-10-20). The OCaml free monad was replaced by ability contexts (`ctx::Read` / `ctx::Write`) passed to plain functions; the read/write split replaces the phantom permission types.
-- Storyteller discretion goes through `storyteller::Decision` with only legal options and a typed reason. The AI storyteller is Claude Code via the `claude -p` CLI (prompt on stdin), not the API. Tests use `storyteller::Scripted`.
+- Storyteller discretion goes through `storyteller::Decision` with only legal options and a typed reason. The AI storyteller is an LLM CLI with the prompt on stdin, never an API: `storyteller::claude` (`claude -p`) for the console demo, and the web app's bridge runs `codex exec` (configurable) with the same prompt and parser. Tests use `storyteller::Scripted`.
 - Info abilities supply truthful and misinformation options; poisoning is handled centrally by `ctx::Read::inform`, never per character.
 - Grimoire status is reminder tokens (`game::Reminder`), not per-effect boolean fields.
 - The simulator (`src/sim.rs` -> `web/` wasm -> `site/`) records every step with an audience (public / player / storyteller) and a grimoire snapshot; the table gets the grimoire with each event (`table::Io::event`), so every grimoire change must go through `ctx::Write::record`. In a player's view the site shows only that player's knowledge, and night deaths are announced at dawn without their cause.

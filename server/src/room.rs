@@ -32,6 +32,8 @@ const PAIRING_GROUP_LENGTH: usize = 4;
 const TOKEN_BYTES: usize = 16;
 
 pub const MOST_ROOMS: usize = 64;
+/// Phones that may be connected as one seat at a time.
+pub const MOST_PHONES_PER_SEAT: usize = 3;
 /// More than any script seats, so a few spare phones can join and be removed.
 pub const MOST_SEATS: usize = 20;
 pub const MOST_NAME_CHARS: usize = 20;
@@ -45,6 +47,8 @@ pub const DEFAULT_SCRIPT: &str = "trouble_brewing";
 pub enum Error {
     NoSuchRoom,
     TooManyRooms,
+    /// The host's other room has a game running.
+    Hosting,
     Started,
     Full,
     BadName,
@@ -65,6 +69,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::NoSuchRoom => f.write_str("There is no room with that code."),
             Error::TooManyRooms => f.write_str("Too many rooms are open; try again later."),
+            Error::Hosting => f.write_str("You are hosting a game that is still running."),
             Error::Started => f.write_str("That game has already started."),
             Error::Full => f.write_str("That room is full."),
             Error::BadName => write!(f, "Names are 1 to {MOST_NAME_CHARS} characters."),
@@ -97,6 +102,12 @@ impl Rooms {
             .filter(|r| r.read(|s| s.host_subject == subject))
             .map(|r| r.code.clone())
             .collect();
+        let running = previous.iter().any(|code| {
+            rooms[code].read(|s| s.game.as_ref().is_some_and(|g| g.stage != Stage::Over))
+        });
+        if running {
+            return Err(Error::Hosting);
+        }
         for code in previous {
             if let Some(room) = rooms.remove(&code) {
                 room.close();
@@ -396,6 +407,8 @@ pub struct Game {
     /// `view`, filtered to what that player may see.
     pub grimoire: game::State,
     pub log: Vec<Entry>,
+    /// Who the table knows is dead: a night death only once it is announced at dawn.
+    pub known_dead: Vec<String>,
     /// What each player is being asked now; at most one each.
     pub prompts: Vec<Prompt>,
     /// Players awake now (by day: privately visiting the storyteller).
@@ -430,6 +443,7 @@ impl Game {
             phase: game::Phase::Setup,
             grimoire,
             log: Vec::new(),
+            known_dead: Vec::new(),
             prompts: Vec::new(),
             awake: Vec::new(),
             vote: None,
