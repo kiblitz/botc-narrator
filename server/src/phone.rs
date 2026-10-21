@@ -273,14 +273,16 @@ impl Table {
                 }
             }
             event::Event::Won(alignment) => {
-                // A night kill can end the game before dawn.
-                self.announce_night();
+                // A night kill can end the game before dawn: the winner is
+                // set first, so no phone sees a night death announced
+                // before the game is over.
                 let winner = *alignment;
                 self.room.update(|state| {
                     if let Some(game) = &mut state.game {
                         game.winner = Some(winner);
                     }
                 });
+                self.announce_night();
                 public(self, text.clone());
             }
             event::Event::Nominated { .. }
