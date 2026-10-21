@@ -9,6 +9,7 @@ use expect_test::expect;
 use botc_narrator::character;
 use botc_narrator::characters;
 use botc_narrator::ctx;
+use botc_narrator::event;
 use botc_narrator::game;
 use botc_narrator::narrator;
 use botc_narrator::script;
@@ -1070,4 +1071,27 @@ fn a_godfather_the_vigormortis_kills_still_wakes_after_an_outsider_dies() {
         run(ctx, &characters::godfather::Def, 3);
     });
     assert!(!g.state.is_alive(&p("Monk")), "{}", g.transcript());
+}
+
+#[test]
+fn evil_wins_when_only_legion_remain() {
+    // The scripted storyteller declines (the first option, "no") to end the
+    // game while one good player lives, so only the last good death decides it.
+    let mut g = legion_game();
+    g.run(|ctx| {
+        to_night(ctx, 1);
+        ctx.advance_phase();
+        for good in ["Eve", "Frank", "Gina"] {
+            ctx.kill(&p(good), event::Cause::Ability { by: p("Alice") });
+        }
+    });
+    for good in ["Eve", "Frank", "Gina"] {
+        assert!(!g.state.is_alive(&p(good)), "{}", g.transcript());
+    }
+    assert_eq!(
+        g.state.winner(),
+        Some(character::Alignment::Evil),
+        "{}",
+        g.transcript()
+    );
 }

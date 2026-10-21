@@ -83,7 +83,8 @@ impl character::Def for Def {
         }
     }
 
-    /// With one good player left, the storyteller may declare evil the winner.
+    /// With no good player left, evil wins; with one left, the storyteller
+    /// may declare evil the winner.
     fn on_death(
         &self,
         ctx: &mut ctx::Write<'_>,
@@ -97,9 +98,12 @@ impl character::Def for Def {
             .iter()
             .filter(|p| !state.is_evil(p))
             .count();
-        if voice(state).as_ref() == Some(me)
-            && good_alive == 1
-            && ability::storyteller_agrees(&mut ctx.read(), me, &Def, "declare evil the winner?")
+        if voice(state).as_ref() != Some(me) {
+            return;
+        }
+        if good_alive == 0
+            || good_alive == 1
+                && ability::storyteller_agrees(&mut ctx.read(), me, &Def, "declare evil the winner?")
         {
             ctx.win(character::Alignment::Evil);
         }
