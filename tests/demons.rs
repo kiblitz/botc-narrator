@@ -1095,3 +1095,24 @@ fn evil_wins_when_only_legion_remain() {
         g.transcript()
     );
 }
+
+#[test]
+fn legion_offers_the_evil_win_again_each_night() {
+    // One good player left after the day: the storyteller declines then, but
+    // is asked again when the next night begins.
+    let mut g = legion_game();
+    g.run(|ctx| {
+        to_night(ctx, 1);
+        ctx.advance_phase();
+        for good in ["Eve", "Frank"] {
+            ctx.kill(&p(good), event::Cause::Ability { by: p("Alice") });
+        }
+        ctx.advance_phase();
+    });
+    let transcript = g.transcript();
+    assert_eq!(
+        transcript.matches("declare evil the winner?").count(),
+        2,
+        "{transcript}"
+    );
+}

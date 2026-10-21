@@ -92,21 +92,33 @@ impl character::Def for Def {
         _dead: &player::Id,
         _cause: &event::Cause,
     ) {
-        let state = ctx.state();
-        let good_alive = state
-            .alive_ids()
-            .iter()
-            .filter(|p| !state.is_evil(p))
-            .count();
-        if voice(state).as_ref() != Some(me) {
-            return;
-        }
-        if good_alive == 0
-            || good_alive == 1
-                && ability::storyteller_agrees(&mut ctx.read(), me, &Def, "declare evil the winner?")
-        {
-            ctx.win(character::Alignment::Evil);
-        }
+        offer_evil_win(ctx, me);
+    }
+
+    /// The storyteller may end the game each night while one good player lives.
+    fn on_night_start(&self, ctx: &mut ctx::Write<'_>, me: &player::Id) {
+        offer_evil_win(ctx, me);
+    }
+}
+
+/// Good cannot win once only one good player lives ("the Storyteller may
+/// declare that evil wins"), and with none left evil has won. Acts once, through
+/// the Legion's voice.
+fn offer_evil_win(ctx: &mut ctx::Write<'_>, me: &player::Id) {
+    let state = ctx.state();
+    if state.winner().is_some() || voice(state).as_ref() != Some(me) {
+        return;
+    }
+    let good_alive = state
+        .alive_ids()
+        .iter()
+        .filter(|p| !state.is_evil(p))
+        .count();
+    if good_alive == 0
+        || good_alive == 1
+            && ability::storyteller_agrees(&mut ctx.read(), me, &Def, "declare evil the winner?")
+    {
+        ctx.win(character::Alignment::Evil);
     }
 }
 
