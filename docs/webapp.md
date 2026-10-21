@@ -62,9 +62,10 @@ curl -fsSL https://botc.kiblitz.xyz/bridge.sh | sh -s -- <PAIRING-CODE>
 
 Each fetches `bridge.mjs` from the site (`server/static/`) and runs it with
 Node. It uses Codex if installed, else Claude Code; `-- COMMAND...` after the
-code names any other command. The Rust bridge (`cargo run --release -p
-botc_bridge -- <PAIRING-CODE>`) speaks the same protocol and stays as an
-alternative.
+code names any other command (in PowerShell, quote it: `'--'`). The Rust
+bridge (`cargo run --release -p botc_bridge -- <PAIRING-CODE>`) speaks the
+same protocol and stays as an alternative; it always uses Codex unless given
+a command.
 
 The host's lobby shows the pairing code inside both lines (**Copy**). The
 code is the host's alone, because the bridge sees the whole grimoire; **New
@@ -111,7 +112,8 @@ Limits: a seat takes at most three phones; a client (by the address Caddy
 forwards) that tries 60 wrong room codes in a minute cannot join any room for
 the rest of that minute. Seat tokens and pairing codes are too long to guess,
 so reconnecting phones and bridges are never limited. One client address hosts
-at most three rooms at once; a room whose game never starts closes after an
+at most three rooms at once (requests that do not come through Caddy, as in
+local runs, are not limited); a room whose game never starts closes after an
 hour untouched, a running one after four, a finished one after thirty minutes,
 and the server holds at most 64 rooms.
 

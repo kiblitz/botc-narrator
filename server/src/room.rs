@@ -104,7 +104,9 @@ impl Rooms {
     /// Opens a room hosted from the address `client` (no account), whose
     /// host sits in it as `name`. A client hosts at most
     /// [`MOST_ROOMS_PER_CLIENT`] rooms; requests with no client (local runs
-    /// and tests, never through Caddy) are not limited. Returns the room and the host's player
+    /// and tests, never through Caddy) are not limited. In production that
+    /// trusts any process on the box that calls the loopback port directly;
+    /// [`MOST_ROOMS`] still holds. Returns the room and the host's player
     /// token, which is all that makes them the host when they reconnect.
     pub fn open(
         &self,
@@ -704,6 +706,10 @@ mod tests {
             Some(room::Error::HostingTooMany)
         );
         assert!(rooms.open(Some("198.51.100.7"), "Bram").is_ok());
+        // Requests that did not come through Caddy (local runs) are not held to it.
+        for _ in 0..=room::MOST_ROOMS_PER_CLIENT {
+            rooms.open(None, "Cleo").unwrap();
+        }
     }
 
     #[test]

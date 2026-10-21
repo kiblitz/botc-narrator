@@ -14,6 +14,8 @@ use tokio_tungstenite::tungstenite;
 
 /// `codex exec` reading its prompt from stdin, outside any repository, with
 /// no session saved and no permission to change files.
+/// `server/static/bridge.mjs` mirrors this, [`COMMAND_TIMEOUT`] and
+/// [`RECONNECT`]: keep them in step.
 pub const DEFAULT_COMMAND: [&str; 6] = [
     "codex",
     "exec",

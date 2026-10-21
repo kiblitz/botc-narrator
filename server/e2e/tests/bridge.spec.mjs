@@ -15,6 +15,10 @@ function fakeCodex() {
   writeFileSync(path.join(dir, "codex"), "#!/bin/sh\ncat >/dev/null\necho 0\n");
   chmodSync(path.join(dir, "codex"), 0o755);
   writeFileSync(path.join(dir, "codex.cmd"), "@echo off\r\nmore >nul\r\necho 0\r\n");
+  // A storyteller named after `--`, which refuses any argument it did not get.
+  writeFileSync(path.join(dir, "teller"), "#!/bin/sh\n[ $# -eq 0 ] || exit 3\ncat >/dev/null\necho 0\n");
+  chmodSync(path.join(dir, "teller"), 0o755);
+  writeFileSync(path.join(dir, "teller.cmd"), '@echo off\r\nif not "%~1"=="" exit /b 3\r\nmore >nul\r\necho 0\r\n');
   return dir;
 }
 
@@ -35,8 +39,20 @@ function run(shell, line) {
 
 const PLAYERS = ["Ada", "Bram", "Cleo", "Dev"];
 
-for (const [shell, id] of [["sh", "#bridge-command"], ...(windows ? [["powershell", "#bridge-command-powershell"]] : [])]) {
-  test(`the ${shell} one-liner pairs a bridge that answers decisions`, async ({ page, request }) => {
+// Each line as shown, and with a storyteller command of its own after `--`.
+const CASES = [
+  { shell: "sh", id: "#bridge-command", extra: "", uses: "codex exec" },
+  { shell: "sh", id: "#bridge-command", extra: " -- teller", uses: "teller" },
+  ...(windows
+    ? [
+        { shell: "powershell", id: "#bridge-command-powershell", extra: "", uses: "codex exec" },
+        { shell: "powershell", id: "#bridge-command-powershell", extra: " '--' teller", uses: "teller" },
+      ]
+    : []),
+];
+
+for (const { shell, id, extra, uses } of CASES) {
+  test(`the ${shell} one-liner${extra} pairs a bridge that answers decisions`, async ({ page, request }) => {
     await page.goto("/");
     await page.locator("#host-name").fill("Host");
     await page.getByRole("button", { name: "Host a game" }).click();
@@ -48,10 +64,10 @@ for (const [shell, id] of [["sh", "#bridge-command"], ...(windows ? [["powershel
     const line = await page.locator(id).innerText();
     expect(line).toContain("--server http://127.0.0.1");
 
-    const bridge = run(shell, line);
+    const bridge = run(shell, line + extra);
     try {
       await expect(page.locator("#bridge .dot.on")).toBeVisible({ timeout: 60_000 });
-      expect(bridge.output()).toContain("answering with: codex exec");
+      expect(bridge.output()).toContain(`answering with: ${uses}`);
       await page.locator("#start").click();
       await expect.poll(bridge.output, { timeout: 60_000 }).toMatch(/decision \d+: answered in [\d.]+s: 0/);
     } finally {

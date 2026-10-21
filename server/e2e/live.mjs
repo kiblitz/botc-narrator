@@ -7,7 +7,8 @@
 //   [VIDEO=dir] [CODEX_HOME=dir] node live.mjs
 // The bridge runs from the host's one-line command; BRIDGE is the storyteller
 // command (default: Codex, using whichever login CODEX_HOME points at, else
-// Claude Code). VIDEO records the host's and the first player's phones.
+// Claude Code); it runs through `sh`, so on Windows Git Bash must be on PATH.
+// VIDEO records the host's and the first player's phones.
 import { chromium, devices } from "@playwright/test";
 import { spawn, spawnSync } from "node:child_process";
 

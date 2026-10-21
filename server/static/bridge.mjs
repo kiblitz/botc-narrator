@@ -10,9 +10,13 @@
 // else Claude Code. The server checks every answer, and picks at random when
 // the bridge is gone or slow, so the game never waits.
 //
-// The same protocol as the Rust bridge (bridge/src/wire.rs).
+// The same protocol as the Rust bridge (bridge/src/wire.rs, which owns it);
+// the defaults below mirror bridge/src/lib.rs (DEFAULT_COMMAND,
+// COMMAND_TIMEOUT, RECONNECT): keep them in step. Unlike it, this bridge
+// falls back to Claude Code when Codex is not installed.
 import { spawn, spawnSync } from "node:child_process";
 
+// The site, as in bridge.sh, bridge.ps1 and app.js's SITE.
 const DEFAULT_SERVER = "https://botc.kiblitz.xyz";
 // Under the server's 90 seconds per decision.
 const DEFAULT_TIMEOUT_SECONDS = 80;
@@ -56,7 +60,14 @@ function parse(argv) {
 const shell = process.platform === "win32";
 const quote = (arg) => (/[\s"]/.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg);
 const start = (command, options) =>
-  shell ? spawn(command.map(quote).join(" "), { ...options, shell }) : spawn(command[0], command.slice(1), options);
+  shell
+    ? spawn(command.map(quote).join(" "), { ...options, shell })
+    : spawn(command[0], command.slice(1), { ...options, detached: true });
+/** Stops a command and everything it started (Codex runs children of its own). */
+const stop = (child) =>
+  shell
+    ? spawnSync("taskkill", ["/T", "/F", "/PID", String(child.pid)], { stdio: "ignore" })
+    : process.kill(-child.pid, "SIGKILL");
 
 /** The first of COMMANDS installed here, or null. */
 function detect() {
@@ -76,7 +87,9 @@ function answer(command, prompt, timeoutSeconds) {
     let stdout = "";
     let stderr = "";
     const timer = setTimeout(() => {
-      child.kill();
+      try {
+        stop(child);
+      } catch {}
       reject(new Error(`${command[0]} took longer than ${timeoutSeconds}s`));
     }, timeoutSeconds * 1000);
     child.stdout.on("data", (chunk) => (stdout += chunk));
@@ -130,7 +143,9 @@ function serve(options, command) {
             reply = { type: "reply", id: message.id, error: e.message };
           }
           if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(reply));
-        });
+        })
+          // A failed send must not stop the decisions after it.
+          .catch((e) => log(`could not reply: ${e.message}`));
       }
     });
     socket.addEventListener("close", () => resolve("dropped"));

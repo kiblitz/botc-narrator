@@ -90,7 +90,7 @@ impl Misses {
 
 /// Wrong room codes from requests that came straight to the server rather
 /// than through Caddy (local runs and tests) count against this one client.
-const DIRECT: &str = "direct";
+const UNPROXIED_CLIENT: &str = "unproxied";
 /// IPv6 clients are told apart by their /64: one machine usually has the
 /// whole block, so a single address would let it dodge every per-client limit.
 const IPV6_CLIENT_SEGMENTS: usize = 4;
@@ -237,7 +237,7 @@ async fn join(
     headers: http::HeaderMap,
     response::Json(joining): response::Json<Joining>,
 ) -> response::Response {
-    let client = client(&headers).unwrap_or_else(|| DIRECT.to_string());
+    let client = client(&headers).unwrap_or_else(|| UNPROXIED_CLIENT.to_string());
     if !app.misses.allowed(&client) {
         return refuse(
             http::StatusCode::TOO_MANY_REQUESTS,

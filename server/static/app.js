@@ -22,7 +22,7 @@ const state = {
   reveal: localStorage.getItem(REVEAL_KEY) === "1",
   countdown: null,
   // Scripts fetched for the lobby's script view, by id (null while being
-  // fetched), and whether it is open.
+  // fetched, false if it could not be), and whether it is open.
   scripts: {},
   scriptOpen: false,
 };
@@ -304,8 +304,10 @@ function scriptView(choice) {
         state.scripts[choice.id] = fetched;
         render();
       })
-      // Asked again on the next redraw.
-      .catch(() => delete state.scripts[choice.id]);
+      .catch(() => {
+        state.scripts[choice.id] = false;
+        render();
+      });
   }
   const sections = KIND_ORDER.map((kind) => {
     const members = script ? script.characters.filter((c) => c.kind === kind) : [];
@@ -320,7 +322,7 @@ function scriptView(choice) {
   });
   const details = el("details", { class: "card", id: "script-view" },
     el("summary", {}, `Characters on ${choice.name}`),
-    script ? null : el("p", { class: "muted small" }, "Loading…"),
+    script ? null : el("p", { class: "muted small" }, script === false ? "Could not load the script." : "Loading…"),
     ...sections,
   );
   details.open = state.scriptOpen;
@@ -393,7 +395,8 @@ function makeDraggable(list) {
   });
 }
 
-// The production site, which the bridge scripts default to.
+// The production site, which the bridge scripts default to (bridge.mjs,
+// bridge.sh and bridge.ps1 each name it too).
 const SITE = "https://botc.kiblitz.xyz";
 
 /** The one-line commands that run the bridge for this room's pairing code. */

@@ -8,9 +8,13 @@
 # arguments (--server, --codex-home, -- COMMAND...) go to it.
 set -eu
 
+# The site, as in bridge.mjs and app.js's SITE.
 server=https://botc.kiblitz.xyz
+# Where to fetch bridge.mjs from: the user's --server, if any, before `--`
+# (after it come the storyteller command's own arguments).
 previous=
 for arg in "$@"; do
+	[ "$arg" = -- ] && break
 	[ "$previous" = --server ] && server=$arg
 	previous=$arg
 done
@@ -22,7 +26,10 @@ fi
 # Node needs the .mjs name to run it as a module.
 dir=$(mktemp -d "${TMPDIR:-/tmp}/botc-bridge.XXXXXX")
 trap 'rm -rf "$dir"' EXIT
+trap 'exit 130' INT TERM HUP
 script="$dir/bridge.mjs"
 curl -fsSL "$server/bridge.mjs" -o "$script"
 # Not exec: the trap removes the script when the bridge stops.
-node "$script" "$@" --server "$server"
+# --server first: the user's own, in "$@", comes later and wins, and anything
+# after `--` stays the command's.
+node "$script" --server "$server" "$@"

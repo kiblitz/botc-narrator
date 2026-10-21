@@ -1,7 +1,7 @@
 //! Collects every character's ability text (`data/characters/<id>.json`
 //! specs and the `data/abilities/*.json` maps, as `scripts/abilities.mjs`
-//! does for the simulator) into one JSON map for the lobby's script view.
-//! Keys are ids without underscores.
+//! does for the simulator: keep the rules identical) into one JSON map for
+//! the lobby's script view. Keys are ids without underscores.
 
 use std::collections;
 use std::fs;
@@ -37,13 +37,16 @@ fn main() {
 
 fn json_files(dir: &path::Path) -> Vec<serde_json::Value> {
     let mut files: Vec<path::PathBuf> = fs::read_dir(dir)
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
+        .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
+        .map(|entry| entry.expect("a directory entry").path())
         .filter(|p| p.extension().is_some_and(|e| e == "json"))
         .collect();
     files.sort();
     files
         .iter()
-        .map(|p| serde_json::from_str(&fs::read_to_string(p).unwrap()).unwrap())
+        .map(|p| {
+            let text = fs::read_to_string(p).unwrap_or_else(|e| panic!("{}: {e}", p.display()));
+            serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+        })
         .collect()
 }
