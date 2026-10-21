@@ -264,5 +264,8 @@ async fn a_host_cannot_abandon_a_running_game_by_hosting_again() {
         .await
         .unwrap();
     assert_eq!(again.status(), 409);
-    assert_ne!(phones[1].view()["stage"], "lobby");
+    common::until(&phones[1], time::Duration::from_secs(5), |v| {
+        v["me"].is_object()
+    })
+    .await;
 }

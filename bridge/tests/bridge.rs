@@ -202,8 +202,7 @@ fn the_bridge_reaches_a_secure_server_over_tls_without_panicking() {
     let output = child.wait_with_output().unwrap();
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(!stderr.contains("panicked"), "{stderr}");
-    assert!(
-        stderr.contains("disconnected") || stderr.contains("refused"),
-        "{stderr}"
-    );
+    // An HTTP status means TLS was negotiated and the upgrade answered
+    // (needs the network, like the deploy tests).
+    assert!(stderr.contains("HTTP error"), "{stderr}");
 }

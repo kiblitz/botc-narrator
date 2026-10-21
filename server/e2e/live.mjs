@@ -46,7 +46,10 @@ await host.waitForTimeout(500);
 
 const pairing = (await host.locator("#bridge-command").innerText()).split(" ")[1];
 const command = process.env.BRIDGE ? ["--", ...process.env.BRIDGE.split(" ")] : [];
-const bridge = spawn("cargo", ["run", "-q", "--release", "-p", "botc_bridge", "--", pairing, "--server", SITE, ...command], { stdio: ["ignore", "inherit", "inherit"] });
+// The built binary itself (cargo build --release -p botc_bridge first), so
+// killing it really stops it, on any exit.
+const bridge = spawn("../../target/release/botc-bridge", [pairing, "--server", SITE, ...command], { stdio: ["ignore", "inherit", "inherit"] });
+process.on("exit", () => bridge.kill());
 await host.locator("#bridge .dot.on").waitFor({ timeout: 300_000 });
 log("bridge paired");
 await shot(host, "live-1-lobby");
