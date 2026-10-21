@@ -2,7 +2,6 @@
 //! plays on their own phone, the engine is the storyteller, and a paired
 //! bridge (Codex on someone's computer) makes the storyteller's choices.
 
-pub mod accounts;
 pub mod api;
 pub mod bridged;
 pub mod engine;

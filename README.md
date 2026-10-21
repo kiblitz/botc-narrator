@@ -156,7 +156,7 @@ Building needs `wasm-pack` and the `wasm32-unknown-unknown` target; the Playwrig
 
 ## Multiplayer web app
 
-`server/` serves <https://botc.kiblitz.xyz>: a host signs in and opens a room, players join by code on their phones, the engine is the storyteller and a paired bridge (`bridge/`, Codex by default) makes its choices. See [docs/webapp.md](docs/webapp.md).
+`server/` serves <https://botc.kiblitz.xyz>: anyone opens a room (no account), players join by code on their phones, the engine is the storyteller and a paired bridge (`bridge/`, Codex by default) makes its choices. See [docs/webapp.md](docs/webapp.md).
 
 ## Running
 

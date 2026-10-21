@@ -3,7 +3,6 @@
 //! checks that.
 
 pub const HEALTH: &str = "/health";
-pub const ME: &str = "/api/me";
 pub const SCRIPTS: &str = "/api/scripts";
 pub const ROOMS: &str = "/api/rooms";
 pub const JOIN: &str = "/api/rooms/{code}/join";

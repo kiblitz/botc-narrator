@@ -26,13 +26,8 @@ Group=botc
 Environment=BIND_ADDR=127.0.0.1:8081
 Environment=LOG=info
 
-# The origin people reach this server at. The shared sign-in's callback URL is
-# built from it, and it has to match the one registered for the `botc` client
-# in account-manager's config/clients.production.json exactly.
-Environment=PUBLIC_ORIGIN=https://botc.kiblitz.xyz
-
-# No state on disk and no secret of any kind: rooms live in memory, and sign-in
-# is the shared account service's. So no StateDirectory and no EnvironmentFile.
+# No state on disk and no secret of any kind: rooms live in memory and nobody
+# signs in. So no StateDirectory and no EnvironmentFile.
 
 ExecStart=/usr/local/bin/botc-server
 

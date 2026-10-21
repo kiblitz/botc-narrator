@@ -71,9 +71,9 @@ slot1 hosts more than one app. These are slot0's rules, unchanged
    files and directories is refused, and modes are normalised.
 8. **Provisioning is manual and idempotent; deploying is automatic.**
 9. **Resources are tight** (2 GB RAM): every unit has `MemoryMax=`/`TasksMax=`.
-10. **Sign-in is the shared account service**, `https://accounts.kiblitz.xyz`,
-    on slot0, over the public internet, through the pinned account-session
-    library. Nothing here may assume it shares a box with botc.
+10. **No sign-in.** Box apps normally sign in through the shared account
+    service; botc is anonymous by the user's decision (2026-10-21), so it has
+    no account client and no callback.
 
 ### botc's row in slot1's `apps.md`
 
@@ -81,7 +81,6 @@ slot1 hosts more than one app. These are slot0's rules, unchanged
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | botc | `kiblitz/botc-narrator` | `botc.kiblitz.xyz` | `8081` | `botc` | `botc` (service), `botc-deploy` (deploys) | `/etc/caddy/sites/botc.caddy` | `/usr/local/bin/botc-server`, `/usr/local/sbin/botc-apply`, `/usr/local/sbin/botc-caddy-site`, `/var/www/botc`, `/var/lib/botc-deploy/staging`, `/var/lib/botc-apply`, `/var/lib/botc-caddy-site`, `/run/lock/botc-apply.lock` |
 
-Sign-in callback: `https://botc.kiblitz.xyz/api/auth/accounts/callback`.
 DNS: `botc A 5.161.56.133`. `apps.md` is the registry; if this copy and it
 disagree, it is this copy that is out of date.
 
@@ -106,19 +105,7 @@ line should be there.
 (credentials `slot0/secrets/porkbun`; never print them). First, because Caddy
 cannot get a certificate until the name resolves. Leave the `*` wildcard alone.
 
-### 3. Register the sign-in client
-
-account-manager redirects only to callbacks it has been told about. Add a
-`botc` client to its `config/clients.production.json` with exactly
-
-```
-https://botc.kiblitz.xyz/api/auth/accounts/callback
-```
-
-as a pull request there, then re-provision its registry on **slot0** from LF
-bytes. There is no secret to put on this box.
-
-### 4. Keys
+### 3. Keys
 
 `scripts/deploy.sh` uses `~/.ssh/botc-deploy` on this machine; the workflow
 gets the same key as a secret.
@@ -127,16 +114,12 @@ gets the same key as a secret.
 ssh-keygen -t ed25519 -N "" -f ~/.ssh/botc-deploy
 gh secret set DEPLOY_SSH_KEY < ~/.ssh/botc-deploy
 gh secret set DEPLOY_KNOWN_HOSTS --body "5.161.56.133 ssh-ed25519 AAAA…"
-gh secret set ACCOUNTS_READ_KEY < ~/.ssh/botc-accounts-read
 ```
 
 `DEPLOY_KNOWN_HOSTS` is the box's pinned host key from slot1's `CLAUDE.md`
-("The box"). `ACCOUNTS_READ_KEY` is a read-only deploy key on the private
-account-manager repository, which the build fetches the pinned session library
-from (`.github/actions/accounts-sdk`): generate it the same way and add its
-public half to account-manager's deploy keys, read-only.
+("The box").
 
-### 5. Provision
+### 4. Provision
 
 As `claude` on the box, from a private directory, from a checkout whose
 `deploy/` is LF (`.gitattributes` pins it; a CRLF `setup-vps.sh` fails with
@@ -163,7 +146,7 @@ deployed straight after provisioning; if the service crash-loops meanwhile it
 exhausts systemd's start-rate limit, and the deploy rolls back. Clear it with
 `sudo systemctl reset-failed botc` and deploy again.
 
-### 6. Deploy, and check
+### 5. Deploy, and check
 
 Merge to `main`, then `bash scripts/deploy.sh`, and:
 
@@ -172,7 +155,7 @@ ssh -i ~/.ssh/slot1-admin claude@5.161.56.133 \
   'curl -s http://127.0.0.1:8081/health; echo;
    sudo runuser -u caddy -- caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile'
 curl -s https://botc.kiblitz.xyz/health
-curl -s https://botc.kiblitz.xyz/api/me     # {"signed_in":false}
+curl -s https://botc.kiblitz.xyz/api/scripts   # JSON, not the web page
 ```
 
 and check that every other app on the box still answers. Then bring slot1's
@@ -203,7 +186,7 @@ config, and runs `sudo botc-apply` once, which:
    puts the previous binary and web client back if it does not come up.
 
 The deploy then checks `/health` on loopback and in public, that `/` is the web
-client, and that `/api/me` reaches the server rather than the static handler.
+client, and that `/api/scripts` reaches the server rather than the static handler.
 
 ## What is botc's own
 
@@ -213,9 +196,8 @@ client, and that `/api/me` reaches the server rather than the static handler.
 | Hostname | `botc.kiblitz.xyz` |
 | Loopback port | `8081` |
 | Unit | `botc.service`, `MemoryMax=256M`, `TasksMax=128`, `LimitNOFILE=4096` |
-| Unit environment | `BIND_ADDR=127.0.0.1:8081`, `LOG=info`, `PUBLIC_ORIGIN=https://botc.kiblitz.xyz`; no `EnvironmentFile`, no `StateDirectory`, no secret |
+| Unit environment | `BIND_ADDR=127.0.0.1:8081`, `LOG=info`; no `EnvironmentFile`, no `StateDirectory`, no secret |
 | Accounts | `botc` (service), `botc-deploy` (deploys) |
-| Account client id | `botc` |
 | Request bodies | `/health` and `/api/*` capped at 64 KB by Caddy |
 | Paths | `/usr/local/bin/botc-server` (+ `.previous`), `/usr/local/sbin/botc-apply`, `/usr/local/sbin/botc-caddy-site`, `/etc/sudoers.d/botc-deploy`, `/etc/systemd/system/botc.service`, `/etc/caddy/sites/botc.caddy`, `/var/www/botc` (+ `.previous`), `/var/lib/botc-apply`, `/var/lib/botc-caddy-site`, `/var/lib/botc-deploy/staging`, `/var/log/caddy/botc.kiblitz.xyz.log`, `/run/lock/botc-apply.lock` |
 

@@ -32,6 +32,9 @@ const PAIRING_GROUP_LENGTH: usize = 4;
 const TOKEN_BYTES: usize = 16;
 
 pub const MOST_ROOMS: usize = 64;
+/// Rooms one client address may host at once. Hosting needs no account, so
+/// this, with [`LOBBY_IDLE`], keeps one visitor from taking every room.
+pub const MOST_ROOMS_PER_CLIENT: usize = 3;
 /// Phones that may be connected as one seat at a time.
 pub const MOST_PHONES_PER_SEAT: usize = 3;
 /// More than any script seats, so a few spare phones can join and be removed.
@@ -39,6 +42,11 @@ pub const MOST_SEATS: usize = 20;
 pub const MOST_NAME_CHARS: usize = 20;
 /// A room nobody has touched for this long is closed.
 pub const IDLE: time::Duration = time::Duration::from_secs(4 * 60 * 60);
+/// A room whose game never started is closed after this long untouched.
+pub const LOBBY_IDLE: time::Duration = time::Duration::from_secs(60 * 60);
+/// However busy, a room is closed this long after it opened, so an anonymous
+/// host cannot keep rooms forever by touching them.
+pub const MOST_LIFETIME: time::Duration = time::Duration::from_secs(12 * 60 * 60);
 /// A finished game's room is closed this long after its last change.
 pub const FINISHED: time::Duration = time::Duration::from_secs(30 * 60);
 pub const DEFAULT_SCRIPT: &str = "trouble_brewing";
@@ -47,8 +55,8 @@ pub const DEFAULT_SCRIPT: &str = "trouble_brewing";
 pub enum Error {
     NoSuchRoom,
     TooManyRooms,
-    /// The host's other room has a game running.
-    Hosting,
+    /// This client already hosts [`MOST_ROOMS_PER_CLIENT`] rooms.
+    HostingTooMany,
     Started,
     Full,
     BadName,
@@ -69,7 +77,9 @@ impl std::fmt::Display for Error {
         match self {
             Error::NoSuchRoom => f.write_str("There is no room with that code."),
             Error::TooManyRooms => f.write_str("Too many rooms are open; try again later."),
-            Error::Hosting => f.write_str("You are hosting a game that is still running."),
+            Error::HostingTooMany => {
+                f.write_str("Too many rooms are hosted from your network; finish one or wait.")
+            }
             Error::Started => f.write_str("That game has already started."),
             Error::Full => f.write_str("That room is full."),
             Error::BadName => write!(f, "Names are 1 to {MOST_NAME_CHARS} characters."),
@@ -91,27 +101,18 @@ pub struct Rooms {
 }
 
 impl Rooms {
-    /// Opens a room hosted by the account `subject`, who sits in it as
-    /// `name`. A host has one room at a time: their previous one closes.
-    /// Returns the room and the host's player token.
-    pub fn open(&self, subject: &str, name: &str) -> Result<(sync::Arc<Room>, String), Error> {
+    /// Opens a room hosted from the address `client` (no account), whose
+    /// host sits in it as `name`. Returns the room and the host's player
+    /// token, which is all that makes them the host when they reconnect.
+    pub fn open(&self, client: &str, name: &str) -> Result<(sync::Arc<Room>, String), Error> {
         let name = valid_name(name)?;
         let mut rooms = self.lock();
-        let previous: Vec<String> = rooms
+        let hosted = rooms
             .values()
-            .filter(|r| r.read(|s| s.host_subject == subject))
-            .map(|r| r.code.clone())
-            .collect();
-        let running = previous.iter().any(|code| {
-            rooms[code].read(|s| s.game.as_ref().is_some_and(|g| g.stage != Stage::Over))
-        });
-        if running {
-            return Err(Error::Hosting);
-        }
-        for code in previous {
-            if let Some(room) = rooms.remove(&code) {
-                room.close();
-            }
+            .filter(|r| r.read(|s| s.host_client == client))
+            .count();
+        if hosted >= MOST_ROOMS_PER_CLIENT {
+            return Err(Error::HostingTooMany);
         }
         if rooms.len() >= MOST_ROOMS {
             return Err(Error::TooManyRooms);
@@ -125,7 +126,7 @@ impl Rooms {
         let token = random_token();
         let state = State {
             host: name.clone(),
-            host_subject: subject.to_string(),
+            host_client: client.to_string(),
             seats: vec![Seat {
                 name,
                 token: token.clone(),
@@ -135,6 +136,7 @@ impl Rooms {
             pairing: random_pairing(),
             bridge: None,
             game: None,
+            opened: time::Instant::now(),
             touched: time::Instant::now(),
             closed: false,
         };
@@ -156,12 +158,18 @@ impl Rooms {
             .cloned()
     }
 
-    /// Closes rooms idle for too long; returns how many.
+    /// Closes rooms idle for too long, or open past [`MOST_LIFETIME`];
+    /// returns how many.
     pub fn sweep(&self, now: time::Instant) -> usize {
         let mut rooms = self.lock();
         let stale: Vec<String> = rooms
             .values()
-            .filter(|r| r.read(|s| now.saturating_duration_since(s.touched) > s.lifetime()))
+            .filter(|r| {
+                r.read(|s| {
+                    now.saturating_duration_since(s.touched) > s.lifetime()
+                        || now.saturating_duration_since(s.opened) > MOST_LIFETIME
+                })
+            })
             .map(|r| r.code.clone())
             .collect();
         for code in &stale {
@@ -253,7 +261,8 @@ impl Room {
 pub struct State {
     /// The host's seat name.
     pub host: String,
-    pub host_subject: String,
+    /// The address the room was hosted from, to cap rooms per client.
+    pub host_client: String,
     /// In seat order, clockwise.
     pub seats: Vec<Seat>,
     /// The script's id.
@@ -261,6 +270,7 @@ pub struct State {
     pub pairing: String,
     pub bridge: Option<Bridge>,
     pub game: Option<Game>,
+    pub opened: time::Instant,
     pub touched: time::Instant,
     /// The room was closed (replaced or idle); phones are told to leave.
     pub closed: bool,
@@ -295,7 +305,8 @@ impl State {
     fn lifetime(&self) -> time::Duration {
         match &self.game {
             Some(game) if game.stage == Stage::Over => FINISHED,
-            _ => IDLE,
+            Some(_) => IDLE,
+            None => LOBBY_IDLE,
         }
     }
 
@@ -596,7 +607,7 @@ mod tests {
 
     fn lobby() -> (room::Rooms, std::sync::Arc<room::Room>) {
         let rooms = room::Rooms::default();
-        let (room, _) = rooms.open("host-account", "Ada").unwrap();
+        let (room, _) = rooms.open("203.0.113.9", "Ada").unwrap();
         for name in ["Bram", "Cleo", "Dev", "Esme"] {
             room.update(|s| s.join(name)).unwrap();
         }
@@ -674,11 +685,31 @@ mod tests {
     }
 
     #[test]
-    fn a_host_has_one_room_at_a_time() {
+    fn a_client_hosts_a_few_rooms_at_most() {
         let rooms = room::Rooms::default();
-        let (first, _) = rooms.open("host-account", "Ada").unwrap();
-        let (_second, _) = rooms.open("host-account", "Ada").unwrap();
-        assert!(first.read(|s| s.closed));
-        assert_eq!(rooms.count(), 1);
+        for _ in 0..room::MOST_ROOMS_PER_CLIENT {
+            rooms.open("203.0.113.9", "Ada").unwrap();
+        }
+        assert_eq!(
+            rooms.open("203.0.113.9", "Ada").err(),
+            Some(room::Error::HostingTooMany)
+        );
+        assert!(rooms.open("198.51.100.7", "Bram").is_ok());
+    }
+
+    #[test]
+    fn lobbies_close_when_idle_and_every_room_when_too_old() {
+        let (rooms, idle) = lobby();
+        let now = std::time::Instant::now();
+        let second = std::time::Duration::from_secs(1);
+        assert_eq!(rooms.sweep(now + room::LOBBY_IDLE - second), 0);
+        assert_eq!(rooms.sweep(now + room::LOBBY_IDLE + second), 1);
+        assert!(idle.read(|s| s.closed));
+
+        // However busy a room is, it closes once it is too old.
+        let (rooms, busy) = lobby();
+        busy.update(|s| s.touched = now + room::MOST_LIFETIME);
+        assert_eq!(rooms.sweep(now + room::MOST_LIFETIME + second), 1);
+        assert!(busy.read(|s| s.closed));
     }
 }

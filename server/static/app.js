@@ -17,7 +17,6 @@ const state = {
   view: null,
   socket: null,
   error: "",
-  me: null, // { signed_in, name }
   // The prompt being answered and the players picked so far.
   picking: { prompt: null, picked: [] },
   reveal: localStorage.getItem(REVEAL_KEY) === "1",
@@ -198,35 +197,25 @@ function home() {
   );
 
   const hostError = el("p", { class: "error" });
-  let hosting;
-  if (!state.me) {
-    hosting = el("div", { class: "card muted" }, "Checking sign-in…");
-  } else if (!state.me.signed_in) {
-    hosting = el("div", { class: "card stack" },
-      el("h2", {}, "Host a game"),
-      el("p", { class: "muted small" }, "The host plays too; the storyteller is the app. Hosting needs a Kiblitz account; joining does not."),
-      el("a", { href: "/api/auth/accounts/start" }, el("button", { type: "button" }, "Sign in or sign up")),
-    );
-  } else {
-    const hostName = el("input", { id: "host-name", maxlength: 20, value: state.me.name || "" });
-    hosting = el("form", {
-      class: "card stack",
-      onsubmit: async (event) => {
-        event.preventDefault();
-        try {
-          const seated = await post("/api/rooms", { name: hostName.value });
-          seatAt(seated.room, seated.token);
-        } catch (e) {
-          hostError.textContent = e.message;
-        }
-      },
+  const hostName = el("input", { id: "host-name", maxlength: 20, autocomplete: "nickname", placeholder: "Your name" });
+  const hosting = el("form", {
+    class: "card stack",
+    onsubmit: async (event) => {
+      event.preventDefault();
+      try {
+        const seated = await post("/api/rooms", { name: hostName.value });
+        seatAt(seated.room, seated.token);
+      } catch (e) {
+        hostError.textContent = e.message;
+      }
     },
-      el("h2", {}, "Host a game"),
-      el("label", { for: "host-name" }, "Your name at the table"), hostName,
-      el("button", { type: "submit" }, "Host a game"),
-      hostError,
-    );
-  }
+  },
+    el("h2", {}, "Host a game"),
+    el("p", { class: "muted small" }, "The host plays too; the storyteller is the app. No account needed."),
+    el("label", { for: "host-name" }, "Your name at the table"), hostName,
+    el("button", { type: "submit" }, "Host a game"),
+    hostError,
+  );
   return [el("h1", {}, "Blood on the Clocktower"), join, hosting];
 }
 
@@ -552,17 +541,10 @@ function hostDock(view) {
 
 // ---------- start ----------
 
-async function start() {
+function start() {
   const seat = savedSeat();
   if (seat) connect(seat);
-  try {
-    const response = await fetch("/api/me", { credentials: "same-origin" });
-    state.me = await response.json();
-  } catch {
-    state.me = { signed_in: false };
-  }
-  // Drawn once sign-in is known, so nobody's typing is redrawn away.
-  if (!state.view) render();
+  render();
 }
 
 start();

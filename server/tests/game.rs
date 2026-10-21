@@ -44,27 +44,25 @@ async fn a_table_of_phones_plays_to_a_winner_and_nobody_sees_more_than_they_shou
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn hosting_needs_an_account_but_joining_does_not() {
+async fn anyone_can_host_or_join_without_an_account() {
     let base = common::serve(common::quick(), 7).await;
     let http = common::http();
-    let refused = http
+    let hosted = http
         .post(format!("{base}/api/rooms"))
         .json(&json!({"name": "Nobody"}))
         .send()
         .await
         .unwrap();
-    assert_eq!(refused.status(), 401);
-    let body: serde_json::Value = refused.json().await.unwrap();
-    assert_eq!(body["error"], "Sign in or sign up to host a game.");
-    let me: serde_json::Value = http
-        .get(format!("{base}/api/me"))
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-    assert_eq!(me, json!({"signed_in": false}));
+    assert_eq!(hosted.status(), 200);
+    let body: serde_json::Value = hosted.json().await.unwrap();
+    let host = common::connect(
+        &base,
+        body["room"].as_str().unwrap(),
+        "Nobody",
+        body["token"].as_str().unwrap(),
+    )
+    .await;
+    common::until(&host, time::Duration::from_secs(5), |v| v["host"] == true).await;
 
     let (room, _phones, _) = common::table(&base, &["Ada"]).await;
     let taken = http
@@ -244,28 +242,28 @@ async fn guessing_codes_is_stopped_and_seats_take_few_phones() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_host_cannot_abandon_a_running_game_by_hosting_again() {
+async fn one_address_hosts_only_a_few_rooms() {
     let base = common::serve(common::quick(), 17).await;
-    let (_room, phones, _) = common::table(&base, &PLAYERS).await;
-    common::until(&phones[0], time::Duration::from_secs(5), |v| {
-        v["seats"].as_array().is_some_and(|s| s.len() == 6)
-    })
-    .await;
-    phones[0].send(json!({"type": "start"}));
-    common::until(&phones[0], time::Duration::from_secs(5), |v| {
-        v["me"].is_object()
-    })
-    .await;
-    let again = common::http()
-        .post(format!("{base}/api/rooms"))
-        .header(botc_server::accounts::FIXTURE_HEADER, common::HOST_ACCOUNT)
-        .json(&json!({"name": "Host"}))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(again.status(), 409);
-    common::until(&phones[1], time::Duration::from_secs(5), |v| {
-        v["me"].is_object()
-    })
-    .await;
+    let host = |client: &'static str| {
+        common::http()
+            .post(format!("{base}/api/rooms"))
+            .header("x-forwarded-for", client)
+            .json(&json!({"name": "Host"}))
+            .send()
+    };
+    for _ in 0..botc_server::room::MOST_ROOMS_PER_CLIENT {
+        assert_eq!(host("203.0.113.9").await.unwrap().status(), 200);
+    }
+    let refused = host("203.0.113.9").await.unwrap();
+    assert_eq!(refused.status(), 429);
+    assert_eq!(host("198.51.100.7").await.unwrap().status(), 200);
+    // An IPv6 machine owns its whole /64, so it is one client.
+    for last in 1..=botc_server::room::MOST_ROOMS_PER_CLIENT {
+        let address: &'static str = format!("2001:db8:1:2::{last}").leak();
+        assert_eq!(host(address).await.unwrap().status(), 200);
+    }
+    assert_eq!(host("2001:db8:1:2::ff").await.unwrap().status(), 429);
+    assert_eq!(host("2001:db8:1:3::1").await.unwrap().status(), 200);
+    // An IPv4 address written as IPv6 is still that IPv4 client.
+    assert_eq!(host("::ffff:203.0.113.9").await.unwrap().status(), 429);
 }

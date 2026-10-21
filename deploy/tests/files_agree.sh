@@ -7,8 +7,7 @@
 # each is installed on its own and cannot read the others. Nothing else notices
 # when one of them changes alone: a deploy would stage files botc-apply never
 # looks for, install a binary the unit does not run, unpack a web client Caddy
-# does not serve, be refused by a sudoers rule naming a different command, or
-# send people to a sign-in callback the account service was never told about.
+# does not serve, or be refused by a sudoers rule naming a different command.
 #
 # Needs nothing but a checkout; scripts/check-deploy.sh runs it before every
 # merge:
@@ -29,10 +28,6 @@ readonly UNIT=deploy/botc.service
 readonly SITE_CONFIG=deploy/botc.caddy
 readonly TEST_LIB=deploy/tests/lib.sh
 readonly ROUTES=server/src/route.rs
-# The account-session library's own routes, which it mounts under /api; not in
-# route.rs because botc does not define them.
-readonly ACCOUNTS_ROUTES="/api/auth/accounts/start /api/auth/accounts/callback /api/auth/accounts/logout"
-readonly ACCOUNTS_CALLBACK=/api/auth/accounts/callback
 
 failures=0
 
@@ -106,7 +101,7 @@ done
 # it is the only one of the two that deploys anything -- so it restates the
 # workflow's whole environment. Hold them together name by name.
 for name in DEPLOY_HOST DEPLOY_USER SITE_HOST SERVICE APPLY CADDY_SITE \
-	HEALTH_URL ME_PATH SYSTEMCTL STAGED_BINARY STAGED_SITE_CONFIG STAGED_WWW \
+	HEALTH_URL API_PATH SYSTEMCTL STAGED_BINARY STAGED_SITE_CONFIG STAGED_WWW \
 	WEB_DIR SERVER_PACKAGE HEALTH_ATTEMPTS HEALTH_RETRY_SECONDS HEALTH_TIMEOUT_SECONDS \
 	PUBLIC_CHECK_SECONDS; do
 	agree "the deploy's ${name}" "$(workflow_env "${name}")" \
@@ -152,14 +147,14 @@ agree "where the service listens" "$(unit_environment BIND_ADDR)" \
 # the web client, so it looks like a perfectly good 200 rather than a 404.
 agree "the health endpoint" "$(route_constant HEALTH)" \
 	"$(workflow_env HEALTH_URL | sed -n 's|^http://[^/]*\(/.*\)$|\1|p')"
-agree "the who-is-signed-in endpoint" "$(route_constant ME)" "$(workflow_env ME_PATH)"
+agree "the API path the deploy smoke-tests" "$(route_constant SCRIPTS)" "$(workflow_env API_PATH)"
 # Every path route.rs defines, read out of it rather than listed here, so a route
 # added there is held to Caddy without anybody remembering this file. The ones
 # named are those the deploy cannot do without: named, a route.rs that lost one
 # -- or that this could not read at all -- fails here instead of passing with
 # nothing to check.
 for path_name in $({
-	printf '%s\n' HEALTH ME PLAY BRIDGE
+	printf '%s\n' HEALTH SCRIPTS PLAY BRIDGE
 	route_names
 } | sort -u); do
 	agree "Caddy routes ${path_name} to the app" "matched" \
@@ -170,22 +165,11 @@ done
 for path_name in PLAY BRIDGE; do
 	agree "Caddy streams ${path_name}" "streamed" "$(streamed "$(route_constant "${path_name}")")"
 done
-for path in ${ACCOUNTS_ROUTES}; do
-	agree "Caddy routes ${path} to the app" "matched" "$(routed "${path}")"
-done
 # The web client's own files and pages must not be: Caddy serves those.
 for page in / /index.html /app.js /style.css /ABCD; do
 	routing="$(routed "${page}")"
 	agree "Caddy leaves ${page} to the web client" "unmatched" "${routing:-unmatched}"
 done
-
-agree "the origin people reach botc at" "$(unit_environment PUBLIC_ORIGIN)" \
-	"https://$(workflow_env SITE_HOST)"
-agree "the sign-in callback setup-vps.sh asks to have registered" \
-	"$(grep -c "https://\${SITE_HOST}${ACCOUNTS_CALLBACK}\$" "${SETUP}")" "1"
-agree "Caddy keeps the sign-in callback's query out of its log" \
-	"$(sed -n 's|^\s*log_skip \(.*\)/\*$|\1|p' "${SITE_CONFIG}")" \
-	"$(dirname "${ACCOUNTS_CALLBACK}")"
 
 agree "the staging area" "$(constant "${APPLY}" STAGING_DIR)" "$(constant "${SETUP}" STAGING_DIR)" \
 	"/$(constant "${TEST_LIB}" STAGING_DIR_PATH)"
@@ -193,7 +177,7 @@ agree "the staging area's mode" "$(constant "${SETUP}" PRIVATE_DIR_MODE)" \
 	"$(constant "${TEST_LIB}" PRIVATE_DIR_MODE)"
 
 # botc keeps nothing on disk and holds no secret: rooms live in memory and
-# sign-in is the account service's. These must not exist at all.
+# nobody signs in. These must not exist at all.
 if [[ -n "$(unit_setting EnvironmentFile)" || -n "$(unit_setting StateDirectory)" ]] ||
 	unit_environment_names | grep -Eqi '(KEY|SECRET|TOKEN|PASSWORD|DATABASE)'; then
 	echo "::error::the unit names a secret or on-disk state; botc has neither"

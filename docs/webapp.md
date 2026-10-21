@@ -6,9 +6,10 @@ an LLM on someone's computer (Codex by default) makes the storyteller's choices.
 
 ## Hosting
 
-1. Open the site and choose **Sign in or sign up** (a Kiblitz account; only the
-   host needs one), then **Host a game**. You get a five-letter room code. The
-   host is a player like everyone else.
+1. Open the site, type your name and choose **Host a game**; no account is
+   needed. You get a five-letter room code. The host is a player like everyone
+   else; what makes you the host is the seat token your phone keeps, so the
+   same phone gets back in as host after a reload.
 2. Everyone else opens the site, types the code and their name, and taps
    **Join**. A link `https://botc.kiblitz.xyz/?join=CODE` fills the code in.
 3. Arrange the seating to match the real circle, clockwise: drag the ⠿ handle,
@@ -66,6 +67,9 @@ Any other command works after `--`, for example Claude Code:
 cargo run --release -p botc_bridge -- <PAIRING-CODE> -- claude -p
 ```
 
+To pick which Codex login answers, pass `--codex-home DIR` (or set Codex's own
+`CODEX_HOME`), e.g. a second account when the first is usage-limited.
+
 Options: `--server URL` (default `https://botc.kiblitz.xyz`), `--timeout SECONDS`
 for the command (default 80, under the server's 90). The server waits 90 seconds per decision; if the
 bridge is gone, fails, or answers nonsense, that decision is random and the game
@@ -82,8 +86,7 @@ goes on. The bridge reconnects by itself if the connection drops.
   Sockets authenticate in their first message, never in the URL.
 - `server/static/`: the phone client, plain HTML/CSS/JS with no build step.
 - `bridge/` (`botc_bridge`): the CLI and the wire protocol (`bridge::wire`).
-- Sign-in is the shared account service via the pinned `account-session`
-  library (client id `botc`); only hosting needs it.
+- Nobody signs in: hosting and joining are anonymous (decided 2026-10-21).
 - Deploy: `deploy/` (see `deploy/README.md`) and `scripts/deploy.sh`, on slot1,
   port 8081.
 
@@ -95,10 +98,13 @@ against `cargo run -p botc_server --example e2e`).
 Limits: a seat takes at most three phones; a client (by the address Caddy
 forwards) that tries 60 wrong room codes in a minute cannot join any room for
 the rest of that minute. Seat tokens and pairing codes are too long to guess,
-so reconnecting phones and bridges are never limited. A host whose game is running cannot open another room.
+so reconnecting phones and bridges are never limited. One client address hosts
+at most three rooms at once; a room whose game never starts closes after an
+hour untouched, a running one after four, a finished one after thirty minutes,
+and the server holds at most 64 rooms.
 
 Not yet modelled: Travellers joining, the
 storyteller's judgement of madness (mad players never break madness), and
 "did you say the word / lose roshambo" are asked to the player themself.
 
-The live site can be played end to end from this machine with `server/e2e/live.mjs` (a bot account hosts; see its header).
+The live site can be played end to end from this machine with `server/e2e/live.mjs` (an anonymous host, five guests and a bridge on this PC; `VIDEO=dir` records it; see its header).

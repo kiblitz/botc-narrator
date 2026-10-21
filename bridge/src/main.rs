@@ -1,16 +1,17 @@
 //! botc-bridge: lets this computer be the storyteller's brain for a room.
 //!
-//! Usage: botc-bridge <PAIRING-CODE> [--server URL] [--timeout SECONDS] [-- COMMAND...]
+//! Usage: botc-bridge <PAIRING-CODE> [--server URL] [--timeout SECONDS]
+//!                    [--codex-home DIR] [-- COMMAND...]
 //!
 //! The host's phone shows the pairing code. Each storyteller decision is a
 //! prompt written to COMMAND's stdin; its stdout is the answer. COMMAND
 //! defaults to `codex exec --skip-git-repo-check --ephemeral --sandbox=read-only -`;
-//! `-- claude -p` uses Claude Code instead.
+//! `-- claude -p` uses Claude Code instead. `--codex-home DIR` picks which
+//! Codex login answers (Codex's own `CODEX_HOME`, which also works as is).
 
 use std::time;
 
-const USAGE: &str =
-    "usage: botc-bridge <PAIRING-CODE> [--server URL] [--timeout SECONDS] [-- COMMAND...]";
+const USAGE: &str = "usage: botc-bridge <PAIRING-CODE> [--server URL] [--timeout SECONDS] [--codex-home DIR] [-- COMMAND...]";
 
 fn main() {
     let mut args = std::env::args().skip(1);
@@ -27,6 +28,15 @@ fn main() {
                     .and_then(|s| s.parse().ok())
                     .unwrap_or_else(|| fail("--timeout needs a number of seconds"));
                 timeout = time::Duration::from_secs(seconds);
+            }
+            "--codex-home" => {
+                let home = args
+                    .next()
+                    .unwrap_or_else(|| fail("--codex-home needs a directory"));
+                // Codex reads CODEX_HOME, and each command inherits this process's
+                // environment. SAFETY: no other thread exists yet; the runtime
+                // starts below.
+                unsafe { std::env::set_var("CODEX_HOME", home) };
             }
             "--" => {
                 let rest: Vec<String> = args.by_ref().collect();

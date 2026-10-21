@@ -16,7 +16,6 @@ use axum::response;
 use axum::routing;
 use botc_bridge::wire;
 
-use crate::accounts;
 use crate::engine;
 use crate::inbox;
 use crate::room;
@@ -38,7 +37,6 @@ const SWEEP: time::Duration = time::Duration::from_secs(60);
 #[derive(Clone)]
 pub struct App {
     pub rooms: sync::Arc<room::Rooms>,
-    pub gate: accounts::Gate,
     pub timing: engine::Timing,
     /// Deals and random storytellers are reproducible with a seed (tests).
     pub seed: Option<u64>,
@@ -90,22 +88,44 @@ impl Misses {
     }
 }
 
+/// Requests that came straight to the server rather than through Caddy:
+/// local runs and tests, which share one client.
+const DIRECT: &str = "direct";
+/// IPv6 clients are told apart by their /64: one machine usually has the
+/// whole block, so a single address would let it dodge every per-client limit.
+const IPV6_CLIENT_SEGMENTS: usize = 4;
+
 /// Who is asking: the client address Caddy puts in `X-Forwarded-For` (the
-/// server only listens on loopback, behind Caddy).
+/// server only listens on loopback, behind Caddy). Caddy trusts no proxy in
+/// front of it, so it replaces whatever header the client sent; keep it so
+/// (no `trusted_proxies`), or the first entry becomes forgeable.
 fn client(headers: &http::HeaderMap) -> String {
-    headers
+    let Some(first) = headers
         .get("x-forwarded-for")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.split(',').next())
-        .map(|v| v.trim().to_string())
-        .unwrap_or_default()
+        .map(str::trim)
+    else {
+        return DIRECT.to_string();
+    };
+    match first.parse::<std::net::IpAddr>() {
+        Ok(std::net::IpAddr::V6(v6)) if v6.to_ipv4_mapped().is_none() => {
+            let segments = v6.segments();
+            let prefix: Vec<String> = segments[..IPV6_CLIENT_SEGMENTS]
+                .iter()
+                .map(|s| format!("{s:x}"))
+                .collect();
+            format!("{}::/64", prefix.join(":"))
+        }
+        Ok(address) => address.to_canonical().to_string(),
+        Err(_) => first.to_string(),
+    }
 }
 
 impl App {
-    pub fn new(gate: accounts::Gate, timing: engine::Timing, seed: Option<u64>) -> Self {
+    pub fn new(timing: engine::Timing, seed: Option<u64>) -> Self {
         App {
             rooms: sync::Arc::default(),
-            gate,
             timing,
             seed,
             sockets: sync::Arc::default(),
@@ -128,9 +148,8 @@ impl App {
 }
 
 pub fn router(app: App) -> axum::Router {
-    let api = axum::Router::new()
+    axum::Router::new()
         .route(route::HEALTH, routing::get(|| async { "ok" }))
-        .route(route::ME, routing::get(me))
         .route(
             route::SCRIPTS,
             routing::get(|| async { response::Json(view::scripts()) }),
@@ -139,8 +158,7 @@ pub fn router(app: App) -> axum::Router {
         .route(route::JOIN, routing::post(join))
         .route(route::PLAY, routing::get(play))
         .route(route::BRIDGE, routing::get(bridge))
-        .with_state(app.clone());
-    app.gate.router().merge(api)
+        .with_state(app)
 }
 
 #[derive(serde::Serialize)]
@@ -163,33 +181,15 @@ fn refused(error: room::Error) -> response::Response {
         room::Error::NoSuchRoom => http::StatusCode::NOT_FOUND,
         room::Error::TooManyRooms => http::StatusCode::SERVICE_UNAVAILABLE,
         room::Error::NotHost => http::StatusCode::FORBIDDEN,
+        room::Error::HostingTooMany => http::StatusCode::TOO_MANY_REQUESTS,
         _ => http::StatusCode::CONFLICT,
     };
     refuse(status, error)
 }
 
-#[derive(serde::Serialize)]
-struct Me {
-    signed_in: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    name: Option<String>,
-}
-
-async fn me(
-    extract::State(app): extract::State<App>,
-    headers: http::HeaderMap,
-) -> response::Json<Me> {
-    let identity = app.gate.identify(&headers).await.ok();
-    response::Json(Me {
-        signed_in: identity.is_some(),
-        name: identity.map(|i| i.name),
-    })
-}
-
 #[derive(serde::Deserialize)]
 struct Hosting {
-    #[serde(default)]
-    name: Option<String>,
+    name: String,
 }
 
 #[derive(serde::Serialize)]
@@ -198,21 +198,14 @@ struct Seated {
     token: String,
 }
 
-/// A signed-in host opens a room and takes its first seat.
+/// Anyone opens a room and takes its first seat: no account. The seat's
+/// token, kept on the host's phone, is what makes them the host.
 async fn host(
     extract::State(app): extract::State<App>,
     headers: http::HeaderMap,
     response::Json(hosting): response::Json<Hosting>,
 ) -> response::Response {
-    let identity = match app.gate.identify(&headers).await {
-        Ok(identity) => identity,
-        Err(status) => return refuse(status, "Sign in or sign up to host a game."),
-    };
-    let name = hosting
-        .name
-        .filter(|n| !n.trim().is_empty())
-        .unwrap_or(identity.name);
-    match app.rooms.open(&identity.subject, &name) {
+    match app.rooms.open(&client(&headers), &hosting.name) {
         Ok((room, token)) => {
             tracing::info!(room = %room.code, "room opened");
             response::Json(Seated {

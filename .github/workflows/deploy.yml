@@ -31,10 +31,10 @@ env:
   HEALTH_URL: http://127.0.0.1:8081/health
   # The path the step below proves is routed to the app rather than swallowed by
   # the static handler. Named here rather than written into that step so
-  # files_agree.sh can hold it against route::ME (server/src/route.rs):
+  # files_agree.sh can hold it against route::SCRIPTS (server/src/route.rs):
   # Caddy answers an unrouted path with the web client, so getting this wrong looks like a
   # perfectly good 200 instead of a 404.
-  ME_PATH: /api/me
+  API_PATH: /api/scripts
   # As the deploy account's sudoers rule names it: sudo refuses any other path.
   SYSTEMCTL: /usr/bin/systemctl
   # Static musl build: nothing on the VPS has to match the builder's glibc, so
@@ -64,10 +64,6 @@ jobs:
 
       - name: Require current main before running repository code
         run: test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$(git rev-parse HEAD)"
-
-      - uses: ./.github/actions/accounts-sdk
-        with:
-          key: ${{ secrets.ACCOUNTS_READ_KEY }}
 
       - name: Install the musl target
         run: |
@@ -212,12 +208,11 @@ jobs:
       - name: Check the API is routed, not swallowed by the static handler
         # Caddy falls back to index.html for unknown paths, so an endpoint
         # missing from its `@api` matcher answers 200 with the web page instead
-        # of reaching the server at all. Asking who is signed in, with no
-        # cookie, should give the app's own answer; HTML here means a routing
-        # gap.
+        # of reaching the server at all. The list of scripts should be the
+        # app's own JSON; HTML here means a routing gap.
         continue-on-error: true
         run: |
-          body=$(curl -s --max-time "$PUBLIC_CHECK_SECONDS" "https://$SITE_HOST$ME_PATH" || true)
+          body=$(curl -s --max-time "$PUBLIC_CHECK_SECONDS" "https://$SITE_HOST$API_PATH" || true)
           case "$body" in
             "")
               echo "::warning::no response from $SITE_HOST yet" ;;
@@ -225,8 +220,8 @@ jobs:
               echo "::error::/api is being served by the static handler, not the app"
               echo "add the path to the @api matcher in deploy/botc.caddy"
               exit 1 ;;
-            *'"signed_in"'*)
+            *'"id"'*)
               echo "routed to the app: $body" ;;
             *)
-              echo "::warning::unexpected answer from $ME_PATH: $body" ;;
+              echo "::warning::unexpected answer from $API_PATH: $body" ;;
           esac

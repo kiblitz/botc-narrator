@@ -1,15 +1,14 @@
-// A whole table on phone-sized browsers: the host signs in (the e2e server
-// trusts a header instead of the account service), five players join by
-// code, the host rearranges the circle and starts; players answer night
-// prompts, nominate and vote from their phones.
+// A whole table on phone-sized browsers: the host opens a room with no
+// account, five players join by code, the host rearranges the circle and
+// starts; players answer night prompts, nominate and vote from their phones.
 import { test, expect } from "@playwright/test";
 
 const PLAYERS = ["Ada", "Bram", "Cleo", "Dev", "Esme"];
 // SHOTS=<dir> saves a screenshot at each step, to look at the phones.
 const shot = (page, name) => process.env.SHOTS && page.screenshot({ path: `${process.env.SHOTS}/${name}.png`, fullPage: true });
 
-async function phone(browser, host) {
-  const context = await browser.newContext(host ? { extraHTTPHeaders: { "x-fixture-session": "e2e-host" } } : {});
+async function phone(browser) {
+  const context = await browser.newContext();
   return context.newPage();
 }
 
@@ -47,20 +46,20 @@ async function playUntil(pages, phase) {
 }
 
 test("a table of phones: host, join, seat, start, night prompt, nominate and vote", async ({ browser }) => {
-  const host = await phone(browser, true);
+  const host = await phone(browser);
   await host.goto("/");
   await host.locator("#host-name").fill("Host");
   await host.getByRole("button", { name: "Host a game" }).click();
   const code = (await host.locator("#room-code").innerText()).trim();
   expect(code).toMatch(/^[A-Z]{5}$/);
 
-  // Joining needs only the code and a name: no account.
+  // Joining needs only the code and a name: no account either.
   const players = [];
   for (const name of PLAYERS) {
-    const page = await phone(browser, false);
+    const page = await phone(browser);
     await page.goto(`/?join=${code}`);
     await expect(page.locator("#join-code")).toHaveValue(code);
-    await expect(page.getByRole("button", { name: "Sign in or sign up" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Host a game" })).toBeVisible();
     await page.locator("#join-name").fill(name);
     await page.getByRole("button", { name: "Join" }).click();
     await expect(page.locator("#room-code")).toHaveText(code);
@@ -75,8 +74,12 @@ test("a table of phones: host, join, seat, start, night prompt, nominate and vot
   // The host drags Esme (last) to the top of the circle...
   const handle = host.locator('#seats .seat[data-name="Esme"] .handle');
   const top = host.locator('#seats .seat[data-name="Host"]');
-  const from = await handle.boundingBox();
-  const to = await top.boundingBox();
+  // A view arriving redraws the list, so a box can be missing for a moment.
+  let from, to;
+  await expect.poll(async () => {
+    [from, to] = [await handle.boundingBox(), await top.boundingBox()];
+    return Boolean(from && to);
+  }).toBe(true);
   await host.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await host.mouse.down();
   await host.mouse.move(from.x + from.width / 2, to.y + 4, { steps: 12 });

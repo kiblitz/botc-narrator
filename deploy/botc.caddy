@@ -13,9 +13,7 @@
 # URL, no CORS and no cross-origin cookies.
 #
 # It also obtains and renews the Let's Encrypt certificate, which is not
-# optional: a page served over https:// may only open wss:// sockets, the
-# session cookie is marked Secure, and the shared sign-in only redirects to an
-# https:// callback.
+# optional: a page served over https:// may only open wss:// sockets.
 
 botc.kiblitz.xyz {
 	encode zstd gzip
@@ -70,8 +68,6 @@ botc.kiblitz.xyz {
 		file_server
 	}
 
-	# Never log authorization callback query strings.
-	log_skip /api/auth/accounts/*
 	log {
 		output file /var/log/caddy/botc.kiblitz.xyz.log {
 			roll_size 10MiB

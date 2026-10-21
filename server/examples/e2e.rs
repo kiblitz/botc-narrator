@@ -1,6 +1,5 @@
 //! The server the Playwright tests drive (`server/e2e`): the real app and web
-//! client, but sign-in trusts the `x-fixture-session` header (no account
-//! service), deals are seeded and players have little time to answer.
+//! client, but deals are seeded and players have little time to answer.
 //!
 //! Never deployed: examples are not part of the release build.
 //!
@@ -9,7 +8,6 @@
 use std::path;
 use std::time;
 
-use botc_server::accounts;
 use botc_server::api;
 use botc_server::engine;
 
@@ -23,7 +21,7 @@ async fn main() {
         decision: time::Duration::from_secs(10),
         vote: time::Duration::from_secs(30),
     };
-    let app = api::App::new(accounts::Gate::Fixture, timing, Some(seed));
+    let app = api::App::new(timing, Some(seed));
     let root = path::Path::new(env!("CARGO_MANIFEST_DIR")).join("static");
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", port))
         .await

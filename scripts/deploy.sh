@@ -36,7 +36,7 @@ readonly SERVICE=botc
 readonly APPLY=/usr/local/sbin/botc-apply
 readonly CADDY_SITE=/usr/local/sbin/botc-caddy-site
 readonly HEALTH_URL=http://127.0.0.1:8081/health
-readonly ME_PATH=/api/me
+readonly API_PATH=/api/scripts
 readonly SYSTEMCTL=/usr/bin/systemctl
 readonly STAGED_BINARY=/var/lib/botc-deploy/staging/botc-server.new
 readonly STAGED_SITE_CONFIG=/var/lib/botc-deploy/staging/botc.caddy.new
@@ -185,12 +185,12 @@ case "$body" in
 esac
 
 step "check the API is routed, not swallowed by the static handler"
-body=$(curl -s --max-time "$PUBLIC_CHECK_SECONDS" "https://$SITE_HOST$ME_PATH" || true)
+body=$(curl -s --max-time "$PUBLIC_CHECK_SECONDS" "https://$SITE_HOST$API_PATH" || true)
 case "$body" in
 "") warn "no response from $SITE_HOST yet" ;;
 *"<!doctype html>"* | *"<html"*) warn "/api is served by the static handler; add the path to @api or @ws in deploy/botc.caddy" ;;
-*'"signed_in"'*) echo "routed to the app: $body" ;;
-*) warn "unexpected answer from $ME_PATH: $body" ;;
+*'"id"'*) echo "routed to the app: $body" ;;
+*) warn "unexpected answer from $API_PATH: $body" ;;
 esac
 
 printf '\ndeployed %s\n' "$(git rev-parse --short HEAD)"

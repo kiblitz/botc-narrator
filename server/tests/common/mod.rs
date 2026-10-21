@@ -7,7 +7,6 @@
 use std::sync;
 use std::time;
 
-use botc_server::accounts;
 use botc_server::api;
 use botc_server::engine;
 use futures_util::SinkExt;
@@ -15,7 +14,6 @@ use futures_util::StreamExt;
 use serde_json::json;
 use tokio_tungstenite::tungstenite;
 
-pub const HOST_ACCOUNT: &str = "host-account";
 /// The host repeats "end the day" / "start the night" this often while the
 /// room has not moved on: its view may lag the room, and a repeat does nothing.
 const REPEAT: time::Duration = time::Duration::from_millis(500);
@@ -28,16 +26,13 @@ pub fn quick() -> engine::Timing {
     }
 }
 
-/// reqwest shares the session library's TLS stack, which brings no crypto
-/// provider of its own.
 pub fn http() -> reqwest::Client {
-    let _ = rustls::crypto::ring::default_provider().install_default();
     reqwest::Client::new()
 }
 
 /// A server on a free loopback port; returns its base URL.
 pub async fn serve(timing: engine::Timing, seed: u64) -> String {
-    let app = api::App::new(accounts::Gate::Fixture, timing, Some(seed));
+    let app = api::App::new(timing, Some(seed));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
     tokio::spawn(async move {
@@ -113,13 +108,12 @@ pub async fn connect(base: &str, room: &str, name: &str, token: &str) -> Phone {
     }
 }
 
-/// Hosts a room as [`HOST_ACCOUNT`] and joins `players` more; returns the
+/// Hosts a room (no account) and joins `players` more; returns the
 /// room code, the phones (host first) and their tokens.
 pub async fn table(base: &str, players: &[&str]) -> (String, Vec<Phone>, Vec<String>) {
     let http = http();
     let hosted: serde_json::Value = http
         .post(format!("{base}/api/rooms"))
-        .header(accounts::FIXTURE_HEADER, HOST_ACCOUNT)
         .json(&json!({"name": "Host"}))
         .send()
         .await

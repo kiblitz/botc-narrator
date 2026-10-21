@@ -1,14 +1,15 @@
-// Plays the live site end to end from phone-sized browsers: a bot account
-// signs in and hosts, five guests join by code, the host reseats and pairs a
+// Plays the live site end to end from phone-sized browsers: an anonymous
+// visitor hosts, five guests join by code, the host reseats and pairs a
 // bridge on this computer, and the table plays into day 2.
 //
 // Usage (from server/e2e):
-//   BOT_EMAIL=... BOT_PASSWORD_FILE=... [SITE=https://botc.kiblitz.xyz]
-//   [BRIDGE="claude -p"] [SHOTS=dir] node live.mjs
-// BRIDGE is the storyteller command (default: the bridge's own, Codex).
+//   [SITE=https://botc.kiblitz.xyz] [BRIDGE="claude -p"] [SHOTS=dir]
+//   [VIDEO=dir] [CODEX_HOME=dir] node live.mjs
+// BRIDGE is the storyteller command (default: the bridge's own, Codex, which
+// uses whichever Codex login CODEX_HOME points at). VIDEO records the host's
+// and the first player's phones.
 import { chromium, devices } from "@playwright/test";
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
 
 const SITE = process.env.SITE || "https://botc.kiblitz.xyz";
 const PLAYERS = ["Ada", "Bram", "Cleo", "Dev", "Esme"];
@@ -16,24 +17,27 @@ const shot = (page, name) => process.env.SHOTS && page.screenshot({ path: `${pro
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
 const browser = await chromium.launch();
-const phone = async () => (await browser.newContext({ ...devices["Pixel 5"], baseURL: SITE })).newPage();
+const contexts = [];
+const phone = async (record) => {
+  const context = await browser.newContext({
+    ...devices["Pixel 5"],
+    baseURL: SITE,
+    ...(record && process.env.VIDEO ? { recordVideo: { dir: process.env.VIDEO, size: { width: 393, height: 851 } } } : {}),
+  });
+  contexts.push(context);
+  return context.newPage();
+};
 
-const host = await phone();
+const host = await phone(true);
 await host.goto("/");
-await host.getByRole("button", { name: "Sign in or sign up" }).click();
-await host.locator('form[action="/api/log-in"] input[name=email]').fill(process.env.BOT_EMAIL);
-await host.locator('form[action="/api/log-in"] input[name=password]').fill(readFileSync(process.env.BOT_PASSWORD_FILE, "utf8").trim());
-await host.locator('form[action="/api/log-in"] button').click();
-await host.getByText("Continue to app").click();
-await host.waitForURL(`${SITE}/**`);
 await host.locator("#host-name").fill("Host");
 await host.getByRole("button", { name: "Host a game" }).click();
 const code = (await host.locator("#room-code").innerText()).trim();
-log("signed in and hosted room", code);
+log("hosted room", code, "without an account");
 
 const pages = [host];
-for (const name of PLAYERS) {
-  const page = await phone();
+for (const [i, name] of PLAYERS.entries()) {
+  const page = await phone(i === 0);
   await page.goto(`/?join=${code}`);
   await page.locator("#join-name").fill(name);
   await page.getByRole("button", { name: "Join" }).click();
@@ -107,5 +111,7 @@ log("reached day 2; prompts answered:", answered, "dock:", bridged);
 const state = await host.evaluate(() => document.body.className);
 log("host stage:", state);
 bridge.kill();
+// Closing the contexts finishes their videos.
+for (const context of contexts) await context.close();
 await browser.close();
 process.exit(0);

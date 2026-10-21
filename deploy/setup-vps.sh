@@ -6,8 +6,7 @@
 # config or the deploy scripts. It does NOT install the server binary or the web
 # client -- that is the deploy workflow's job, and keeping the two apart means a
 # routine deploy can never accidentally rewrite the machine's configuration.
-# There is no secret to fill in: sign-in is the shared account service's, and
-# this server holds no credential for it.
+# There is no secret to fill in: nobody signs in to botc.
 #
 # Run as root on the box, passing the public half of the key GitHub Actions
 # will deploy with:
@@ -367,10 +366,6 @@ cat <<EOF
     systemctl status ${SERVICE}
     journalctl -u ${SERVICE} -f
     curl -s https://${SITE_HOST}/health
-
-Sign-in needs the ${SERVICE} client registered with the account service, with
-this exact callback (account-manager's config/clients.production.json):
-    https://${SITE_HOST}/api/auth/accounts/callback
 
 Host key for the DEPLOY_KNOWN_HOSTS repository secret:
 EOF
