@@ -2,7 +2,6 @@ import * as botcWeb from "./pkg/botc_web.js";
 
 const MIN_PLAYERS = 5;
 const MAX_PLAYERS = 15;
-const PLAY_INTERVAL_MS = 700;
 // Official character icons, loaded from the townsquare (clocktower.online)
 // assets (pinned to a commit) rather than copied into this repository.
 const ICON_BASE = "https://raw.githubusercontent.com/bra1n/townsquare/d9c2b17dc9b2d7b091b55c988707784f12980f44/src/assets/icons/";
@@ -27,12 +26,10 @@ let pov = "";
 let selected = null;
 /** Index into `visibleSteps()` of the current step. */
 let cursor = 0;
-let timer = null;
 /** The scripts the engine offers: `[{ id, name }]`. */
 let scripts = [];
 
 function load(seed, players, script) {
-  stop();
   const trace = JSON.parse(botcWeb.simulate(seed, players, script));
   // Who is awake, and whose deaths the table has heard about, after each step.
   const awake = [];
@@ -155,12 +152,7 @@ function render() {
   renderArrow(step);
   renderLog(steps);
   renderKnowledge(index);
-  const scrub = $("scrub");
-  scrub.max = steps.length - 1;
-  scrub.value = cursor;
   $("counter").textContent = `${cursor + 1} / ${steps.length}`;
-  $("play").classList.toggle("playing", timer !== null);
-  $("play").setAttribute("aria-label", timer ? "Pause" : "Play");
 }
 
 /**
@@ -365,7 +357,6 @@ function go(to) {
 function step(delta) {
   const steps = visibleSteps();
   const next = Math.max(0, Math.min(cursor + delta, steps.length - 1));
-  if (next === cursor) stop();
   go(next);
 }
 
@@ -374,17 +365,6 @@ function jumpPhase(direction) {
   let i = cursor + direction;
   while (i > 0 && i < steps.length - 1 && !isPhase(steps[i].step)) i += direction;
   go(Math.max(0, Math.min(i, steps.length - 1)));
-}
-
-function stop() {
-  clearInterval(timer);
-  timer = null;
-}
-
-function togglePlay() {
-  if (timer) stop();
-  else timer = setInterval(() => step(1), PLAY_INTERVAL_MS);
-  render();
 }
 
 function randomSeed() {
@@ -423,19 +403,12 @@ async function main() {
     cursor = Math.max(0, steps.findLastIndex(({ index }) => index <= current));
     render();
   });
-  $("first").addEventListener("click", () => go(0));
-  $("last").addEventListener("click", () => go(visibleSteps().length - 1));
   $("prev").addEventListener("click", () => step(-1));
   $("next").addEventListener("click", () => step(1));
-  $("prev-phase").addEventListener("click", () => jumpPhase(-1));
-  $("next-phase").addEventListener("click", () => jumpPhase(1));
-  $("play").addEventListener("click", togglePlay);
-  $("scrub").addEventListener("input", (e) => go(Number(e.target.value)));
   document.addEventListener("keydown", (e) => {
     if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
     if (e.key === "ArrowRight") e.shiftKey ? jumpPhase(1) : step(1);
     else if (e.key === "ArrowLeft") e.shiftKey ? jumpPhase(-1) : step(-1);
-    else if (e.key === " ") togglePlay();
     else if (e.key === "Home") go(0);
     else if (e.key === "End") go(visibleSteps().length - 1);
     else return;

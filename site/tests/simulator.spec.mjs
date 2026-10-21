@@ -171,14 +171,14 @@ for (const [width, height] of [[1080, 1920], [1400, 900], [375, 667]]) {
   });
 }
 
-test("play toggles to pause and back", async ({ page }) => {
+test("the stepper has only back and forward", async ({ page }) => {
   await open(page);
-  await expect(page.locator("#play")).toHaveAttribute("aria-label", "Play");
-  await page.locator("#play").click();
-  await expect(page.locator("#play")).toHaveAttribute("aria-label", "Pause");
-  await expect(page.locator("#play .pause")).toBeVisible();
-  await page.locator("#play").click();
-  await expect(page.locator("#play .play")).toBeVisible();
+  await expect(page.locator("#stepper button")).toHaveCount(2);
+  await page.locator("#next").click();
+  await page.locator("#next").click();
+  await expect(page.locator("#counter")).toHaveText(/^3 \//);
+  await page.locator("#prev").click();
+  await expect(page.locator("#counter")).toHaveText(/^2 \//);
 });
 
 test("votes highlight the nominee and everyone who voted", async ({ page }) => {
