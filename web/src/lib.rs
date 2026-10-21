@@ -15,7 +15,7 @@ pub fn simulate(
     sim::simulate_named_json(u64::from(seed), players as usize, script_id, &names)
 }
 
-/// The available scripts as JSON: `[{ "id", "name" }]`.
+/// The available scripts as JSON: `[{ "id", "name", "characters": [{ "id", "name", "kind" }] }]`.
 #[wasm_bindgen]
 pub fn scripts() -> String {
     sim::scripts_json()
