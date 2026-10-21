@@ -327,3 +327,32 @@ fn every_script_simulates_cleanly_across_seeds_and_player_counts() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+#[test]
+fn custom_names_replace_the_defaults_without_changing_the_game() {
+    let script = common::trouble_brewing();
+    let names: Vec<String> = ["Alice", " Bob ", "", "Alice", "Carol"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    let named = sim::simulate_named(5, 8, &script, &names);
+    let plain = sim::simulate(5, 8, &script);
+    let seat = |t: &sim::Trace| t.players.iter().map(|p| p.name.clone()).collect::<Vec<_>>();
+    // Blank and duplicate names are skipped; the rest are default names not taken.
+    assert_eq!(&seat(&named)[..4], ["Alice", "Bob", "Carol", "Ada"]);
+    assert_eq!(seat(&named).len(), 8);
+    // Same characters in the same seats and the same number of steps.
+    let chars = |t: &sim::Trace| t.players.iter().map(|p| p.character).collect::<Vec<_>>();
+    assert_eq!(chars(&named), chars(&plain));
+    assert_eq!(named.steps.len(), plain.steps.len());
+}
+
+#[test]
+fn scripts_list_their_characters() {
+    let listed: Vec<serde_json::Value> = serde_json::from_str(&sim::scripts_json()).unwrap();
+    let tb = &listed[0];
+    let chars = tb["characters"].as_array().unwrap();
+    assert_eq!(chars.len(), 22);
+    assert_eq!(chars[0]["id"], "washerwoman");
+    assert_eq!(chars[0]["kind"], "Townsfolk");
+}

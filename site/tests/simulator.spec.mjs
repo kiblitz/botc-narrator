@@ -309,3 +309,35 @@ test("every script can be picked and played to the end", async ({ page }) => {
     await expect(page.locator("#log .winner")).toHaveText(/^Game over: /);
   }
 });
+
+test("the script view lists every character with its ability", async ({ page }) => {
+  await open(page);
+  await page.locator("#show-script").click();
+  await expect(page.locator("#script-view")).toBeVisible();
+  await expect(page.locator("#script-title")).toHaveText("Trouble Brewing");
+  await expect(page.locator(".script-character")).toHaveCount(22);
+  await expect(page.locator(".kind.townsfolk .script-character")).toHaveCount(13);
+  await expect(page.locator(".script-character").first()).toContainText("Washerwoman");
+  await expect(page.locator(".script-character").first()).toContainText("1 of 2 players is a particular Townsfolk");
+  await page.locator("#close-script").click();
+  await expect(page.locator("#script-view")).toBeHidden();
+  // Another script shows its own list.
+  await page.locator("#script").selectOption("bad_moon_rising");
+  await page.locator("#load").click();
+  await page.locator("#show-script").click();
+  await expect(page.locator("#script-title")).toHaveText("Bad Moon Rising");
+  await expect(page.locator(".script-character").filter({ hasText: "Zombuul" })).toHaveCount(1);
+});
+
+test("custom names are used for the seats and kept in the URL", async ({ page }) => {
+  await open(page);
+  await page.locator("#names").fill("Alice, Bob, Carol");
+  await page.locator("#load").click();
+  await expect(page.locator(".seat").nth(0)).toHaveAttribute("data-name", "Alice");
+  await expect(page.locator(".seat").nth(2)).toHaveAttribute("data-name", "Carol");
+  await expect(page).toHaveURL(/names=Alice%2CBob%2CCarol/);
+  await page.reload();
+  await expect(page.locator("body")).toHaveAttribute("data-ready", "true");
+  await expect(page.locator("#names")).toHaveValue("Alice,Bob,Carol");
+  await expect(page.locator(".seat").nth(1)).toHaveAttribute("data-name", "Bob");
+});

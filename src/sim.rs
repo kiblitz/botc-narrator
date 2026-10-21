@@ -610,12 +610,45 @@ impl table::Io for Recorder {
 
 /// Plays a whole random game with `players` seats.
 pub fn simulate(seed: u64, players: usize, script: &script::Script) -> Trace {
+    simulate_named(seed, players, script, &[])
+}
+
+/// The seat names to use: the custom `names` first (trimmed, blank and
+/// duplicate names skipped), then default names not already taken.
+pub fn seat_names(names: &[String]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for name in names.iter().map(|n| n.trim()) {
+        if !name.is_empty() && !out.iter().any(|o| o == name) {
+            out.push(name.to_string());
+        }
+    }
+    for name in NAMES {
+        if !out.iter().any(|o| o == name) {
+            out.push(name.to_string());
+        }
+    }
+    out.truncate(NAMES.len());
+    out
+}
+
+/// [`simulate`] with custom seat names, given clockwise from the first seat.
+/// The game is the same as with the default names; only names differ.
+pub fn simulate_named(
+    seed: u64,
+    players: usize,
+    script: &script::Script,
+    names: &[String],
+) -> Trace {
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     let mut seated: Vec<game::Seat> = setup(&mut rng, players, script)
         .into_iter()
         .map(|(id, c)| game::Seat::new(id, c))
         .collect();
     seated.extend(travellers(&mut rng, players, script));
+    // Seats get default names in order; swap in the chosen ones.
+    for (seat, name) in seated.iter_mut().zip(seat_names(names)) {
+        seat.id = player::Id::new(name);
+    }
     let mut state = game::State::seated(seated);
     let mut storyteller = storyteller::Random::seeded(rng.random());
     let mut table = Recorder {
@@ -832,23 +865,52 @@ fn voters(state: &game::State, nominee: &player::Id, rng: &mut impl Rng) -> Vec<
 /// [`simulate`] with the script named by `script_id`, serialized as JSON for
 /// the web viewer.
 pub fn simulate_json(seed: u64, players: usize, script_id: &str) -> Result<String, String> {
+    simulate_named_json(seed, players, script_id, &[])
+}
+
+/// [`simulate_named`] as JSON for the web viewer.
+pub fn simulate_named_json(
+    seed: u64,
+    players: usize,
+    script_id: &str,
+    names: &[String],
+) -> Result<String, String> {
     let script = script::by_id(script_id).ok_or_else(|| format!("unknown script {script_id:?}"))?;
-    Ok(serde_json::to_string(&simulate(seed, players, &script)).expect("traces serialize"))
+    let trace = simulate_named(seed, players, &script, names);
+    Ok(serde_json::to_string(&trace).expect("traces serialize"))
 }
 
 #[derive(Serialize)]
 struct ScriptInfo {
     id: &'static str,
     name: String,
+    /// The script's characters, in script order.
+    characters: Vec<CharacterInfo>,
 }
 
-/// The available scripts as JSON: `[{ "id", "name" }]`.
+#[derive(Serialize)]
+struct CharacterInfo {
+    id: &'static str,
+    name: &'static str,
+    kind: character::Kind,
+}
+
+/// The available scripts as JSON: `[{ "id", "name", "characters": [{ "id", "name", "kind" }] }]`.
 pub fn scripts_json() -> String {
     let scripts: Vec<ScriptInfo> = script::all()
         .iter()
         .map(|s| ScriptInfo {
             id: s.id,
             name: s.name.clone(),
+            characters: s
+                .characters
+                .iter()
+                .map(|c| CharacterInfo {
+                    id: c.id(),
+                    name: c.name(),
+                    kind: c.kind(),
+                })
+                .collect(),
         })
         .collect();
     serde_json::to_string(&scripts).expect("scripts serialize")

@@ -5,3 +5,4 @@
 /site/node_modules/
 /site/test-results/
 /site/playwright-report/
+/site/abilities.json

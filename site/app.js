@@ -26,11 +26,19 @@ let pov = "";
 let selected = null;
 /** Index into `visibleSteps()` of the current step. */
 let cursor = 0;
-/** The scripts the engine offers: `[{ id, name }]`. */
+/** The scripts the engine offers: `[{ id, name, characters: [{ id, name, kind }] }]`. */
 let scripts = [];
+/** Ability text by character id without underscores, loaded on first use. */
+let abilities = null;
+
+/** The custom seat names typed in the Names box, in seat order. */
+function customNames() {
+  return $("names").value.split(",").map((n) => n.trim()).filter((n) => n !== "");
+}
 
 function load(seed, players, script) {
-  const trace = JSON.parse(botcWeb.simulate(seed, players, script));
+  const names = customNames();
+  const trace = JSON.parse(botcWeb.simulate(seed, players, script, names));
   // Who is awake, and whose deaths the table has heard about, after each step.
   const awake = [];
   const announced = [];
@@ -51,7 +59,9 @@ function load(seed, players, script) {
   $("seed").value = seed;
   $("players").value = players;
   $("script").value = script;
-  history.replaceState(null, "", `#script=${script}&seed=${seed}&players=${players}`);
+  const hash = new URLSearchParams({ script, seed, players });
+  if (names.length > 0) hash.set("names", names.join(","));
+  history.replaceState(null, "", `#${hash}`);
   const povSelect = $("pov");
   povSelect.replaceChildren(new Option("Storyteller (everything)", ""));
   for (const seat of trace.players) povSelect.add(new Option(`${seat.name} (${seat.character})`, seat.name));
@@ -367,6 +377,36 @@ function jumpPhase(direction) {
   go(Math.max(0, Math.min(i, steps.length - 1)));
 }
 
+const KIND_ORDER = ["Townsfolk", "Outsider", "Minion", "Demon", "Traveller", "Fabled", "Loric"];
+
+/** The current script's characters by kind, with icons and ability text. */
+async function showScript() {
+  const script = scripts.find((s) => s.id === game.script);
+  abilities ??= await fetch("abilities.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+  $("script-title").textContent = script.name;
+  const body = $("script-characters");
+  body.replaceChildren();
+  for (const kind of KIND_ORDER) {
+    const members = script.characters.filter((c) => c.kind === kind);
+    if (members.length === 0) continue;
+    const section = el("section", `kind ${kind.toLowerCase()}`);
+    section.append(el("h3", "", kind === "Townsfolk" ? kind : `${kind}s`));
+    for (const c of members) {
+      const row = el("div", "script-character");
+      const img = el("img");
+      img.alt = "";
+      img.src = iconUrl(c.name);
+      img.addEventListener("error", () => img.remove());
+      const text = el("div", "");
+      text.append(el("strong", "", c.name), el("p", "", abilities[c.id.replaceAll("_", "")] ?? ""));
+      row.append(img, text);
+      section.append(row);
+    }
+    body.append(section);
+  }
+  $("script-view").showModal();
+}
+
 function randomSeed() {
   return Math.floor(Math.random() * 2 ** 32);
 }
@@ -377,6 +417,7 @@ function fromHash() {
   const players = Number.parseInt(params.get("players"), 10);
   const script = params.get("script");
   return {
+    names: params.get("names") ?? "",
     script: scripts.some((s) => s.id === script) ? script : scripts[0].id,
     seed: Number.isFinite(seed) && seed >= 0 ? seed : randomSeed(),
     players: players >= MIN_PLAYERS && players <= MAX_PLAYERS ? players : 8,
@@ -420,7 +461,10 @@ async function main() {
     sizeSeats();
     if (game) render();
   }).observe($("board"));
-  const { script, seed, players } = fromHash();
+  const { script, seed, players, names } = fromHash();
+  $("names").value = names;
+  $("show-script").addEventListener("click", showScript);
+  $("close-script").addEventListener("click", () => $("script-view").close());
   load(seed, players, script);
   document.body.dataset.ready = "true";
 }

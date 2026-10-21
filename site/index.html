@@ -13,11 +13,15 @@
       <label>Script
         <select id="script"></select>
       </label>
+      <button type="button" id="show-script">View script</button>
       <label>Players
         <select id="players"></select>
       </label>
       <label>Seed
         <input id="seed" type="number" min="0" max="4294967295" step="1">
+      </label>
+      <label>Names
+        <input id="names" type="text" placeholder="Ada, Bram, ... (comma separated)" autocomplete="off">
       </label>
       <button type="submit" id="load">Load</button>
       <button type="button" id="random">New random game</button>
@@ -61,6 +65,14 @@
       </section>
     </aside>
   </main>
+
+  <dialog id="script-view" aria-labelledby="script-title">
+    <header>
+      <h2 id="script-title"></h2>
+      <button type="button" id="close-script" aria-label="Close">✕</button>
+    </header>
+    <div id="script-characters"></div>
+  </dialog>
 
   <script type="module" src="app.js"></script>
 </body>

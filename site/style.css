@@ -44,7 +44,7 @@ input, select, button {
   border-radius: 6px;
   padding: 0.3rem 0.55rem;
 }
-#seed { width: 8.5rem; }
+#seed { width: 6.5rem; }
 button { cursor: pointer; }
 button:hover { border-color: var(--gold); }
 
@@ -271,3 +271,33 @@ li.future { opacity: 0.35; }
 @media (max-aspect-ratio: 1/1), (max-width: 1000px) {
   #stepper { position: sticky; bottom: 0; z-index: 5; background: var(--bg); padding: 0.5rem 0; }
 }
+
+/* Script view. */
+#names { width: 11rem; }
+#script-view {
+  width: min(720px, 94vw);
+  max-height: 86vh;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+}
+#script-view::backdrop { background: rgba(0, 0, 0, 0.6); }
+#script-view > header {
+  position: sticky; top: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.6rem 1rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+#script-view h2 { margin: 0; color: var(--gold); font-size: 1.1rem; }
+#script-characters { padding: 0.5rem 1rem 1rem; }
+#script-characters h3 { margin: 0.8rem 0 0.3rem; font-size: 0.95rem; }
+.kind.townsfolk h3 { color: var(--townsfolk); }
+.kind.outsider h3 { color: var(--outsider); }
+.kind.minion h3, .kind.demon h3 { color: var(--evil); }
+.kind.traveller h3, .kind.fabled h3, .kind.loric h3 { color: var(--gold); }
+.script-character { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.3rem 0; }
+.script-character img { width: 40px; height: 40px; object-fit: contain; flex: none; }
+.script-character p { margin: 0.1rem 0 0; color: var(--muted); font-size: 0.9rem; }
