@@ -4,6 +4,7 @@
 //! Sockets authenticate in their first message (a player's token, a bridge's
 //! pairing code), never in the URL, so no secret reaches an access log.
 
+use std::collections;
 use std::sync;
 use std::sync::atomic;
 use std::time;
@@ -46,39 +47,58 @@ pub struct App {
     misses: sync::Arc<Misses>,
 }
 
-/// Wrong room codes, seat tokens and pairing codes, server-wide: past
-/// [`MOST_MISSES`] in a minute, every lookup is refused until the minute is
-/// over, so codes cannot be guessed by brute force.
+/// Wrong room codes, per client: past [`MOST_MISSES`] in a minute, that
+/// client's joins are refused until its minute is over, so live rooms cannot
+/// be found by guessing codes. Seat tokens and pairing codes are too long to
+/// guess and are not limited, so a player's phone always gets back in.
 #[derive(Default)]
 struct Misses {
-    window: sync::Mutex<Option<(time::Instant, usize)>>,
+    clients: sync::Mutex<collections::HashMap<String, (time::Instant, usize)>>,
 }
 
 const MOST_MISSES: usize = 60;
 const MISS_WINDOW: time::Duration = time::Duration::from_secs(60);
+/// Past this many clients remembered, expired ones are forgotten.
+const MOST_MISS_CLIENTS: usize = 4096;
 
 impl Misses {
-    fn current(&self) -> sync::MutexGuard<'_, Option<(time::Instant, usize)>> {
-        let mut window = self
-            .window
+    fn allowed(&self, client: &str) -> bool {
+        let clients = self
+            .clients
             .lock()
             .unwrap_or_else(sync::PoisonError::into_inner);
-        if window.is_some_and(|(start, _)| start.elapsed() > MISS_WINDOW) {
-            *window = None;
+        clients
+            .get(client)
+            .is_none_or(|(start, misses)| start.elapsed() > MISS_WINDOW || *misses < MOST_MISSES)
+    }
+
+    fn count(&self, client: &str) {
+        let mut clients = self
+            .clients
+            .lock()
+            .unwrap_or_else(sync::PoisonError::into_inner);
+        if clients.len() > MOST_MISS_CLIENTS {
+            clients.retain(|_, (start, _)| start.elapsed() <= MISS_WINDOW);
         }
-        window
+        let entry = clients
+            .entry(client.to_string())
+            .or_insert((time::Instant::now(), 0));
+        if entry.0.elapsed() > MISS_WINDOW {
+            *entry = (time::Instant::now(), 0);
+        }
+        entry.1 += 1;
     }
+}
 
-    fn allowed(&self) -> bool {
-        self.current()
-            .is_none_or(|(_, misses)| misses < MOST_MISSES)
-    }
-
-    fn count(&self) {
-        let mut window = self.current();
-        let (start, misses) = window.unwrap_or((time::Instant::now(), 0));
-        *window = Some((start, misses + 1));
-    }
+/// Who is asking: the client address Caddy puts in `X-Forwarded-For` (the
+/// server only listens on loopback, behind Caddy).
+fn client(headers: &http::HeaderMap) -> String {
+    headers
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.split(',').next())
+        .map(|v| v.trim().to_string())
+        .unwrap_or_default()
 }
 
 impl App {
@@ -214,16 +234,18 @@ struct Joining {
 async fn join(
     extract::State(app): extract::State<App>,
     extract::Path(code): extract::Path<String>,
+    headers: http::HeaderMap,
     response::Json(joining): response::Json<Joining>,
 ) -> response::Response {
-    if !app.misses.allowed() {
+    let client = client(&headers);
+    if !app.misses.allowed(&client) {
         return refuse(
             http::StatusCode::TOO_MANY_REQUESTS,
             "Too many wrong codes; wait a minute.",
         );
     }
     let Some(room) = app.rooms.get(&code) else {
-        app.misses.count();
+        app.misses.count(&client);
         return refused(room::Error::NoSuchRoom);
     };
     match room.update(|s| s.join(&joining.name)) {
@@ -363,9 +385,7 @@ async fn phone(app: App, mut socket: ws::WebSocket) {
         room.read(|s| s.seat_of(&token).map(|seat| seat.name.clone()))
             .map(|name| (room, name))
     });
-    let seat = seat.filter(|_| app.misses.allowed());
     let Some((room, name)) = seat else {
-        app.misses.count();
         send(
             &mut socket,
             &ToPhone::Gone {
@@ -629,11 +649,10 @@ async fn bridge_socket(app: App, mut socket: ws::WebSocket) {
         .await
         .and_then(|t| serde_json::from_str::<wire::ToServer>(&t).ok());
     let room = match pair {
-        Some(wire::ToServer::Pair { code }) if app.misses.allowed() => app.rooms.paired(&code),
+        Some(wire::ToServer::Pair { code }) => app.rooms.paired(&code),
         _ => None,
     };
     let Some(room) = room else {
-        app.misses.count();
         let reason = "That pairing code is not one the host was shown.".to_string();
         send_bridge(&mut socket, &wire::ToBridge::Refused { reason }).await;
         return;

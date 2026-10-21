@@ -203,27 +203,43 @@ async fn guessing_codes_is_stopped_and_seats_take_few_phones() {
         })
         .count();
     assert_eq!(refused, 1);
-    // Wrong room codes run out, then even a right one waits a minute.
+    // One client's wrong room codes run out, then even a right one waits;
+    // other clients, and phones that already have a seat, are unaffected.
     let http = common::http();
+    let join = |client: &'static str, code: String, name: &'static str| {
+        http.post(format!("{base}/api/rooms/{code}/join"))
+            .header("x-forwarded-for", client)
+            .json(&json!({"name": name}))
+            .send()
+    };
     let mut statuses = Vec::new();
     for _ in 0..61 {
-        let response = http
-            .post(format!("{base}/api/rooms/ZZZZZ/join"))
-            .json(&json!({"name": "Guess"}))
-            .send()
-            .await
-            .unwrap();
-        statuses.push(response.status().as_u16());
+        statuses.push(
+            join("203.0.113.9", "ZZZZZ".into(), "Guess")
+                .await
+                .unwrap()
+                .status()
+                .as_u16(),
+        );
     }
     assert!(statuses[..60].iter().all(|s| *s == 404), "{statuses:?}");
     assert_eq!(statuses[60], 429);
-    let right = http
-        .post(format!("{base}/api/rooms/{room}/join"))
-        .json(&json!({"name": "Late"}))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(right.status(), 429);
+    assert_eq!(
+        join("203.0.113.9", room.clone(), "Late")
+            .await
+            .unwrap()
+            .status(),
+        429
+    );
+    assert_eq!(
+        join("198.51.100.7", room.clone(), "Other")
+            .await
+            .unwrap()
+            .status(),
+        200
+    );
+    let back = common::connect(&base, &room, "Bram", &tokens[2]).await;
+    common::until(&back, time::Duration::from_secs(5), |v| v["you"] == "Bram").await;
     drop(phones);
 }
 

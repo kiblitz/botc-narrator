@@ -92,9 +92,10 @@ that no phone sees another's secrets), `bridge/tests/bridge.rs` (pairing and
 decisions with a fake `codex`), `server/e2e` (Playwright on phone viewports,
 against `cargo run -p botc_server --example e2e`).
 
-Limits: a seat takes at most three phones; past 60 wrong room codes, seat
-tokens or pairing codes in a minute, the server refuses lookups for the rest of
-that minute. A host whose game is running cannot open another room.
+Limits: a seat takes at most three phones; a client (by the address Caddy
+forwards) that tries 60 wrong room codes in a minute cannot join any room for
+the rest of that minute. Seat tokens and pairing codes are too long to guess,
+so reconnecting phones and bridges are never limited. A host whose game is running cannot open another room.
 
 Not yet modelled: Travellers joining, the
 storyteller's judgement of madness (mad players never break madness), and
