@@ -211,13 +211,15 @@ fn decisions_carry_the_players_and_characters_they_chose() {
         .iter()
         .find(|s| s.kind == sim::Kind::Decision && s.text.contains("(Investigator)"))
         .expect("investigator decision");
-    // "A and B: one is the X": both players and the character are carried.
-    assert_eq!(step.players.len(), 2, "{}", step.text);
-    assert_eq!(step.characters.len(), 1, "{}", step.text);
+    // "information for P (Investigator) ...: A and B: one is the X": the
+    // recipient and both players, the Investigator and the character.
+    assert_eq!(step.players.len(), 3, "{}", step.text);
+    assert_eq!(step.characters.len(), 2, "{}", step.text);
+    assert_eq!(step.characters[0], "Investigator");
     for name in &step.players {
         assert!(step.text.contains(name.as_str()), "{}", step.text);
     }
-    assert!(step.text.contains(step.characters[0]), "{}", step.text);
+    assert!(step.text.contains(step.characters[1]), "{}", step.text);
     let bluffs = trace
         .steps
         .iter()
@@ -355,4 +357,67 @@ fn scripts_list_their_characters() {
     assert_eq!(chars.len(), 22);
     assert_eq!(chars[0]["id"], "washerwoman");
     assert_eq!(chars[0]["kind"], "Townsfolk");
+}
+
+/// Whether `text` mentions `name` as a whole word.
+fn mentions(text: &str, name: &str) -> bool {
+    text.match_indices(name).any(|(i, _)| {
+        let before = text[..i].chars().last();
+        let after = text[i + name.len()..].chars().next();
+        before.is_none_or(|c| !c.is_alphanumeric()) && after.is_none_or(|c| !c.is_alphanumeric())
+    })
+}
+
+#[test]
+fn every_named_player_and_character_is_highlighted() {
+    let characters: Vec<&str> = botc_narrator::characters::all()
+        .iter()
+        .map(|c| c.name())
+        .collect();
+    for script in script::all() {
+        for seed in 0..12 {
+            let trace = sim::simulate(seed, 5 + (seed as usize % 11), &script);
+            let seats: Vec<String> = trace.players.iter().map(|p| p.name.clone()).collect();
+            for step in &trace.steps {
+                for seat in &seats {
+                    if mentions(&step.text, seat) {
+                        assert!(
+                            step.players.contains(seat) || step.player.as_ref() == Some(seat),
+                            "{} seed {seed}: {seat} not highlighted in {:?}",
+                            script.id,
+                            step.text
+                        );
+                    }
+                }
+                for name in &characters {
+                    if mentions(&step.text, name) {
+                        assert!(
+                            step.characters.contains(name),
+                            "{} seed {seed}: {name} not highlighted in {:?}",
+                            script.id,
+                            step.text
+                        );
+                    }
+                }
+                if matches!(step.kind, sim::Kind::Tell | sim::Kind::Ask) {
+                    assert!(step.flow.is_some(), "{:?} has no arrow", step.text);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn believed_characters_are_told_with_an_arrow_and_highlighted() {
+    // Some Trouble Brewing game has a Drunk; the step telling them who they
+    // think they are names the player and the character, with an arrow.
+    let script = common::trouble_brewing();
+    let step = (0..200)
+        .flat_map(|seed| sim::simulate(seed, 10, &script).steps)
+        .find(|s| s.text.contains("believes they are"))
+        .expect("a Drunk in some game");
+    assert_eq!(step.characters.len(), 1);
+    assert_eq!(step.players.len(), 1);
+    let flow = step.flow.expect("arrow");
+    assert_eq!(flow.from, sim::Endpoint::Storyteller);
 }

@@ -1,6 +1,7 @@
 use std::fmt;
 
 use crate::character;
+use crate::characters;
 use crate::game;
 use crate::player;
 
@@ -94,6 +95,100 @@ pub enum Event {
     /// Something the storyteller tells everyone ("the Leviathan is in play").
     Announced(String),
     Won(character::Alignment),
+}
+
+impl Event {
+    /// Players the event names, in order.
+    pub fn players(&self) -> Vec<&player::Id> {
+        match self {
+            Event::Nominated { nominee, nominator } => {
+                nominator.iter().chain(std::iter::once(nominee)).collect()
+            }
+            Event::Died { player, cause } => match cause {
+                Cause::Ability { by } => vec![player, by],
+                Cause::Demon | Cause::Starpass | Cause::Execution => vec![player],
+            },
+            Event::Executed(player)
+            | Event::Revived(player)
+            | Event::GhostVoteSpent(player)
+            | Event::KillPrevented { player, .. }
+            | Event::Transformed { player, .. }
+            | Event::Believes { player, .. }
+            | Event::AbilityGained { player, .. }
+            | Event::AbilityLost { player, .. }
+            | Event::AlignmentChanged { player, .. }
+            | Event::MadnessBroken { player, .. } => vec![player],
+            Event::ReminderPlaced { player, reminder }
+            | Event::ReminderRemoved { player, reminder } => {
+                if reminder.placed_by == *player {
+                    vec![player]
+                } else {
+                    vec![&reminder.placed_by, player]
+                }
+            }
+            Event::KillRedirected { from, to } => vec![from, to],
+            Event::SeatsSwapped(a, b) => vec![a, b],
+            Event::Claimed { player, claims } => std::iter::once(player)
+                .chain(claims.iter().map(|(p, _)| p))
+                .collect(),
+            Event::Voted {
+                nominee, voters, ..
+            } => std::iter::once(nominee).chain(voters.iter()).collect(),
+            Event::PhaseBegan(_)
+            | Event::FabledAdded(_)
+            | Event::FabledMarked { .. }
+            | Event::Note(_)
+            | Event::Announced(_)
+            | Event::Won(_) => Vec::new(),
+        }
+    }
+
+    /// Character names the event names, in order.
+    pub fn characters(&self) -> Vec<&'static str> {
+        match self {
+            Event::Transformed { into: c, .. }
+            | Event::Believes { character: c, .. }
+            | Event::AbilityGained { ability: c, .. }
+            | Event::AbilityLost { ability: c, .. }
+            | Event::MadnessBroken { about: c, .. }
+            | Event::FabledAdded(c)
+            | Event::FabledMarked { fabled: c, .. } => vec![*c],
+            Event::ReminderPlaced { reminder, .. } | Event::ReminderRemoved { reminder, .. } => {
+                // The ability that placed the token, then any character the
+                // token itself names (a madness, or a token named after a
+                // character, like the Cannibal's gained ability).
+                let mut names: Vec<&'static str> = characters::find(reminder.source)
+                    .map(|c| c.name())
+                    .into_iter()
+                    .collect();
+                let named = match reminder.effect {
+                    game::Effect::Mad(c) => Some(c),
+                    game::Effect::Custom(token) => characters::all()
+                        .iter()
+                        .map(|c| c.name())
+                        .find(|name| *name == token),
+                    _ => None,
+                };
+                names.extend(named.filter(|n| !names.contains(n)));
+                names
+            }
+            Event::Claimed { claims, .. } => claims.iter().map(|(_, c)| *c).collect(),
+            Event::PhaseBegan(_)
+            | Event::Nominated { .. }
+            | Event::Executed(_)
+            | Event::Died { .. }
+            | Event::Revived(_)
+            | Event::KillPrevented { .. }
+            | Event::KillRedirected { .. }
+            | Event::AlignmentChanged { .. }
+            | Event::SeatsSwapped(..)
+            | Event::GhostVoteSpent(_)
+            | Event::Voted { .. }
+            | Event::Note(_)
+            | Event::Announced(_)
+            | Event::Won(_) => Vec::new(),
+        }
+    }
 }
 
 impl fmt::Display for Event {

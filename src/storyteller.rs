@@ -51,6 +51,32 @@ pub enum Reason {
     },
 }
 
+impl Reason {
+    /// Players the reason names.
+    pub fn players(&self) -> Vec<&player::Id> {
+        match self {
+            Reason::Information { player, .. }
+            | Reason::MayorRedirect { mayor: player }
+            | Reason::Ability { player, .. } => vec![player],
+            Reason::Registration { asker, target } => vec![target, asker],
+            Reason::DemonBluffs | Reason::StarpassTarget | Reason::Fabled { .. } => Vec::new(),
+        }
+    }
+
+    /// Characters the reason names.
+    pub fn characters(&self) -> Vec<&'static str> {
+        match self {
+            Reason::Information { character, .. }
+            | Reason::Ability { character, .. }
+            | Reason::Fabled { character, .. } => vec![*character],
+            Reason::MayorRedirect { .. } => vec!["Mayor"],
+            Reason::DemonBluffs | Reason::StarpassTarget | Reason::Registration { .. } => {
+                Vec::new()
+            }
+        }
+    }
+}
+
 impl fmt::Display for Reason {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

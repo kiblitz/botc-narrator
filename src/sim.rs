@@ -16,6 +16,7 @@ use serde::Serialize;
 
 use crate::ability;
 use crate::character;
+use crate::characters;
 use crate::ctx;
 use crate::event;
 use crate::game;
@@ -444,7 +445,115 @@ impl table::Io for Recorder {
         table::Io::ask(self, player, prompt, candidates, max)
     }
 
+    fn ask_character(
+        &mut self,
+        player: &player::Id,
+        prompt: &str,
+        options: &[character::Ref],
+    ) -> usize {
+        let answer = self.rng.random_range(0..options.len());
+        let name = options[answer].name();
+        let text = format!("{prompt} {name}");
+        let step = self.push(Kind::Ask, Some(player), text, self.answer_audience(player));
+        step.characters = vec![name];
+        step.flow = Some(Flow::from_player(player));
+        answer
+    }
+
+    fn broke_madness(&mut self, _player: &player::Id, _about: &'static str) -> bool {
+        self.rng.random_bool(BREAKS_MADNESS)
+    }
+
+    fn ask_yes_no(&mut self, player: &player::Id, prompt: &str) -> bool {
+        let yes = self.rng.random_bool(AGREES);
+        let answer = if yes { "yes" } else { "no" };
+        let audience = match self.phase {
+            game::Phase::Day(_) => Audience::Public,
+            _ => Audience::Player,
+        };
+        let step = self.push(
+            Kind::Ask,
+            Some(player),
+            format!("{prompt} {answer}"),
+            audience,
+        );
+        step.flow = Some(Flow::from_player(player));
+        yes
+    }
+
+    fn is_mad_about(&mut self, _player: &player::Id, _about: &'static str) -> bool {
+        self.rng.random_bool(MAD_ABOUT)
+    }
+
+    fn confirm(&mut self, _player: &player::Id, question: &table::Question) -> bool {
+        let p = match question {
+            table::Question::UseAbility(_) => USES_ABILITY,
+            table::Question::Claim(_) => CLAIMS,
+            table::Question::SaidWord(_) => SAYS_WORD,
+            table::Question::LostRoshambo { .. } => LOSES_ROSHAMBO,
+        };
+        self.rng.random_bool(p)
+    }
+
+    fn decided(&mut self, decision: &storyteller::Decision, picks: &[usize]) {
+        let picked: Vec<String> = picks
+            .iter()
+            .map(|&i| decision.options[i].to_string())
+            .collect();
+        let text = format!(
+            "{} ({} options): {}",
+            decision.reason,
+            decision.options.len(),
+            picked.join(", ")
+        );
+        let step = self.push(Kind::Decision, None, text, Audience::Storyteller);
+        step.players
+            .extend(decision.reason.players().iter().map(ToString::to_string));
+        step.characters.extend(decision.reason.characters());
+        for &i in picks {
+            let choice = &decision.options[i];
+            step.players
+                .extend(choice.players().iter().map(ToString::to_string));
+            step.characters.extend(choice.characters());
+        }
+    }
+
     fn event(&mut self, event: &event::Event, view: &game::State) {
+        let first = self.steps.len();
+        self.record_event(event, view);
+        // Every step the event produced names its players and characters,
+        // so the viewer can highlight them; steps that set their own keep them.
+        let players: Vec<String> = event.players().iter().map(ToString::to_string).collect();
+        for step in &mut self.steps[first..] {
+            if step.players.is_empty() {
+                step.players = players.clone();
+            }
+            if step.characters.is_empty() {
+                step.characters = event.characters();
+            }
+        }
+        let flow = match event {
+            event::Event::KillRedirected { from, to } => Some(Flow {
+                from: Endpoint::Player(from.to_string()),
+                to: Endpoint::Player(to.to_string()),
+            }),
+            // The player is told the character they now are or believe they are.
+            event::Event::Believes { player, .. } | event::Event::Transformed { player, .. } => {
+                Some(Flow::to_player(player))
+            }
+            _ => None,
+        };
+        if let Some(flow) = flow
+            && let Some(step) = self.steps[first..].last_mut()
+        {
+            step.flow = Some(flow);
+        }
+    }
+}
+
+impl Recorder {
+    /// Pushes the steps an event produces (see `table::Io::event`).
+    fn record_event(&mut self, event: &event::Event, view: &game::State) {
         self.sync(view);
         let text = event.to_string();
         match event {
@@ -536,76 +645,6 @@ impl table::Io for Recorder {
             }
         }
     }
-
-    fn ask_character(
-        &mut self,
-        player: &player::Id,
-        prompt: &str,
-        options: &[character::Ref],
-    ) -> usize {
-        let answer = self.rng.random_range(0..options.len());
-        let name = options[answer].name();
-        let text = format!("{prompt} {name}");
-        let step = self.push(Kind::Ask, Some(player), text, self.answer_audience(player));
-        step.characters = vec![name];
-        step.flow = Some(Flow::from_player(player));
-        answer
-    }
-
-    fn broke_madness(&mut self, _player: &player::Id, _about: &'static str) -> bool {
-        self.rng.random_bool(BREAKS_MADNESS)
-    }
-
-    fn ask_yes_no(&mut self, player: &player::Id, prompt: &str) -> bool {
-        let yes = self.rng.random_bool(AGREES);
-        let answer = if yes { "yes" } else { "no" };
-        let audience = match self.phase {
-            game::Phase::Day(_) => Audience::Public,
-            _ => Audience::Player,
-        };
-        let step = self.push(
-            Kind::Ask,
-            Some(player),
-            format!("{prompt} {answer}"),
-            audience,
-        );
-        step.flow = Some(Flow::from_player(player));
-        yes
-    }
-
-    fn is_mad_about(&mut self, _player: &player::Id, _about: &'static str) -> bool {
-        self.rng.random_bool(MAD_ABOUT)
-    }
-
-    fn confirm(&mut self, _player: &player::Id, question: &table::Question) -> bool {
-        let p = match question {
-            table::Question::UseAbility(_) => USES_ABILITY,
-            table::Question::Claim(_) => CLAIMS,
-            table::Question::SaidWord(_) => SAYS_WORD,
-            table::Question::LostRoshambo { .. } => LOSES_ROSHAMBO,
-        };
-        self.rng.random_bool(p)
-    }
-
-    fn decided(&mut self, decision: &storyteller::Decision, picks: &[usize]) {
-        let picked: Vec<String> = picks
-            .iter()
-            .map(|&i| decision.options[i].to_string())
-            .collect();
-        let text = format!(
-            "{} ({} options): {}",
-            decision.reason,
-            decision.options.len(),
-            picked.join(", ")
-        );
-        let step = self.push(Kind::Decision, None, text, Audience::Storyteller);
-        for &i in picks {
-            let choice = &decision.options[i];
-            step.players
-                .extend(choice.players().iter().map(ToString::to_string));
-            step.characters.extend(choice.characters());
-        }
-    }
 }
 
 /// Plays a whole random game with `players` seats.
@@ -674,6 +713,12 @@ pub fn simulate_named(
             game::Phase::Day(_) => day(&mut ctx, &mut rng),
             game::Phase::Setup => {}
         }
+    }
+    let seat_list: Vec<String> = initial.iter().map(|s| s.name.clone()).collect();
+    // Any character can be named (madness, false info), not just the script's.
+    let character_names: Vec<&'static str> = characters::all().iter().map(|c| c.name()).collect();
+    for step in &mut table.steps {
+        complete_mentions(step, &seat_list, &character_names);
     }
     Trace {
         seed,
@@ -860,6 +905,32 @@ fn voters(state: &game::State, nominee: &player::Id, rng: &mut impl Rng) -> Vec<
             rng.random_bool(p)
         })
         .collect()
+}
+
+/// Adds the seat and script character names a step's text mentions but its
+/// typed mentions miss: free-text prompts ("Which character is Ada?") carry
+/// no structure. The speaker is not added to their own step.
+fn complete_mentions(step: &mut Step, seats: &[String], characters: &[&'static str]) {
+    let mentions = |name: &str| {
+        step.text.match_indices(name).any(|(i, _)| {
+            let before = step.text[..i].chars().last();
+            let after = step.text[i + name.len()..].chars().next();
+            before.is_none_or(|c| !c.is_alphanumeric())
+                && after.is_none_or(|c| !c.is_alphanumeric())
+        })
+    };
+    let new_players: Vec<String> = seats
+        .iter()
+        .filter(|n| mentions(n) && !step.players.contains(n) && step.player.as_ref() != Some(*n))
+        .cloned()
+        .collect();
+    let new_characters: Vec<&'static str> = characters
+        .iter()
+        .copied()
+        .filter(|n| mentions(n) && !step.characters.contains(n))
+        .collect();
+    step.players.extend(new_players);
+    step.characters.extend(new_characters);
 }
 
 /// [`simulate`] with the script named by `script_id`, serialized as JSON for
