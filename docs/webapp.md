@@ -15,7 +15,8 @@ an LLM on someone's computer (Codex by default) makes the storyteller's choices.
 3. Arrange the seating to match the real circle, clockwise: drag the ⠿ handle,
    or use the arrows. ✕ removes someone who joined by mistake.
 4. Pick the script. The player count is however many have joined; the picker
-   shows each script's range.
+   shows each script's range. Everyone can open **Characters on …** in the
+   lobby to read the chosen script's characters and abilities.
 5. Optionally pair a computer as the storyteller (below), then **Start the game**.
 
 During the game, the host's phone has the phase controls at the bottom:
@@ -44,14 +45,28 @@ running games.
 ## The storyteller bridge
 
 Without a bridge, the storyteller chooses at random among the legal options.
-To let Codex choose (aiming for a balanced, interesting game), run the bridge on
-any computer with Codex CLI installed and logged in:
+To let Codex or Claude Code choose (aiming for a balanced, interesting game),
+paste the line the host's lobby shows into a terminal on any computer with
+Node 22+ and Codex CLI or Claude Code installed and logged in. Nothing is
+downloaded by hand:
 
 ```sh
-cargo run --release -p botc_bridge -- <PAIRING-CODE>
+# macOS, Linux, Git Bash
+curl -fsSL https://botc.kiblitz.xyz/bridge.sh | sh -s -- <PAIRING-CODE>
 ```
 
-The host's lobby shows the pairing code and the exact command (**Copy**). The
+```powershell
+# Windows PowerShell
+& ([scriptblock]::Create((irm https://botc.kiblitz.xyz/bridge.ps1))) <PAIRING-CODE>
+```
+
+Each fetches `bridge.mjs` from the site (`server/static/`) and runs it with
+Node. It uses Codex if installed, else Claude Code; `-- COMMAND...` after the
+code names any other command. The Rust bridge (`cargo run --release -p
+botc_bridge -- <PAIRING-CODE>`) speaks the same protocol and stays as an
+alternative.
+
+The host's lobby shows the pairing code inside both lines (**Copy**). The
 code is the host's alone, because the bridge sees the whole grimoire; **New
 code** drops the paired bridge. The host sees a green dot while one is connected. Whoever runs the bridge can
 read the grimoire in its prompts, so a host who plays should let someone else's
@@ -61,16 +76,13 @@ Each decision is sent as a prompt (the grimoire, the history, the numbered legal
 options) to the command's stdin, and the command's output is parsed for option
 numbers by the server, so a bridge can never make an illegal choice. By default
 the command is `codex exec --skip-git-repo-check --ephemeral --sandbox=read-only -`.
-Any other command works after `--`, for example Claude Code:
-
-```sh
-cargo run --release -p botc_bridge -- <PAIRING-CODE> -- claude -p
-```
+Any other command works after `--`, for example
+`curl -fsSL https://botc.kiblitz.xyz/bridge.sh | sh -s -- <PAIRING-CODE> -- claude -p`.
 
 To pick which Codex login answers, pass `--codex-home DIR` (or set Codex's own
 `CODEX_HOME`), e.g. a second account when the first is usage-limited.
 
-Options: `--server URL` (default `https://botc.kiblitz.xyz`), `--timeout SECONDS`
+Options (both bridges): `--server URL` (default `https://botc.kiblitz.xyz`), `--timeout SECONDS`
 for the command (default 80, under the server's 90). The server waits 90 seconds per decision; if the
 bridge is gone, fails, or answers nonsense, that decision is random and the game
 goes on. The bridge reconnects by itself if the connection drops.
@@ -92,7 +104,7 @@ goes on. The bridge reconnects by itself if the connection drops.
 
 Tests: `server/tests/game.rs` (whole games over sockets with bot phones, and
 that no phone sees another's secrets), `bridge/tests/bridge.rs` (pairing and
-decisions with a fake `codex`), `server/e2e` (Playwright on phone viewports,
+decisions with a fake `codex`), `server/e2e` (Playwright on phone viewports: a whole table, the script view, and both bridge one-liners run as shown with a fake `codex`,
 against `cargo run -p botc_server --example e2e`).
 
 Limits: a seat takes at most three phones; a client (by the address Caddy

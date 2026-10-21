@@ -4,6 +4,7 @@
 
 pub const HEALTH: &str = "/health";
 pub const SCRIPTS: &str = "/api/scripts";
+pub const SCRIPT: &str = "/api/scripts/{id}";
 pub const ROOMS: &str = "/api/rooms";
 pub const JOIN: &str = "/api/rooms/{code}/join";
 pub const PLAY: &str = "/ws/play";

@@ -102,16 +102,24 @@ pub struct Rooms {
 
 impl Rooms {
     /// Opens a room hosted from the address `client` (no account), whose
-    /// host sits in it as `name`. Returns the room and the host's player
+    /// host sits in it as `name`. A client hosts at most
+    /// [`MOST_ROOMS_PER_CLIENT`] rooms; requests with no client (local runs
+    /// and tests, never through Caddy) are not limited. Returns the room and the host's player
     /// token, which is all that makes them the host when they reconnect.
-    pub fn open(&self, client: &str, name: &str) -> Result<(sync::Arc<Room>, String), Error> {
+    pub fn open(
+        &self,
+        client: Option<&str>,
+        name: &str,
+    ) -> Result<(sync::Arc<Room>, String), Error> {
         let name = valid_name(name)?;
         let mut rooms = self.lock();
-        let hosted = rooms
-            .values()
-            .filter(|r| r.read(|s| s.host_client == client))
-            .count();
-        if hosted >= MOST_ROOMS_PER_CLIENT {
+        let hosted = |client: &str| {
+            rooms
+                .values()
+                .filter(|r| r.read(|s| s.host_client.as_deref() == Some(client)))
+                .count()
+        };
+        if client.is_some_and(|client| hosted(client) >= MOST_ROOMS_PER_CLIENT) {
             return Err(Error::HostingTooMany);
         }
         if rooms.len() >= MOST_ROOMS {
@@ -126,7 +134,7 @@ impl Rooms {
         let token = random_token();
         let state = State {
             host: name.clone(),
-            host_client: client.to_string(),
+            host_client: client.map(str::to_string),
             seats: vec![Seat {
                 name,
                 token: token.clone(),
@@ -261,8 +269,9 @@ impl Room {
 pub struct State {
     /// The host's seat name.
     pub host: String,
-    /// The address the room was hosted from, to cap rooms per client.
-    pub host_client: String,
+    /// The address the room was hosted from, to cap rooms per client; None
+    /// when it did not come through Caddy.
+    pub host_client: Option<String>,
     /// In seat order, clockwise.
     pub seats: Vec<Seat>,
     /// The script's id.
@@ -607,7 +616,7 @@ mod tests {
 
     fn lobby() -> (room::Rooms, std::sync::Arc<room::Room>) {
         let rooms = room::Rooms::default();
-        let (room, _) = rooms.open("203.0.113.9", "Ada").unwrap();
+        let (room, _) = rooms.open(Some("203.0.113.9"), "Ada").unwrap();
         for name in ["Bram", "Cleo", "Dev", "Esme"] {
             room.update(|s| s.join(name)).unwrap();
         }
@@ -688,13 +697,13 @@ mod tests {
     fn a_client_hosts_a_few_rooms_at_most() {
         let rooms = room::Rooms::default();
         for _ in 0..room::MOST_ROOMS_PER_CLIENT {
-            rooms.open("203.0.113.9", "Ada").unwrap();
+            rooms.open(Some("203.0.113.9"), "Ada").unwrap();
         }
         assert_eq!(
-            rooms.open("203.0.113.9", "Ada").err(),
+            rooms.open(Some("203.0.113.9"), "Ada").err(),
             Some(room::Error::HostingTooMany)
         );
-        assert!(rooms.open("198.51.100.7", "Bram").is_ok());
+        assert!(rooms.open(Some("198.51.100.7"), "Bram").is_ok());
     }
 
     #[test]

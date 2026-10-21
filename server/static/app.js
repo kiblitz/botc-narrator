@@ -21,6 +21,10 @@ const state = {
   picking: { prompt: null, picked: [] },
   reveal: localStorage.getItem(REVEAL_KEY) === "1",
   countdown: null,
+  // Scripts fetched for the lobby's script view, by id (null while being
+  // fetched), and whether it is open.
+  scripts: {},
+  scriptOpen: false,
 };
 
 // ---------- helpers ----------
@@ -280,9 +284,48 @@ function lobby(view) {
   } else {
     parts.push(el("p", { class: "muted center" }, `Waiting for the host to start ${view.script.name}…`));
   }
+  parts.push(scriptView(view.script));
   if (state.error) parts.push(el("p", { class: "error center" }, state.error));
   parts.push(el("button", { onclick: leave }, "Leave room"));
   return parts;
+}
+
+const KIND_ORDER = ["Townsfolk", "Outsider", "Minion", "Demon", "Traveller", "Fabled", "Loric"];
+
+/** The chosen script's characters by kind, with icons and abilities; for everyone. */
+function scriptView(choice) {
+  const script = state.scripts[choice.id];
+  if (script === undefined) {
+    state.scripts[choice.id] = null;
+    fetch(`/api/scripts/${encodeURIComponent(choice.id)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((fetched) => {
+        if (!fetched) throw new Error("no such script");
+        state.scripts[choice.id] = fetched;
+        render();
+      })
+      // Asked again on the next redraw.
+      .catch(() => delete state.scripts[choice.id]);
+  }
+  const sections = KIND_ORDER.map((kind) => {
+    const members = script ? script.characters.filter((c) => c.kind === kind) : [];
+    if (members.length === 0) return null;
+    return el("section", { class: `kind ${kind.toLowerCase()}` },
+      el("h3", {}, kind === "Townsfolk" ? kind : `${kind}s`),
+      ...members.map((c) => el("div", { class: "script-character" },
+        icon(c.name),
+        el("div", {}, el("strong", {}, c.name), el("p", {}, c.ability)),
+      )),
+    );
+  });
+  const details = el("details", { class: "card", id: "script-view" },
+    el("summary", {}, `Characters on ${choice.name}`),
+    script ? null : el("p", { class: "muted small" }, "Loading…"),
+    ...sections,
+  );
+  details.open = state.scriptOpen;
+  details.addEventListener("toggle", () => (state.scriptOpen = details.open));
+  return details;
 }
 
 function lobbySeat(view, seat, i) {

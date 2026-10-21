@@ -88,8 +88,8 @@ impl Misses {
     }
 }
 
-/// Requests that came straight to the server rather than through Caddy:
-/// local runs and tests, which share one client.
+/// Wrong room codes from requests that came straight to the server rather
+/// than through Caddy (local runs and tests) count against this one client.
 const DIRECT: &str = "direct";
 /// IPv6 clients are told apart by their /64: one machine usually has the
 /// whole block, so a single address would let it dodge every per-client limit.
@@ -98,16 +98,14 @@ const IPV6_CLIENT_SEGMENTS: usize = 4;
 /// Who is asking: the client address Caddy puts in `X-Forwarded-For` (the
 /// server only listens on loopback, behind Caddy). Caddy trusts no proxy in
 /// front of it, so it replaces whatever header the client sent; keep it so
-/// (no `trusted_proxies`), or the first entry becomes forgeable.
-fn client(headers: &http::HeaderMap) -> String {
-    let Some(first) = headers
+/// (no `trusted_proxies`), or the first entry becomes forgeable. None for a
+/// request that did not come through Caddy: only local runs and tests.
+fn client(headers: &http::HeaderMap) -> Option<String> {
+    let first = headers
         .get("x-forwarded-for")
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.split(',').next())
-        .map(str::trim)
-    else {
-        return DIRECT.to_string();
-    };
+        .map(str::trim)?;
     match first.parse::<std::net::IpAddr>() {
         Ok(std::net::IpAddr::V6(v6)) if v6.to_ipv4_mapped().is_none() => {
             let segments = v6.segments();
@@ -115,10 +113,10 @@ fn client(headers: &http::HeaderMap) -> String {
                 .iter()
                 .map(|s| format!("{s:x}"))
                 .collect();
-            format!("{}::/64", prefix.join(":"))
+            Some(format!("{}::/64", prefix.join(":")))
         }
-        Ok(address) => address.to_canonical().to_string(),
-        Err(_) => first.to_string(),
+        Ok(address) => Some(address.to_canonical().to_string()),
+        Err(_) => Some(first.to_string()),
     }
 }
 
@@ -154,6 +152,7 @@ pub fn router(app: App) -> axum::Router {
             route::SCRIPTS,
             routing::get(|| async { response::Json(view::scripts()) }),
         )
+        .route(route::SCRIPT, routing::get(script))
         .route(route::ROOMS, routing::post(host))
         .route(route::JOIN, routing::post(join))
         .route(route::PLAY, routing::get(play))
@@ -178,13 +177,21 @@ fn refuse(status: http::StatusCode, error: impl ToString) -> response::Response 
 
 fn refused(error: room::Error) -> response::Response {
     let status = match error {
-        room::Error::NoSuchRoom => http::StatusCode::NOT_FOUND,
+        room::Error::NoSuchRoom | room::Error::NoSuchScript => http::StatusCode::NOT_FOUND,
         room::Error::TooManyRooms => http::StatusCode::SERVICE_UNAVAILABLE,
         room::Error::NotHost => http::StatusCode::FORBIDDEN,
         room::Error::HostingTooMany => http::StatusCode::TOO_MANY_REQUESTS,
         _ => http::StatusCode::CONFLICT,
     };
     refuse(status, error)
+}
+
+/// A script's characters, for the lobby's script view.
+async fn script(extract::Path(id): extract::Path<String>) -> response::Response {
+    match view::script(&id) {
+        Some(script) => response::Json(script).into_response(),
+        None => refused(room::Error::NoSuchScript),
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -205,7 +212,7 @@ async fn host(
     headers: http::HeaderMap,
     response::Json(hosting): response::Json<Hosting>,
 ) -> response::Response {
-    match app.rooms.open(&client(&headers), &hosting.name) {
+    match app.rooms.open(client(&headers).as_deref(), &hosting.name) {
         Ok((room, token)) => {
             tracing::info!(room = %room.code, "room opened");
             response::Json(Seated {
@@ -230,7 +237,7 @@ async fn join(
     headers: http::HeaderMap,
     response::Json(joining): response::Json<Joining>,
 ) -> response::Response {
-    let client = client(&headers);
+    let client = client(&headers).unwrap_or_else(|| DIRECT.to_string());
     if !app.misses.allowed(&client) {
         return refuse(
             http::StatusCode::TOO_MANY_REQUESTS,

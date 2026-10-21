@@ -142,3 +142,13 @@ button.chosen { outline: 3px solid var(--gold); outline-offset: -3px; }
 .eyes-closed { text-align: center; padding: 2rem 1rem; color: var(--muted); }
 .eyes-closed .moon { font-size: 3rem; }
 pre.command { white-space: pre-wrap; word-break: break-all; background: var(--bg); padding: 0.5rem; border-radius: 0.4rem; margin: 0.4rem 0; font-size: 0.85rem; }
+
+/* The lobby's script view. */
+#script-view summary { font-weight: 600; cursor: pointer; padding: 0.4rem 0; }
+#script-view h3 { margin: 0.8rem 0 0.2rem; }
+.kind.townsfolk h3, .kind.outsider h3 { color: var(--good); }
+.kind.minion h3, .kind.demon h3 { color: var(--evil); }
+.kind.traveller h3, .kind.fabled h3, .kind.loric h3 { color: var(--gold); }
+.script-character { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.3rem 0; }
+.script-character img { width: 40px; height: 40px; object-fit: contain; flex: none; }
+.script-character p { margin: 0.1rem 0 0; color: var(--muted); font-size: 0.9rem; }

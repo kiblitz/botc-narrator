@@ -2,6 +2,9 @@
 //! players' characters, the storyteller's log and the grimoire stay hidden
 //! until the game is over; the pairing code is the host's alone.
 
+use std::collections;
+use std::sync;
+
 use botc_narrator::character;
 use botc_narrator::game;
 use botc_narrator::script;
@@ -92,6 +95,50 @@ fn choice(script: &script::Script) -> ScriptChoice {
         name: script.name.clone(),
         max_players: room::most_players(script.id),
     }
+}
+
+/// Every character's ability text, by id without underscores (`build.rs`).
+static ABILITIES: sync::LazyLock<collections::HashMap<String, String>> =
+    sync::LazyLock::new(|| {
+        serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/abilities.json")))
+            .expect("build.rs writes a JSON map")
+    });
+
+#[derive(serde::Serialize)]
+pub struct Script {
+    pub id: &'static str,
+    pub name: String,
+    pub characters: Vec<Character>,
+}
+
+#[derive(serde::Serialize)]
+pub struct Character {
+    pub id: &'static str,
+    pub name: &'static str,
+    pub kind: character::Kind,
+    pub ability: String,
+}
+
+/// A script's characters with their abilities, in the script's order.
+pub fn script(id: &str) -> Option<Script> {
+    let script = script::by_id(id)?;
+    Some(Script {
+        id: script.id,
+        name: script.name.clone(),
+        characters: script
+            .characters
+            .iter()
+            .map(|c| Character {
+                id: c.id(),
+                name: c.name(),
+                kind: c.kind(),
+                ability: ABILITIES
+                    .get(&c.id().replace('_', ""))
+                    .cloned()
+                    .unwrap_or_default(),
+            })
+            .collect(),
+    })
 }
 
 /// Every registered script, for the host's picker.
@@ -236,5 +283,24 @@ pub fn of(code: &str, state: &room::State, you: &str) -> View {
         },
         winner: game.and_then(|g| g.winner),
         failure: game.and_then(|g| g.failure.clone()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use botc_narrator::script;
+
+    use crate::view;
+
+    #[test]
+    fn every_scripted_character_has_its_ability_text() {
+        for listed in script::all() {
+            let shown = view::script(listed.id).unwrap();
+            assert_eq!(shown.characters.len(), listed.characters.len());
+            for c in shown.characters {
+                assert!(!c.ability.is_empty(), "{} on {}", c.id, listed.id);
+            }
+        }
+        assert!(view::script("no_such_script").is_none());
     }
 }
