@@ -15,6 +15,8 @@ import { spawn, spawnSync } from "node:child_process";
 
 const SITE = process.env.SITE || "https://botc.kiblitz.xyz";
 const PLAYERS = ["Ada", "Bram", "Cleo", "Dev", "Esme"];
+// Phones recorded with VIDEO: the host's and the first two guests'.
+const RECORDED = 3;
 // While recording, each step stays on screen long enough to follow.
 const pause = (page, ms) => (process.env.VIDEO ? page.waitForTimeout(ms) : Promise.resolve());
 const shot = async (page, name) => {
@@ -44,7 +46,7 @@ log("hosted room", code, "without an account");
 
 const pages = [host];
 for (const [i, name] of PLAYERS.entries()) {
-  const page = await phone(i < 2);
+  const page = await phone(i + 1 < RECORDED);
   await page.goto(`/?join=${code}`);
   await page.locator("#join-name").fill(name);
   await page.getByRole("button", { name: "Join" }).click();
@@ -93,7 +95,7 @@ async function until(phase) {
     if ((await host.locator("#phase").innerText().catch(() => "")) === phase || (await host.locator("#winner").isVisible())) return answered;
     for (const [n, page] of pages.entries()) {
       // A prompt on a recorded phone is shown first.
-      if (n < 3 && (await page.locator("#prompt").isVisible().catch(() => false)) && !(await page.getByText("Answer sent.").isVisible().catch(() => false))) await pause(page, 3500);
+      if (n < RECORDED && (await page.locator("#prompt").isVisible().catch(() => false)) && !(await page.getByText("Answer sent.").isVisible().catch(() => false))) await pause(page, 3500);
       if (await answer(page).catch(() => false)) {
         answered++;
         log("answered a prompt on phone", n);
@@ -108,7 +110,7 @@ for (const page of pages) page.on("dialog", (d) => d.accept());
 let answered = await until("Day 1");
 if (process.env.FULL) {
   // The recorded phones show their characters and what they learned.
-  for (const page of pages.slice(0, 3)) await page.locator("#token").click().catch(() => {});
+  for (const page of pages.slice(0, RECORDED)) await page.locator("#token").click().catch(() => {});
   await pause(host, 5000);
 }
 log("day 1");
@@ -116,8 +118,8 @@ await shot(pages[1], "live-2-day");
 if (process.env.FULL) {
   for (let day = 1; !(await host.locator("#winner").isVisible()); day++) {
     // Whoever may still nominate puts someone up; every living hand goes up.
-    const nominator = pages.find((_, n) => n === day % pages.length) ?? pages[0];
-    const ordered = [...pages.slice(pages.indexOf(nominator)), ...pages.slice(0, pages.indexOf(nominator))];
+    const first = day % pages.length;
+    const ordered = [...pages.slice(first), ...pages.slice(0, first)];
     let nominated = false;
     for (const page of ordered) {
       // A living nominee, so each execution moves the game on.
@@ -149,15 +151,15 @@ if (process.env.FULL) {
     await pause(host, 4000);
   }
   log("winner:", await host.locator("#winner").innerText());
-  for (const page of pages.slice(0, 3)) await page.locator("#winner").scrollIntoViewIfNeeded();
+  for (const page of pages.slice(0, RECORDED)) await page.locator("#winner").scrollIntoViewIfNeeded();
   await pause(host, 6000);
 } else {
-const nominator = pages[1];
-const target = await nominator.locator("#town .seat").filter({ has: nominator.getByRole("button", { name: "Nominate" }) }).first();
-await target.getByRole("button", { name: "Nominate" }).click();
-for (const page of pages) {
-  await page.locator("#vote").waitFor({ timeout: 120_000 });
-  await page.locator("#vote-no").click();
+  const nominator = pages[1];
+  const target = await nominator.locator("#town .seat").filter({ has: nominator.getByRole("button", { name: "Nominate" }) }).first();
+  await target.getByRole("button", { name: "Nominate" }).click();
+  for (const page of pages) {
+    await page.locator("#vote").waitFor({ timeout: 120_000 });
+    await page.locator("#vote-no").click();
 }
 await shot(host, "live-3-vote");
 await host.locator("#end-day").waitFor({ timeout: 120_000 });

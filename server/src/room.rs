@@ -125,7 +125,20 @@ impl Rooms {
             return Err(Error::HostingTooMany);
         }
         if rooms.len() >= MOST_ROOMS {
-            return Err(Error::TooManyRooms);
+            // Finished games are only kept to be read, so the oldest one
+            // makes way; a host cannot fill the box by finishing games fast.
+            let oldest = rooms
+                .values()
+                .filter(|r| r.read(|s| s.finished()))
+                .min_by_key(|r| r.read(|s| s.touched))
+                .map(|r| r.code.clone());
+            let Some(code) = oldest else {
+                return Err(Error::TooManyRooms);
+            };
+            if let Some(room) = rooms.remove(&code) {
+                tracing::info!(room = %code, "closing a finished room to make way");
+                room.close();
+            }
         }
         let code = loop {
             let code = random_code(CODE_LETTERS, CODE_LENGTH);
@@ -323,7 +336,7 @@ impl State {
 
     fn lifetime(&self) -> time::Duration {
         match &self.game {
-            _ if self.finished() => FINISHED,
+            Some(game) if game.stage == Stage::Over => FINISHED,
             Some(_) => IDLE,
             None => LOBBY_IDLE,
         }
@@ -634,6 +647,15 @@ mod tests {
         (rooms, room)
     }
 
+    fn finish(room: &room::Room) {
+        let (inbox, _) = std::sync::mpsc::channel();
+        room.update(|s| {
+            let mut game = room::Game::new(inbox, game::State::new(Vec::new()));
+            game.stage = room::Stage::Over;
+            s.game = Some(game);
+        });
+    }
+
     fn names(room: &room::Room) -> Vec<String> {
         room.read(|s| s.seats.iter().map(|s| s.name.clone()).collect())
     }
@@ -726,15 +748,30 @@ mod tests {
         let rooms = room::Rooms::default();
         for _ in 0..room::MOST_ROOMS_PER_CLIENT {
             let (room, _) = rooms.open(Some("203.0.113.9"), "Ada").unwrap();
-            let (inbox, _) = std::sync::mpsc::channel();
-            room.update(|s| {
-                let mut game = room::Game::new(inbox, game::State::new(Vec::new()));
-                game.stage = room::Stage::Over;
-                s.game = Some(game);
-            });
+            finish(&room);
         }
         // The host who just finished a few games may host the next one.
         assert!(rooms.open(Some("203.0.113.9"), "Ada").is_ok());
+    }
+
+    #[test]
+    fn a_full_box_closes_its_oldest_finished_game() {
+        let rooms = room::Rooms::default();
+        let finished: Vec<_> = (0..room::MOST_ROOMS)
+            .map(|_| rooms.open(None, "Ada").unwrap().0)
+            .collect();
+        finished.iter().for_each(|room| finish(room));
+        assert!(rooms.open(None, "Bram").is_ok());
+        assert_eq!(rooms.count(), room::MOST_ROOMS);
+        assert_eq!(finished.iter().filter(|r| r.read(|s| s.closed)).count(), 1);
+        // Unfinished rooms are never closed to make way.
+        for _ in 0..room::MOST_ROOMS {
+            let _ = rooms.open(None, "Cleo");
+        }
+        assert_eq!(
+            rooms.open(None, "Dev").err(),
+            Some(room::Error::TooManyRooms)
+        );
     }
 
     #[test]
