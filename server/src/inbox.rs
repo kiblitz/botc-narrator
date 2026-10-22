@@ -1,5 +1,5 @@
-//! What a room sends its game thread: players' answers and votes, the host's
-//! commands and the bridge's replies, in arrival order.
+//! What a room sends its game thread: players' answers, the host's
+//! commands (nominations and hands too) and the bridge's replies, in arrival order.
 //!
 //! The game thread waits for one kind of input at a time (an answer to the
 //! prompt it just showed, the bridge's reply to its decision). Inputs that
@@ -25,8 +25,9 @@ pub enum Input {
         nominator: String,
         nominee: String,
     },
+    /// The host raised or lowered `voter`'s hand.
     Vote {
-        player: String,
+        voter: String,
         yes: bool,
     },
     /// The host closes the vote: hands not raised are no.

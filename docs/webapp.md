@@ -22,7 +22,8 @@ an LLM on someone's computer (Codex by default) makes the storyteller's choices.
 During the game, the host's phone has the phase controls at the bottom:
 **End the day** (the nominee on the block is executed), **Close the vote**,
 and **Everyone close your eyes: start the night**. Dawn comes by itself when
-the night's actions are done.
+the night's actions are done. The host also enters nominations and hands; see
+Playing.
 
 ## Playing
 
@@ -33,8 +34,18 @@ the night's actions are done.
 - Everything you have been told is in **What you know**, with players and
   characters highlighted. Public events (deaths at dawn, nominations, votes,
   executions) go to everyone.
-- By day, tap **Nominate** next to a player. Everyone with a vote (the living,
-  and the dead who still have their ghost vote) then sees **Raise hand** / **No**.
+- By day, nominations and votes happen out loud at the table, and the host
+  enters them on their phone (decided 2026-10-22, so a stray tap on someone
+  else's phone never nominates or votes). In the town square circle the host
+  taps who nominates, then the nominee (only legal choices can be tapped: a
+  living player who may nominate and has not today; someone not yet nominated
+  today), then **Confirm**; **Cancel** starts over. During the vote the host
+  goes round the circle tapping each voter whose hand is up (the living, and
+  the dead who still have their ghost vote; tap again to lower it), then
+  **Close the vote** to count. Everyone else's phone shows the vote and the
+  raised hands live; the vote stays open until the host closes it. The
+  storyteller's nominations (the Bishop) and the Butcher's second nomination
+  (asked on the Butcher's phone) are voted on the same way.
   Public day abilities (the Slayer's shot) show up as a button for their holder.
 - When the game ends, everyone sees every character and the storyteller's notes.
 

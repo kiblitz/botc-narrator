@@ -297,16 +297,19 @@ pub enum FromPhone {
         #[serde(default)]
         yes: Option<bool>,
     },
-    Nominate {
-        nominee: String,
-    },
-    Vote {
-        yes: bool,
-    },
     DayAction {
         ability: String,
     },
-    // The host's:
+    // The host's (the host runs nominations and votes for the table):
+    Nominate {
+        nominator: String,
+        nominee: String,
+    },
+    /// The host raises or lowers `voter`'s hand.
+    Vote {
+        voter: String,
+        yes: bool,
+    },
     Reseat {
         order: Vec<String>,
     },
@@ -504,37 +507,34 @@ pub fn handle(
             });
             Ok(())
         }
-        FromPhone::Nominate { nominee } => {
+        FromPhone::Nominate { nominator, nominee } => {
+            host_only(room)?;
             let may = room.read(|s| {
                 s.game.as_ref().is_some_and(|g| {
                     g.stage == room::Stage::Day
-                        && g.may_nominate.iter().any(|p| p == name)
+                        && g.may_nominate.contains(&nominator)
+                        && s.seats.iter().any(|seat| seat.name == nominee)
                         && !g.nominees.contains(&nominee)
                 })
             });
             if !may {
                 return not_now();
             }
-            room.send(inbox::Input::Nominate {
-                nominator: name.to_string(),
-                nominee,
-            });
+            room.send(inbox::Input::Nominate { nominator, nominee });
             Ok(())
         }
-        FromPhone::Vote { yes } => {
+        FromPhone::Vote { voter, yes } => {
+            host_only(room)?;
             let eligible = room.read(|s| {
                 s.game
                     .as_ref()
                     .and_then(|g| g.vote.as_ref())
-                    .is_some_and(|v| v.eligible.iter().any(|e| e == name))
+                    .is_some_and(|v| v.eligible.contains(&voter))
             });
             if !eligible {
                 return not_now();
             }
-            room.send(inbox::Input::Vote {
-                player: name.to_string(),
-                yes,
-            });
+            room.send(inbox::Input::Vote { voter, yes });
             Ok(())
         }
         FromPhone::DayAction { ability } => {

@@ -22,7 +22,6 @@ pub fn quick() -> engine::Timing {
     engine::Timing {
         answer: time::Duration::from_secs(5),
         decision: time::Duration::from_secs(10),
-        vote: time::Duration::from_secs(5),
     }
 }
 
@@ -195,9 +194,10 @@ fn repeat(
     first && due
 }
 
-/// Answers every prompt with the first legal choice, has the first player
-/// who may nominate nominate the first other nominee once a day, votes yes,
-/// and ends each day and starts each night as the host, until the game is over.
+/// Answers every prompt with the first legal choice and, as the host,
+/// nominates once a day (the first nominator, the first other living
+/// nominee), raises every eligible hand, closes the vote, ends each day and
+/// starts each night, until the game is over.
 pub async fn play(phones: &[Phone], within: time::Duration) -> (serde_json::Value, Played) {
     let deadline = time::Instant::now() + within;
     let mut played = Played::default();
@@ -205,6 +205,7 @@ pub async fn play(phones: &[Phone], within: time::Duration) -> (serde_json::Valu
     let mut voted: Vec<(String, String, String)> = Vec::new();
     let mut nominated_on: Vec<String> = Vec::new();
     let mut ended: Vec<(String, time::Instant)> = Vec::new();
+    let mut closed: Vec<(String, time::Instant)> = Vec::new();
     let mut nights: Vec<(String, time::Instant)> = Vec::new();
     // Who each phone saw dead when each night began: nobody may be seen
     // dying before dawn.
@@ -251,46 +252,55 @@ pub async fn play(phones: &[Phone], within: time::Duration) -> (serde_json::Valu
                     phone.send(answer(prompt));
                 }
             }
-            if let Some(vote) = view["vote"].as_object()
-                && vote["eligible"] == true
-            {
-                let key = (
-                    phone.name.clone(),
-                    phase.clone(),
-                    vote["nominee"].to_string(),
-                );
+        }
+        let phase = host["phase"].as_str().unwrap_or("").to_string();
+        // The host enters every nomination and hand: once a day the first
+        // nominator puts up the first other living nominee.
+        let nominators = names(&host["nominators"]);
+        if host["stage"] == "day" && !nominated_on.contains(&phase) {
+            let nominee = names(&host["nominees"])
+                .into_iter()
+                .find(|n| nominators.first().is_some_and(|f| f != n) && alive(&host, n));
+            if let (Some(nominator), Some(nominee)) = (nominators.first(), nominee) {
+                nominated_on.push(phase.clone());
+                played.nominations += 1;
+                phones[0]
+                    .send(json!({"type": "nominate", "nominator": nominator, "nominee": nominee}));
+            }
+        }
+        // Every hand goes up, then the host closes the vote.
+        if let Some(vote) = host["vote"].as_object() {
+            let raised = raised(&host);
+            let mut all_up = true;
+            for voter in names(&vote["eligible"]) {
+                if raised.contains(&voter) {
+                    continue;
+                }
+                all_up = false;
+                let key = (voter.clone(), phase.clone(), vote["nominee"].to_string());
                 if !voted.contains(&key) {
                     voted.push(key);
                     played.votes += 1;
-                    phone.send(json!({"type": "vote", "yes": true}));
+                    phones[0].send(json!({"type": "vote", "voter": voter, "yes": true}));
                 }
             }
-            if view["stage"] == "day"
-                && view["may_nominate"] == true
-                && !nominated_on.contains(&phase)
-            {
-                let nominee = view["nominees"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .filter_map(|n| n.as_str())
-                    .find(|n| *n != phone.name && alive(&view, n));
-                if let Some(nominee) = nominee {
-                    nominated_on.push(phase.clone());
-                    played.nominations += 1;
-                    phone.send(json!({"type": "nominate", "nominee": nominee}));
-                }
+            if all_up {
+                let label = format!("{phase} {}", vote["nominee"]);
+                repeat(
+                    &mut closed,
+                    &label,
+                    &phones[0],
+                    json!({"type": "close_vote"}),
+                );
             }
         }
-        let phase = host["phase"].as_str().unwrap_or("").to_string();
         // End the day once its nomination's vote is over (or nobody could nominate).
-        if host["stage"] == "day" && host["vote"].is_null() {
-            let someone_may = phones.iter().any(|p| p.view()["may_nominate"] == true);
-            if (nominated_on.contains(&phase) || !someone_may)
-                && repeat(&mut ended, &phase, &phones[0], json!({"type": "end_day"}))
-            {
-                played.days += 1;
-            }
+        if host["stage"] == "day"
+            && host["vote"].is_null()
+            && (nominated_on.contains(&phase) || nominators.is_empty())
+            && repeat(&mut ended, &phase, &phones[0], json!({"type": "end_day"}))
+        {
+            played.days += 1;
         }
         if host["stage"] == "dusk" {
             repeat(
@@ -304,6 +314,28 @@ pub async fn play(phones: &[Phone], within: time::Duration) -> (serde_json::Valu
     }
 }
 
+/// The hands raised in a view's vote.
+pub fn raised(view: &serde_json::Value) -> Vec<String> {
+    view["vote"]["hands"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|h| h[1] == true)
+        .filter_map(|h| h[0].as_str())
+        .map(ToString::to_string)
+        .collect()
+}
+
+/// The names in a JSON array (none if it is missing).
+pub fn names(list: &serde_json::Value) -> Vec<String> {
+    list.as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|n| n.as_str())
+        .map(ToString::to_string)
+        .collect()
+}
+
 fn alive(view: &serde_json::Value, name: &str) -> bool {
     view["seats"]
         .as_array()
@@ -313,7 +345,7 @@ fn alive(view: &serde_json::Value, name: &str) -> bool {
 }
 
 /// The first legal answer to a prompt.
-fn answer(prompt: &serde_json::Map<String, serde_json::Value>) -> serde_json::Value {
+pub fn answer(prompt: &serde_json::Map<String, serde_json::Value>) -> serde_json::Value {
     let id = &prompt["id"];
     match prompt["kind"].as_str().unwrap() {
         "players" => {
@@ -347,5 +379,9 @@ fn check_private(name: &str, view: &serde_json::Value, leaks: &mut Vec<String>) 
     }
     if view["host"] == false && view["bridge"].get("pairing").is_some() {
         leaks.push(format!("{name} saw the pairing code"));
+    }
+    if view["host"] == false && (view.get("nominators").is_some() || view.get("nominees").is_some())
+    {
+        leaks.push(format!("{name} was offered nominations"));
     }
 }

@@ -28,8 +28,10 @@ pub struct View {
     pub log: Vec<room::Entry>,
     pub prompt: Option<room::Prompt>,
     pub vote: Option<Vote>,
-    pub may_nominate: bool,
-    /// Players this player may nominate now.
+    /// The host's alone, by day: who may nominate now, and who may be
+    /// nominated (the host enters every nomination).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub nominators: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub nominees: Vec<String>,
     pub day_actions: Vec<room::DayAction>,
@@ -75,7 +77,9 @@ pub struct Vote {
     pub nominee: String,
     pub nominator: Option<String>,
     pub needed: usize,
-    pub eligible: bool,
+    /// Who may vote: the living, and the dead with their ghost vote.
+    pub eligible: Vec<String>,
+    /// The hands the host has entered so far: (player, raised).
     pub hands: Vec<(String, bool)>,
 }
 
@@ -218,10 +222,13 @@ pub fn of(code: &str, state: &room::State, you: &str) -> View {
                 .collect()
         })
         .unwrap_or_default();
-    let may_nominate = game
-        .is_some_and(|g| g.stage == room::Stage::Day && g.may_nominate.iter().any(|p| p == you));
-    let nominees = match game {
-        Some(g) if may_nominate => state
+    let nominating =
+        game.filter(|g| host && g.stage == room::Stage::Day && !g.may_nominate.is_empty());
+    let nominators = nominating
+        .map(|g| g.may_nominate.clone())
+        .unwrap_or_default();
+    let nominees = match nominating {
+        Some(g) => state
             .seats
             .iter()
             .map(|s| s.name.clone())
@@ -259,10 +266,10 @@ pub fn of(code: &str, state: &room::State, you: &str) -> View {
             nominee: v.nominee.clone(),
             nominator: v.nominator.clone(),
             needed: v.needed,
-            eligible: v.eligible.iter().any(|e| e == you),
+            eligible: v.eligible.clone(),
             hands: v.hands.clone(),
         }),
-        may_nominate,
+        nominators,
         nominees,
         day_actions: game
             .filter(|g| g.stage == room::Stage::Day)

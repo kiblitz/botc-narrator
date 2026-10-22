@@ -1,6 +1,7 @@
 // A whole table on phone-sized browsers: the host opens a room with no
 // account, five players join by code, the host rearranges the circle and
-// starts; players answer night prompts, nominate and vote from their phones.
+// starts; players answer night prompts on their phones; the host enters the
+// nomination and the hands.
 import { test, expect } from "@playwright/test";
 
 const PLAYERS = ["Ada", "Bram", "Cleo", "Dev", "Esme"];
@@ -44,7 +45,7 @@ async function playUntil(pages, phase) {
   throw new Error(`never reached ${phase}`);
 }
 
-test("a table of phones: host, join, seat, start, night prompt, nominate and vote", async ({ browser }) => {
+test("a table of phones: host, join, seat, start, night prompt, the host nominates and counts hands", async ({ browser }) => {
   const host = await phone(browser);
   await host.goto("/");
   await host.locator("#host-name").fill("Host");
@@ -101,21 +102,38 @@ test("a table of phones: host, join, seat, start, night prompt, nominate and vot
   await expect(host.locator("#town")).not.toContainText(" Imp");
   for (const name of order) await expect(host.locator("#town")).toContainText(name);
 
-  // Day 1: someone who is neither the Demon nor the Saint is nominated, and
-  // everyone raises a hand; the host ends the day.
+  // Day 1: the host enters a nomination of someone who is neither the Demon
+  // nor the Saint; other phones cannot nominate or vote.
   const safe = Object.entries(characters)
     .filter(([, text]) => !/Demon|Saint|Virgin/.test(text))
     .map(([i]) => (Number(i) === 0 ? "Host" : PLAYERS[Number(i) - 1]));
-  const nominator = pages.find((p, i) => (i === 0 ? "Host" : PLAYERS[i - 1]) !== safe[0]);
-  nominator.on("dialog", (d) => d.accept());
-  await nominator.getByRole("button", { name: `Nominate ${safe[0]}` }).click();
+  const nominator = order.find((name) => name !== safe[0]);
+  for (const page of players) await expect(page.locator("#town button.seat")).toHaveCount(0);
+  // A mistaken nominator is cancelled; then nominator, nominee, confirm.
+  await host.getByRole("button", { name: `${safe[0]} nominates` }).click();
+  await host.locator("#cancel-nomination").click();
+  await expect(host.locator("#nomination")).toHaveCount(0);
+  await host.getByRole("button", { name: `${nominator} nominates` }).click();
+  await host.getByRole("button", { name: `Nominate ${safe[0]}` }).click();
+  await expect(host.locator("#nomination")).toContainText(`${nominator} nominates ${safe[0]}`);
+  await host.locator("#confirm-nomination").click();
   await expect(host.locator("#vote")).toBeVisible();
-  await shot(host, "5-vote");
-  for (const page of pages) {
+  for (const page of players) {
     await expect(page.locator("#vote")).toBeVisible();
-    await page.locator("#vote-yes").click();
+    await expect(page.locator("#vote button")).toHaveCount(0);
+    await expect(page.locator("#town button.seat")).toHaveCount(0);
   }
-  await expect(host.locator("#log")).toContainText(`votes for ${safe[0]}`);
+  // The host raises every hand round the circle (lowering one mistake);
+  // everyone sees the hands; the host closes the vote.
+  await host.getByRole("button", { name: `Raise ${order[0]}'s hand` }).click();
+  await host.getByRole("button", { name: `Lower ${order[0]}'s hand` }).click();
+  await expect(host.locator("#hand-count")).toContainText("0 hands");
+  for (const name of order) await host.getByRole("button", { name: `Raise ${name}'s hand` }).click();
+  await expect(host.locator("#hand-count")).toContainText("6 hands");
+  await expect(players[1].locator("#town .hand")).toHaveCount(6);
+  await shot(host, "5-vote");
+  await host.locator("#close-vote").click();
+  await expect(host.locator("#log")).toContainText(`6 votes for ${safe[0]}`);
   await expect(host.locator("#vote")).toHaveCount(0);
   host.on("dialog", (d) => d.accept());
   await host.locator("#end-day").click();

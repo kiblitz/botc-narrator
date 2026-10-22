@@ -19,7 +19,6 @@ async fn main() {
     let timing = engine::Timing {
         answer: time::Duration::from_secs(30),
         decision: time::Duration::from_secs(10),
-        vote: time::Duration::from_secs(30),
     };
     let app = api::App::new(timing, Some(seed));
     let root = path::Path::new(env!("CARGO_MANIFEST_DIR")).join("static");

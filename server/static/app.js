@@ -30,6 +30,8 @@ const state = {
   // While a seat is being dragged (redraws wait), and just after its drop.
   dragging: false,
   dragged: false,
+  // The host's nomination being entered: nominator, then nominee, then confirm.
+  nomination: { nominator: null, nominee: null },
 };
 
 // ---------- helpers ----------
@@ -238,6 +240,8 @@ function game(view) {
   else if (view.stage === "night" && !(view.me && view.me.awake)) parts.push(eyesClosed(view));
   if (view.thinking) parts.push(el("p", { class: "thinking" }, "The storyteller is thinking…"));
   if (view.vote) parts.push(vote(view));
+  const pending = view.host && nominationCard(view);
+  if (pending) parts.push(pending);
   if (view.stage === "dusk") parts.push(el("p", { class: "banner" }, "The day is over. Waiting for the host to start the night."));
   if (view.day_actions.length) parts.push(dayActions(view));
   if (["day", "vote", "dusk", "over"].includes(view.stage)) parts.push(town(view));
@@ -591,21 +595,47 @@ function prompt(view) {
 function vote(view) {
   const v = view.vote;
   const raised = v.hands.filter(([, up]) => up).map(([name]) => name);
-  const mine = v.hands.find(([name]) => name === view.you);
-  const card = el("div", { class: "card alert stack", id: "vote" },
+  return el("div", { class: "card alert stack", id: "vote" },
     el("div", { class: "banner" }, v.nominator ? `${v.nominator} nominated ${v.nominee}` : `${v.nominee} is nominated`),
-    el("p", { class: "center" }, `${raised.length} hand${raised.length === 1 ? "" : "s"} raised · ${v.needed} needed`),
+    el("p", { class: "center", id: "hand-count" }, `${raised.length} hand${raised.length === 1 ? "" : "s"} raised · ${v.needed} needed`),
     raised.length ? el("p", { class: "muted small center" }, raised.join(", ")) : null,
+    el("p", { class: "muted small center" }, view.host
+      ? "Go round the circle: tap each player whose hand is up (tap again to lower it), then close the vote."
+      : "Raise your hand at the table; the host counts the hands."),
   );
-  if (v.eligible) {
-    card.append(el("div", { class: "row" },
-      el("button", { class: mine && mine[1] ? "primary chosen" : "primary", id: "vote-yes", onclick: () => send({ type: "vote", yes: true }) }, "✋ Raise hand"),
-      el("button", { class: mine && !mine[1] ? "chosen" : "", id: "vote-no", onclick: () => send({ type: "vote", yes: false }) }, "No"),
-    ));
-  } else {
-    card.append(el("p", { class: "muted small center" }, "You have no vote."));
+}
+
+/** The host's nomination in progress, forgotten once it is no longer legal. */
+function nomination(view) {
+  const n = state.nomination;
+  const nominators = view.nominators || [];
+  const nominees = view.nominees || [];
+  if (view.stage !== "day" || (n.nominator && !nominators.includes(n.nominator))) n.nominator = null;
+  if (!n.nominator || (n.nominee && !nominees.includes(n.nominee))) n.nominee = null;
+  return n;
+}
+
+function cancelNomination() {
+  state.nomination = { nominator: null, nominee: null };
+  render();
+}
+
+function nominationCard(view) {
+  const n = nomination(view);
+  if (!n.nominator) return null;
+  const cancel = el("button", { id: "cancel-nomination", onclick: cancelNomination }, "Cancel");
+  if (!n.nominee) {
+    return el("div", { class: "card stack", id: "nomination" },
+      el("p", { class: "center" }, `${n.nominator} nominates… tap the nominee in the circle.`), cancel);
   }
-  return card;
+  const confirmed = () => {
+    send({ type: "nominate", nominator: n.nominator, nominee: n.nominee });
+    cancelNomination();
+  };
+  return el("div", { class: "card alert stack", id: "nomination" },
+    el("p", { class: "banner" }, `${n.nominator} nominates ${n.nominee}`),
+    el("div", { class: "row" },
+      el("button", { class: "primary", id: "confirm-nomination", onclick: confirmed }, "Confirm"), cancel));
 }
 
 function dayActions(view) {
@@ -618,28 +648,48 @@ function dayActions(view) {
 function town(view) {
   const hands = new Map(view.vote ? view.vote.hands : []);
   const nominee = view.vote ? view.vote.nominee : null;
+  const n = nomination(view);
+  // What tapping a seat does: by day the host picks the nominator then the
+  // nominee; during a vote the host raises and lowers hands.
+  const tap = (seat) => {
+    if (view.vote && view.host && view.vote.eligible.includes(seat.name)) {
+      const up = !!hands.get(seat.name);
+      return { label: `${up ? "Lower" : "Raise"} ${seat.name}'s hand`, act: () => send({ type: "vote", voter: seat.name, yes: !up }) };
+    }
+    if (!n.nominator && (view.nominators || []).includes(seat.name)) {
+      return { label: `${seat.name} nominates`, act: () => { n.nominator = seat.name; render(); } };
+    }
+    if (n.nominator && !n.nominee && (view.nominees || []).includes(seat.name)) {
+      return { label: `Nominate ${seat.name}`, act: () => { n.nominee = seat.name; render(); } };
+    }
+    return null;
+  };
   const ring = circle("town", view.seats, (seat, i) => {
-    const nominate = view.may_nominate && view.nominees.includes(seat.name) && seat.name !== view.you;
+    const action = tap(seat);
     const classes = ["seat", seat.alive ? "" : "dead", seat.name === view.you ? "you" : "",
-      seat.name === nominee ? "nominee" : "", nominate ? "nominable" : "", seat.alignment || ""];
-    return el(nominate ? "button" : "div", {
+      seat.name === nominee || seat.name === n.nominee ? "nominee" : "",
+      seat.name === n.nominator ? "selected" : "", action ? "nominable" : "", seat.alignment || ""];
+    return el(action ? "button" : "div", {
       class: classes.filter(Boolean).join(" "),
       "data-name": seat.name,
-      "aria-label": nominate ? `Nominate ${seat.name}` : null,
+      "aria-label": action ? action.label : null,
       title: seat.character ? `${seat.name}: ${seat.character}` : seat.name,
-      onclick: nominate ? () => confirm(`Nominate ${seat.name}?`) && send({ type: "nominate", nominee: seat.name }) : null,
+      onclick: action ? action.act : null,
     },
       seatFace(seat, i),
       seat.alive ? null : el("span", { class: "shroud" }, seat.ghost_vote ? "☠ vote" : "☠"),
       hands.get(seat.name) ? el("span", { class: "hand", title: "hand raised" }, "✋") : null,
     );
-  }, nominee
-    ? el("span", { class: "small" }, `${nominee} is on trial`)
-    : el("span", { class: "small muted" }, view.may_nominate ? "Tap a player to nominate them" : "Town square"));
-  return el("div", { class: "card" },
-    el("h2", {}, view.may_nominate ? "Town square: tap to nominate" : "Town square"),
-    ring,
-  );
+  }, el("span", { class: nominee ? "small" : "small muted" }, townHint(view, n)));
+  return el("div", { class: "card" }, el("h2", {}, "Town square"), ring);
+}
+
+function townHint(view, n) {
+  if (view.vote) return view.host ? "Tap each raised hand" : `${view.vote.nominee} is on trial`;
+  if (n.nominee) return "Confirm the nomination";
+  if (n.nominator) return `Who does ${n.nominator} nominate?`;
+  if ((view.nominators || []).length) return "Tap who nominates";
+  return "Town square";
 }
 
 function over(view) {

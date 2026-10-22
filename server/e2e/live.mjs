@@ -24,6 +24,23 @@ const shot = async (page, name) => {
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png`, fullPage: true });
 };
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
+// The host enters a nomination on its phone: the `pick`th legal nominator,
+// then the `pick`th living nominee, then confirms. Returns whether it could.
+const nominate = async (host, pick) => {
+  const nominators = host.locator('#town button.seat.nominable[aria-label$=" nominates"]');
+  if (!(await nominators.count())) return false;
+  await nominators.nth(pick % (await nominators.count())).click();
+  // A living nominee, so each execution moves the game on.
+  const nominees = host.locator('#town button.seat.nominable:not(.dead)[aria-label^="Nominate "]');
+  if (!(await nominees.count())) {
+    await host.locator("#cancel-nomination").click();
+    return false;
+  }
+  await nominees.nth(pick % (await nominees.count())).click();
+  await pause(host, 1500);
+  await host.locator("#confirm-nomination").click();
+  return true;
+};
 
 const browser = await chromium.launch();
 const contexts = [];
@@ -120,22 +137,15 @@ log("day 1");
 await shot(pages[1], "live-2-day");
 if (process.env.FULL) {
   for (let day = 1; !(await host.locator("#winner").isVisible()); day++) {
-    // Whoever may still nominate puts someone up; every living hand goes up.
-    const first = day % pages.length;
-    const ordered = [...pages.slice(first), ...pages.slice(0, first)];
-    let nominated = false;
-    for (const page of ordered) {
-      // A living nominee, so each execution moves the game on.
-      const buttons = page.locator("#town button.seat.nominable:not(.dead)");
-      if (!(await buttons.count())) continue;
-      await pause(page, 1500);
-      await buttons.nth(day % (await buttons.count())).click();
-      nominated = true;
-      break;
-    }
-    if (nominated) {
+    // The host puts someone up and raises every hand round the circle.
+    await host.locator("#end-day, #winner").first().waitFor({ timeout: 120_000 });
+    await pause(host, 1500);
+    // (A storyteller's nomination, the Bishop's, is voted on the same way.)
+    const put = await nominate(host, day).catch(() => false);
+    if (put || (await host.locator("#vote").isVisible())) {
       await host.locator("#vote").waitFor({ timeout: 120_000 }).catch(() => {});
-      for (const page of pages) if (await page.locator("#vote-yes").isVisible().catch(() => false)) await page.locator("#vote-yes").click().catch(() => {});
+      const raise = host.locator('#town button.seat[aria-label^="Raise "]');
+      while (await raise.count()) await raise.first().click();
       await pause(host, 3000);
       await shot(host, `full-vote-${day}`);
       if (await host.locator("#close-vote").isVisible().catch(() => false)) await host.locator("#close-vote").click();
@@ -157,13 +167,12 @@ if (process.env.FULL) {
   for (const page of pages.slice(0, RECORDED)) await page.locator("#winner").scrollIntoViewIfNeeded();
   await pause(host, 6000);
 } else {
-  const nominator = pages[1];
-  await nominator.locator("#town button.seat.nominable").first().click();
-  for (const page of pages) {
-    await page.locator("#vote").waitFor({ timeout: 120_000 });
-    await page.locator("#vote-no").click();
-}
-await shot(host, "live-3-vote");
+  // The host nominates; nobody's hand goes up; the host closes the vote.
+  await nominate(host, 0);
+  await host.locator("#vote").waitFor({ timeout: 120_000 });
+  for (const page of pages) await page.locator("#vote").waitFor({ timeout: 120_000 });
+  await host.locator("#close-vote").click();
+  await shot(host, "live-3-vote");
 await host.locator("#end-day").waitFor({ timeout: 120_000 });
 await host.locator("#end-day").click();
 await host.locator("#start-night").waitFor({ timeout: 300_000 });

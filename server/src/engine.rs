@@ -1,5 +1,5 @@
 //! A room's game, on a thread of its own: the engine's narrator runs the
-//! nights, and the days follow the phones (nominations, votes, day
+//! nights, and the days follow the host (nominations, votes) and the phones (day
 //! abilities) until the host ends them. The host starts each night.
 
 use std::cell;
@@ -33,8 +33,6 @@ pub struct Timing {
     pub answer: time::Duration,
     /// The bridge's answer to a storyteller decision.
     pub decision: time::Duration,
-    /// A vote, unless the host closes it or everyone has voted first.
-    pub vote: time::Duration,
 }
 
 impl Default for Timing {
@@ -42,7 +40,6 @@ impl Default for Timing {
         Timing {
             answer: time::Duration::from_secs(90),
             decision: time::Duration::from_secs(90),
-            vote: time::Duration::from_secs(180),
         }
     }
 }
@@ -152,7 +149,7 @@ fn play(
                 narrator::run_night(&mut ctx, script);
             }
             game::Phase::Day(_) => {
-                day(&mut ctx, room, &inbox, timing);
+                day(&mut ctx, room, &inbox);
                 if ctx.state().winner().is_some() || !open(&inbox) {
                     break;
                 }
@@ -186,14 +183,9 @@ fn set_stage(room: &room::Room, stage: room::Stage) {
     });
 }
 
-/// A day: players nominate and vote, and use public day abilities, until the
-/// host ends it; then the nominee on the block is executed.
-fn day(
-    ctx: &mut ctx::Write<'_>,
-    room: &room::Room,
-    inbox: &rc::Rc<cell::RefCell<inbox::Inbox>>,
-    timing: Timing,
-) {
+/// A day: the host enters nominations and votes, and players use public day
+/// abilities, until the host ends it; then the nominee on the block is executed.
+fn day(ctx: &mut ctx::Write<'_>, room: &room::Room, inbox: &rc::Rc<cell::RefCell<inbox::Inbox>>) {
     room.update(|state| {
         if let Some(game) = &mut state.game {
             game.stage = room::Stage::Day;
@@ -211,7 +203,7 @@ fn day(
         if ctx.state().winner().is_some() {
             return;
         }
-        match nominate_and_vote(ctx, room, inbox, timing, None, &nominee) {
+        match nominate_and_vote(ctx, room, inbox, None, &nominee) {
             Voted::Counted(votes) => block.add(nominee, votes, narrator::votes_needed(ctx.state())),
             Voted::NoVote => {}
             Voted::DayEnded => return narrator::end_day(ctx),
@@ -235,7 +227,7 @@ fn day(
                 if !players_nominate || !may_nominate(ctx.state(), room, &nominator, &nominee) {
                     continue;
                 }
-                match nominate_and_vote(ctx, room, inbox, timing, Some(&nominator), &nominee) {
+                match nominate_and_vote(ctx, room, inbox, Some(&nominator), &nominee) {
                     Voted::Counted(votes) => {
                         block.add(nominee, votes, narrator::votes_needed(ctx.state()))
                     }
@@ -258,7 +250,7 @@ fn day(
     }
     narrator::execute_block(ctx, &block);
     if players_nominate && block.nominee().is_some() {
-        nominate_again(ctx, room, inbox, timing);
+        nominate_again(ctx, room, inbox);
     }
     narrator::finish_day(ctx);
 }
@@ -269,7 +261,6 @@ fn nominate_again(
     ctx: &mut ctx::Write<'_>,
     room: &room::Room,
     inbox: &rc::Rc<cell::RefCell<inbox::Inbox>>,
-    timing: Timing,
 ) {
     let Some(butcher) = narrator::nominate_again(ctx.state()).first().cloned() else {
         return;
@@ -295,8 +286,7 @@ fn nominate_again(
     let Some(nominee) = chosen.first() else {
         return;
     };
-    if let Voted::Counted(votes) =
-        nominate_and_vote(ctx, room, inbox, timing, Some(&butcher), nominee)
+    if let Voted::Counted(votes) = nominate_and_vote(ctx, room, inbox, Some(&butcher), nominee)
         && votes >= narrator::votes_needed(ctx.state())
         && ctx.state().winner().is_none()
     {
@@ -380,12 +370,11 @@ enum Voted {
 }
 
 /// Nominates `nominee` (by the storyteller when `nominator` is `None`) and
-/// holds the vote on the phones.
+/// holds the vote: the host enters the hands and closes it.
 fn nominate_and_vote(
     ctx: &mut ctx::Write<'_>,
     room: &room::Room,
     inbox: &rc::Rc<cell::RefCell<inbox::Inbox>>,
-    timing: Timing,
     nominator: Option<&player::Id>,
     nominee: &player::Id,
 ) -> Voted {
@@ -423,22 +412,18 @@ fn nominate_and_vote(
             });
         }
     });
-    let deadline = time::Instant::now() + timing.vote;
+    // The host raises and lowers hands round the circle, then closes the vote.
     let mut hands: Vec<(String, bool)> = Vec::new();
-    while hands.len() < eligible.len() {
-        let input = inbox
-            .borrow_mut()
-            .wait(Some(deadline), |input| match input {
-                inbox::Input::Vote { player, .. } if eligible.contains(player) => {
-                    inbox::Verdict::Take
-                }
-                inbox::Input::CloseVote => inbox::Verdict::Take,
-                other => inbox::keep_commands(other),
-            });
+    loop {
+        let input = inbox.borrow_mut().wait(None, |input| match input {
+            inbox::Input::Vote { voter, .. } if eligible.contains(voter) => inbox::Verdict::Take,
+            inbox::Input::CloseVote => inbox::Verdict::Take,
+            other => inbox::keep_commands(other),
+        });
         match input {
-            Some(inbox::Input::Vote { player, yes }) => {
-                hands.retain(|(p, _)| *p != player);
-                hands.push((player, yes));
+            Some(inbox::Input::Vote { voter, yes }) => {
+                hands.retain(|(p, _)| *p != voter);
+                hands.push((voter, yes));
                 let shown = hands.clone();
                 room.update(|s| {
                     if let Some(vote) = s.game.as_mut().and_then(|g| g.vote.as_mut()) {
