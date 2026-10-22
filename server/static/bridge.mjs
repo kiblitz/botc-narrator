@@ -63,6 +63,19 @@ const start = (command, options) =>
   shell
     ? spawn(command.map(quote).join(" "), { ...options, shell })
     : spawn(command[0], command.slice(1), { ...options, detached: true });
+// Commands running now: detached in a group of their own, a terminal's Ctrl+C
+// does not reach them, so the bridge stops them on its way out.
+const running = new Set();
+const stopAll = () => {
+  for (const child of running) {
+    try {
+      stop(child);
+    } catch {}
+  }
+};
+process.on("exit", stopAll);
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(signal, () => process.exit(130));
+
 /** Stops a command and everything it started (Codex runs children of its own). */
 const stop = (child) =>
   shell
@@ -84,6 +97,7 @@ function detect() {
 function answer(command, prompt, timeoutSeconds) {
   return new Promise((resolve, reject) => {
     const child = start(command, { stdio: ["pipe", "pipe", "pipe"] });
+    running.add(child);
     let stdout = "";
     let stderr = "";
     const timer = setTimeout(() => {
@@ -95,10 +109,12 @@ function answer(command, prompt, timeoutSeconds) {
     child.stdout.on("data", (chunk) => (stdout += chunk));
     child.stderr.on("data", (chunk) => (stderr += chunk));
     child.on("error", (e) => {
+      running.delete(child);
       clearTimeout(timer);
       reject(new Error(`could not start ${command[0]}: ${e.message}`));
     });
     child.on("close", (status) => {
+      running.delete(child);
       clearTimeout(timer);
       if (status === 0) resolve(stdout);
       else {
