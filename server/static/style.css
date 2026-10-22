@@ -115,7 +115,8 @@ button.chosen { outline: 3px solid var(--gold); outline-offset: -3px; }
   overflow: hidden;
   user-select: none;
 }
-button.seat { touch-action: none; }
+/* The host drags lobby seats; elsewhere a swipe on a seat scrolls. */
+#seats button.seat { touch-action: none; }
 .seat .name {
   max-width: 88%;
   overflow: hidden;

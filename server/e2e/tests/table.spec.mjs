@@ -73,12 +73,12 @@ test("a table of phones: host, join, seat, start, night prompt, nominate and vot
   // The host swaps Esme (last) with the first seat by tapping both...
   await host.locator('#seats .seat[data-name="Esme"]').click();
   await host.locator('#seats .seat[data-name="Host"]').click();
-  await expect.poll(async () => await seatNames(players[2], "#seats")).toEqual(["Esme", "Ada", "Bram", "Cleo", "Dev", "Host"]);
+  await expect.poll(() => seatNames(players[2], "#seats")).toEqual(["Esme", "Ada", "Bram", "Cleo", "Dev", "Host"]);
   // ...and then the host with Bram.
   await host.locator('#seats .seat[data-name="Host"]').click();
   await host.locator('#seats .seat[data-name="Bram"]').click();
   const order = ["Esme", "Ada", "Host", "Cleo", "Dev", "Bram"];
-  await expect.poll(async () => await seatNames(players[4], "#seats")).toEqual(order);
+  await expect.poll(() => seatNames(players[4], "#seats")).toEqual(order);
 
   await shot(host, "1-lobby-host");
   await shot(players[0], "2-lobby-player");

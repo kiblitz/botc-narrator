@@ -337,12 +337,17 @@ function scriptView(choice) {
  * Seats are as large as fits between neighbours (a fifth of the circle at
  * most); sizes are percentages of the circle, so it fits any phone.
  */
+// A seat is at most this percentage of the circle wide, and spans this much
+// of the distance to its neighbours.
+const MOST_SEAT = 21;
+const SEAT_SPAN = 0.85;
+
 function circle(id, seats, seatNode, centre) {
   const n = seats.length;
   const gap = Math.sin(Math.PI / Math.max(n, 2));
   // A seat's width d and the ring's radius r = 50 - d/2 (percent): seats
-  // span 85% of the distance between neighbouring centres, 2r·sin(π/n).
-  const d = Math.min(21, (85 * gap) / (1 + 0.85 * gap));
+  // span SEAT_SPAN of the distance between neighbouring centres, 2r·sin(π/n).
+  const d = Math.min(MOST_SEAT, (100 * SEAT_SPAN * gap) / (1 + SEAT_SPAN * gap));
   const r = 50 - d / 2;
   const ring = el("div", { class: "circle", id, style: `--d:${d.toFixed(2)}` }, el("div", { class: "centre" }, centre));
   seats.forEach((seat, i) => {
@@ -370,11 +375,11 @@ function lobbyCircle(view) {
     ? "Waiting for the host"
     : selected ? `Tap where ${selected} sits` : "Tap two seats to swap them, or drag one onto another";
   const ring = circle("seats", view.seats, (seat, i) => el(view.host ? "button" : "div", {
-    class: `seat${seat.host ? " host" : ""}${seat.name === view.you ? " you" : ""}${seat.name === selected ? " selected" : ""}`,
+    class: ["seat", seat.host ? "host" : "", seat.name === view.you ? "you" : "", seat.name === selected ? "selected" : ""].filter(Boolean).join(" "),
     "data-name": seat.name,
     "aria-label": view.host ? `Seat ${i + 1}: ${seat.name}` : null,
   }, seatFace(seat, i)), el("span", { class: "small muted" }, hint));
-  if (view.host) swappable(view, ring);
+  if (view.host) swappable(ring);
   return ring;
 }
 
@@ -395,8 +400,9 @@ function seatTools(view) {
   );
 }
 
-function swap(view, a, b) {
-  const order = view.seats.map((s) => s.name);
+/** Swaps two seats in the newest view (others may have joined or left mid-drag). */
+function swap(a, b) {
+  const order = state.view.seats.map((s) => s.name);
   const i = order.indexOf(a);
   const j = order.indexOf(b);
   state.selectedSeat = null;
@@ -409,23 +415,28 @@ function swap(view, a, b) {
  * The host swaps two seats by tapping one and then the other, or by
  * dragging one onto another. Redraws wait while a seat is being dragged.
  */
-function swappable(view, ring) {
+// A press that moves this far is a drag, not a tap.
+const DRAG_PX = 12;
+
+function swappable(ring) {
   ring.addEventListener("click", (event) => {
     const seat = event.target.closest(".seat");
     if (!seat || state.dragged) return;
     const name = seat.dataset.name;
-    if (state.selectedSeat && state.selectedSeat !== name) swap(view, state.selectedSeat, name);
+    if (state.selectedSeat && state.selectedSeat !== name) swap(state.selectedSeat, name);
     else state.selectedSeat = state.selectedSeat === name ? null : name;
     render();
   });
   ring.addEventListener("pointerdown", (event) => {
     const seat = event.target.closest(".seat");
     if (!seat) return;
+    const pointer = event.pointerId;
     const start = { x: event.clientX, y: event.clientY };
     const under = (e) => document.elementsFromPoint(e.clientX, e.clientY)
       .find((n) => n !== seat && n.classList.contains("seat")) || null;
     const onMove = (e) => {
-      if (!state.dragging && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 12) return;
+      if (e.pointerId !== pointer) return;
+      if (!state.dragging && Math.hypot(e.clientX - start.x, e.clientY - start.y) < DRAG_PX) return;
       // Held from here, so the drag survives leaving the seat (a tap is not
       // captured: its click must still reach the seat).
       if (!state.dragging) ring.setPointerCapture(e.pointerId);
@@ -436,6 +447,7 @@ function swappable(view, ring) {
       for (const s of ring.querySelectorAll(".seat")) s.classList.toggle("drop", s === onto);
     };
     const onUp = (e) => {
+      if (e.pointerId !== pointer) return;
       ring.removeEventListener("pointermove", onMove);
       ring.removeEventListener("pointerup", onUp);
       ring.removeEventListener("pointercancel", onUp);
@@ -445,7 +457,7 @@ function swappable(view, ring) {
       state.dragged = true;
       setTimeout(() => (state.dragged = false), 0);
       const onto = e.type === "pointerup" ? under(e) : null;
-      if (onto) swap(view, seat.dataset.name, onto.dataset.name);
+      if (onto) swap(seat.dataset.name, onto.dataset.name);
       render();
     };
     ring.addEventListener("pointermove", onMove);

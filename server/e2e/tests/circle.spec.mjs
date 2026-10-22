@@ -23,7 +23,7 @@ async function room(browser, guests) {
 const names = (count) => Array.from({ length: count }, (_, i) => `Player ${i + 1}`);
 const order = (page) => page.locator("#seats .seat .name").allInnerTexts();
 
-/** Every seat's box, after any redraw settles. */
+/** Every seat's box (the lobby is quiet: nobody joins while it is read). */
 async function boxes(page, selector) {
   const seats = page.locator(selector);
   const all = [];
