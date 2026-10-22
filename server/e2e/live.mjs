@@ -8,7 +8,8 @@
 // The bridge runs from the host's one-line command; BRIDGE is the storyteller
 // command (default: Codex, using whichever login CODEX_HOME points at, else
 // Claude Code); it runs through `sh`, so on Windows Git Bash must be on PATH.
-// VIDEO records the host's and the first player's phones.
+// VIDEO records the host's and the first two players' phones. FULL plays on
+// until the game is over, executing someone every day.
 import { chromium, devices } from "@playwright/test";
 import { spawn, spawnSync } from "node:child_process";
 
@@ -43,7 +44,7 @@ log("hosted room", code, "without an account");
 
 const pages = [host];
 for (const [i, name] of PLAYERS.entries()) {
-  const page = await phone(i === 0);
+  const page = await phone(i < 2);
   await page.goto(`/?join=${code}`);
   await page.locator("#join-name").fill(name);
   await page.getByRole("button", { name: "Join" }).click();
@@ -51,6 +52,8 @@ for (const [i, name] of PLAYERS.entries()) {
   pages.push(page);
 }
 log("five guests joined");
+await host.locator("#script").selectOption("trouble_brewing");
+await pause(host, 1000);
 // The first guest reads the script while the host sets up.
 await pages[1].locator("#script-view summary").click();
 await pages[1].locator("#script-view .script-character").first().waitFor();
@@ -89,8 +92,8 @@ async function until(phase) {
   for (let i = 0; i < 4000; i++) {
     if ((await host.locator("#phase").innerText().catch(() => "")) === phase || (await host.locator("#winner").isVisible())) return answered;
     for (const [n, page] of pages.entries()) {
-      // A prompt on a recorded phone (the host's, the first guest's) is shown first.
-      if (n < 2 && (await page.locator("#prompt").isVisible().catch(() => false)) && !(await page.getByText("Answer sent.").isVisible().catch(() => false))) await pause(page, 2500);
+      // A prompt on a recorded phone is shown first.
+      if (n < 3 && (await page.locator("#prompt").isVisible().catch(() => false)) && !(await page.getByText("Answer sent.").isVisible().catch(() => false))) await pause(page, 3500);
       if (await answer(page).catch(() => false)) {
         answered++;
         log("answered a prompt on phone", n);
@@ -101,12 +104,55 @@ async function until(phase) {
   throw new Error(`never reached ${phase}`);
 }
 
+for (const page of pages) page.on("dialog", (d) => d.accept());
 let answered = await until("Day 1");
+if (process.env.FULL) {
+  // The recorded phones show their characters and what they learned.
+  for (const page of pages.slice(0, 3)) await page.locator("#token").click().catch(() => {});
+  await pause(host, 5000);
+}
 log("day 1");
 await shot(pages[1], "live-2-day");
+if (process.env.FULL) {
+  for (let day = 1; !(await host.locator("#winner").isVisible()); day++) {
+    // Whoever may still nominate puts someone up; every living hand goes up.
+    const nominator = pages.find((_, n) => n === day % pages.length) ?? pages[0];
+    const ordered = [...pages.slice(pages.indexOf(nominator)), ...pages.slice(0, pages.indexOf(nominator))];
+    let nominated = false;
+    for (const page of ordered) {
+      // A living nominee, so each execution moves the game on.
+      const buttons = page.locator("#town .seat:not(.dead)").getByRole("button", { name: "Nominate" });
+      if (!(await buttons.count())) continue;
+      await pause(page, 1500);
+      await buttons.nth(day % (await buttons.count())).click();
+      nominated = true;
+      break;
+    }
+    if (nominated) {
+      await host.locator("#vote").waitFor({ timeout: 120_000 }).catch(() => {});
+      for (const page of pages) if (await page.locator("#vote-yes").isVisible().catch(() => false)) await page.locator("#vote-yes").click().catch(() => {});
+      await pause(host, 3000);
+      await shot(host, `full-vote-${day}`);
+      if (await host.locator("#close-vote").isVisible().catch(() => false)) await host.locator("#close-vote").click();
+    }
+    await host.locator("#end-day, #winner").first().waitFor({ timeout: 120_000 });
+    if (await host.locator("#winner").isVisible()) break;
+    await pause(host, 2000);
+    await host.locator("#end-day").click();
+    await host.locator("#start-night, #winner").first().waitFor({ timeout: 300_000 });
+    if (await host.locator("#winner").isVisible()) break;
+    log("day", day, "ended");
+    await pause(host, 2000);
+    await host.locator("#start-night").click();
+    answered += await until(`Day ${day + 1}`);
+    log("day", day + 1);
+    await pause(host, 4000);
+  }
+  log("winner:", await host.locator("#winner").innerText());
+  for (const page of pages.slice(0, 3)) await page.locator("#winner").scrollIntoViewIfNeeded();
+  await pause(host, 6000);
+} else {
 const nominator = pages[1];
-nominator.on("dialog", (d) => d.accept());
-host.on("dialog", (d) => d.accept());
 const target = await nominator.locator("#town .seat").filter({ has: nominator.getByRole("button", { name: "Nominate" }) }).first();
 await target.getByRole("button", { name: "Nominate" }).click();
 for (const page of pages) {
@@ -124,6 +170,7 @@ const bridged = await host.locator("#dock").innerText();
 log("reached day 2; prompts answered:", answered, "dock:", bridged);
 const state = await host.evaluate(() => document.body.className);
 log("host stage:", state);
+}
 // Closing the contexts finishes their videos.
 for (const context of contexts) await context.close();
 await browser.close();
