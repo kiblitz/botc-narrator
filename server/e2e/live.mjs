@@ -14,7 +14,12 @@ import { spawn, spawnSync } from "node:child_process";
 
 const SITE = process.env.SITE || "https://botc.kiblitz.xyz";
 const PLAYERS = ["Ada", "Bram", "Cleo", "Dev", "Esme"];
-const shot = (page, name) => process.env.SHOTS && page.screenshot({ path: `${process.env.SHOTS}/${name}.png`, fullPage: true });
+// While recording, each step stays on screen long enough to follow.
+const pause = (page, ms) => (process.env.VIDEO ? page.waitForTimeout(ms) : Promise.resolve());
+const shot = async (page, name) => {
+  await pause(page, 2500);
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png`, fullPage: true });
+};
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
 const browser = await chromium.launch();
@@ -46,6 +51,11 @@ for (const [i, name] of PLAYERS.entries()) {
   pages.push(page);
 }
 log("five guests joined");
+// The first guest reads the script while the host sets up.
+await pages[1].locator("#script-view summary").click();
+await pages[1].locator("#script-view .script-character").first().waitFor();
+await pages[1].waitForTimeout(1500);
+await pages[1].locator("#script-view summary").click();
 await host.getByRole("button", { name: "Move Esme up" }).click();
 await host.waitForTimeout(500);
 
@@ -79,6 +89,8 @@ async function until(phase) {
   for (let i = 0; i < 4000; i++) {
     if ((await host.locator("#phase").innerText().catch(() => "")) === phase || (await host.locator("#winner").isVisible())) return answered;
     for (const [n, page] of pages.entries()) {
+      // A prompt on a recorded phone (the host's, the first guest's) is shown first.
+      if (n < 2 && (await page.locator("#prompt").isVisible().catch(() => false)) && !(await page.getByText("Answer sent.").isVisible().catch(() => false))) await pause(page, 2500);
       if (await answer(page).catch(() => false)) {
         answered++;
         log("answered a prompt on phone", n);
