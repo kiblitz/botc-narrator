@@ -158,8 +158,7 @@ if (process.env.FULL) {
   await pause(host, 6000);
 } else {
   const nominator = pages[1];
-  const target = await nominator.locator("#town .seat").filter({ has: nominator.getByRole("button", { name: "Nominate" }) }).first();
-  await target.getByRole("button", { name: "Nominate" }).click();
+  await nominator.locator("#town button.seat.nominable").first().click();
   for (const page of pages) {
     await page.locator("#vote").waitFor({ timeout: 120_000 });
     await page.locator("#vote-no").click();
