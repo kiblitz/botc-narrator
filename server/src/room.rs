@@ -32,7 +32,7 @@ const PAIRING_GROUP_LENGTH: usize = 4;
 const TOKEN_BYTES: usize = 16;
 
 pub const MOST_ROOMS: usize = 64;
-/// Rooms one client address may host at once. Hosting needs no account, so
+/// Unfinished rooms one client address may host at once. Hosting needs no account, so
 /// this, with [`LOBBY_IDLE`], keeps one visitor from taking every room.
 pub const MOST_ROOMS_PER_CLIENT: usize = 3;
 /// Phones that may be connected as one seat at a time.
@@ -118,7 +118,7 @@ impl Rooms {
         let hosted = |client: &str| {
             rooms
                 .values()
-                .filter(|r| r.read(|s| s.host_client.as_deref() == Some(client)))
+                .filter(|r| r.read(|s| s.host_client.as_deref() == Some(client) && !s.finished()))
                 .count()
         };
         if client.is_some_and(|client| hosted(client) >= MOST_ROOMS_PER_CLIENT) {
@@ -313,9 +313,17 @@ impl State {
         self.host == name
     }
 
+    /// The game is over; its room stays open to read, but no longer counts
+    /// against its host's [`MOST_ROOMS_PER_CLIENT`].
+    fn finished(&self) -> bool {
+        self.game
+            .as_ref()
+            .is_some_and(|game| game.stage == Stage::Over)
+    }
+
     fn lifetime(&self) -> time::Duration {
         match &self.game {
-            Some(game) if game.stage == Stage::Over => FINISHED,
+            _ if self.finished() => FINISHED,
             Some(_) => IDLE,
             None => LOBBY_IDLE,
         }
@@ -615,6 +623,7 @@ fn constant_time_eq(a: &str, b: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use crate::room;
+    use botc_narrator::game;
 
     fn lobby() -> (room::Rooms, std::sync::Arc<room::Room>) {
         let rooms = room::Rooms::default();
@@ -710,6 +719,22 @@ mod tests {
         for _ in 0..=room::MOST_ROOMS_PER_CLIENT {
             rooms.open(None, "Cleo").unwrap();
         }
+    }
+
+    #[test]
+    fn finished_games_do_not_count_against_hosting() {
+        let rooms = room::Rooms::default();
+        for _ in 0..room::MOST_ROOMS_PER_CLIENT {
+            let (room, _) = rooms.open(Some("203.0.113.9"), "Ada").unwrap();
+            let (inbox, _) = std::sync::mpsc::channel();
+            room.update(|s| {
+                let mut game = room::Game::new(inbox, game::State::new(Vec::new()));
+                game.stage = room::Stage::Over;
+                s.game = Some(game);
+            });
+        }
+        // The host who just finished a few games may host the next one.
+        assert!(rooms.open(Some("203.0.113.9"), "Ada").is_ok());
     }
 
     #[test]
