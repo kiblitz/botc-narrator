@@ -186,19 +186,26 @@ fn set_stage(room: &room::Room, stage: room::Stage) {
 /// A day: the host enters nominations and votes, and players use public day
 /// abilities, until the host ends it; then the nominee on the block is executed.
 fn day(ctx: &mut ctx::Write<'_>, room: &room::Room, inbox: &rc::Rc<cell::RefCell<inbox::Inbox>>) {
-    room.update(|state| {
-        if let Some(game) = &mut state.game {
-            game.stage = room::Stage::Day;
-            game.nominators.clear();
-            game.nominees.clear();
-            game.end_requested = false;
-        }
-    });
-    let mut block = narrator::Block::default();
     // Only the storyteller nominates today (the Bishop): those votes happen
     // at once, and the players only use day abilities.
     let storyteller_nominates = narrator::storyteller_nominations(ctx);
     let players_nominate = storyteller_nominates.is_none();
+    // Today's nominators are known before the day opens, so the host is
+    // never shown yesterday's (or nobody, for a moment).
+    room.update(|state| {
+        if let Some(game) = &mut state.game {
+            game.nominators.clear();
+            game.nominees.clear();
+        }
+    });
+    refresh(ctx, room, players_nominate);
+    room.update(|state| {
+        if let Some(game) = &mut state.game {
+            game.stage = room::Stage::Day;
+            game.end_requested = false;
+        }
+    });
+    let mut block = narrator::Block::default();
     for nominee in storyteller_nominates.unwrap_or_default() {
         if ctx.state().winner().is_some() {
             return;
