@@ -78,28 +78,67 @@ button.chosen { outline: 3px solid var(--gold); outline-offset: -3px; }
   text-align: center;
 }
 
-/* The lobby's circle: drag the handle, or use the arrows. */
-.seats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
-.seat {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--raised);
-  border: 1px solid var(--line);
-  border-radius: 0.6rem;
-  padding: 0.25rem 0.4rem;
-  min-height: var(--tap);
-  touch-action: pan-y;
+/*
+ * Seating around a circle, as the players sit (the lobby and the town
+ * square). app.js places each seat and sets --d, a seat's width as a
+ * percentage of the circle's; text scales with it (cqw) to fit any phone.
+ */
+.circle {
+  position: relative;
+  width: 100%;
+  max-width: 26rem;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  container-type: inline-size;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--raised) 0 30%, transparent 70%);
 }
-.seat.dragging { opacity: 0.85; border-color: var(--gold); box-shadow: 0 0.4rem 1rem #0008; z-index: 2; position: relative; }
-.seat .name { flex: 1; }
-.seat .handle { touch-action: none; cursor: grab; font-size: 1.3rem; padding: 0 0.4rem; color: var(--muted); user-select: none; }
-.seat button { width: var(--tap); padding: 0; flex: none; }
-.seat .num { width: 1.6rem; color: var(--muted); text-align: right; }
+.circle .centre {
+  position: absolute; inset: 22%;
+  display: grid; place-items: center; text-align: center;
+  pointer-events: none;
+}
+.seat {
+  position: absolute;
+  width: calc(var(--d) * 1%);
+  aspect-ratio: 1;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--raised);
+  border: 2px solid var(--line);
+  color: var(--text);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: calc(var(--d) * 0.19cqw);
+  font-weight: 600;
+  line-height: 1.1;
+  overflow: hidden;
+  user-select: none;
+}
+button.seat { touch-action: none; }
+.seat .name {
+  max-width: 88%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-align: center;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.seat .num { color: var(--muted); font-size: 0.9em; }
+.seat .seat-icon { width: 55%; height: 55%; object-fit: contain; margin-bottom: -0.2em; }
+.seat .dot { position: absolute; top: 12%; right: 18%; width: 0.6em; height: 0.6em; }
+.seat.you { border-color: var(--gold); }
+.seat.host .num::after { content: " ★"; color: var(--gold); }
+.seat.selected, .seat.drop { border-color: var(--gold); background: #4a3f1c; box-shadow: 0 0 0 3px var(--gold); }
+.seat.dragging { z-index: 2; opacity: 0.85; box-shadow: 0 0.4rem 1rem #000a; }
+.seat.nominable { border-color: var(--good); }
+.seat.nominee { box-shadow: 0 0 0 3px var(--evil); border-color: var(--evil); }
+.seat.dead { background: #111; color: var(--muted); }
+.seat.dead .name { text-decoration: line-through; }
+.seat .shroud { position: absolute; bottom: 4%; font-size: 0.85em; }
+.seat .hand { position: absolute; top: 0; left: 8%; font-size: 1.2em; }
+.seat-tools { margin-top: 0.6rem; }
 .dot { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--muted); }
 .dot.on { background: #4fd18b; }
-.badge { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--line); border-radius: 1rem; padding: 0 0.5rem; }
-.dead .name { text-decoration: line-through; color: var(--muted); }
 
 /* My token. */
 .token { display: flex; align-items: center; gap: 0.9rem; cursor: pointer; }

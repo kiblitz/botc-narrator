@@ -25,6 +25,11 @@ const state = {
   // fetched, false if it could not be), and whether it is open.
   scripts: {},
   scriptOpen: false,
+  // The lobby seat the host tapped first, to swap with the next one.
+  selectedSeat: null,
+  // While a seat is being dragged (redraws wait), and just after its drop.
+  dragging: false,
+  dragged: false,
 };
 
 // ---------- helpers ----------
@@ -261,15 +266,12 @@ function lobby(view) {
   ];
   const count = view.seats.length;
   const max = view.script.max_players;
-  const seats = el("ol", { class: "seats", id: "seats" });
-  view.seats.forEach((seat, i) => seats.append(lobbySeat(view, seat, i)));
   parts.push(el("div", { class: "card" },
     el("h2", {}, `Seating, clockwise (${count} ${count === 1 ? "player" : "players"})`),
-    view.host ? el("p", { class: "muted small" }, "Drag ⠿ or use the arrows to match where people sit.") : null,
-    seats,
+    lobbyCircle(view),
+    view.host ? seatTools(view) : null,
   ));
   if (view.host) {
-    makeDraggable(seats);
     const select = el("select", {
       id: "script",
       onchange: (event) => send({ type: "script", id: event.target.value }),
@@ -330,68 +332,125 @@ function scriptView(choice) {
   return details;
 }
 
-function lobbySeat(view, seat, i) {
-  const move = (by) => {
-    const order = view.seats.map((s) => s.name);
-    const j = i + by;
-    if (j < 0 || j >= order.length) return;
-    [order[i], order[j]] = [order[j], order[i]];
-    send({ type: "reseat", order });
-  };
-  return el("li", { class: "seat", "data-name": seat.name },
-    view.host ? el("span", { class: "handle", "aria-label": "Drag to move" }, "⠿") : null,
-    el("span", { class: "num" }, i + 1),
+/**
+ * Seats drawn clockwise from the top around a circle, as the players sit.
+ * Seats are as large as fits between neighbours (a fifth of the circle at
+ * most); sizes are percentages of the circle, so it fits any phone.
+ */
+function circle(id, seats, seatNode, centre) {
+  const n = seats.length;
+  const gap = Math.sin(Math.PI / Math.max(n, 2));
+  // A seat's width d and the ring's radius r = 50 - d/2 (percent): seats
+  // span 85% of the distance between neighbouring centres, 2r·sin(π/n).
+  const d = Math.min(21, (85 * gap) / (1 + 0.85 * gap));
+  const r = 50 - d / 2;
+  const ring = el("div", { class: "circle", id, style: `--d:${d.toFixed(2)}` }, el("div", { class: "centre" }, centre));
+  seats.forEach((seat, i) => {
+    const angle = (2 * Math.PI * i) / n;
+    const node = seatNode(seat, i);
+    node.style.left = `${(50 + r * Math.sin(angle) - d / 2).toFixed(2)}%`;
+    node.style.top = `${(50 - r * Math.cos(angle) - d / 2).toFixed(2)}%`;
+    ring.append(node);
+  });
+  return ring;
+}
+
+/** A seat's face: connection light, its icon if known (else its number), name. */
+function seatFace(seat, i) {
+  return [
     el("span", { class: `dot${seat.connected ? " on" : ""}` }),
-    el("span", { class: "name" }, seat.name, seat.name === view.you ? " (you)" : ""),
-    seat.host ? el("span", { class: "badge" }, "host") : null,
-    view.host ? el("button", { "aria-label": `Move ${seat.name} up`, onclick: () => move(-1) }, "▲") : null,
-    view.host ? el("button", { "aria-label": `Move ${seat.name} down`, onclick: () => move(1) }, "▼") : null,
-    view.host && !seat.host ? el("button", {
-      "aria-label": `Remove ${seat.name}`,
-      onclick: () => confirm(`Remove ${seat.name} from the room?`) && send({ type: "remove", name: seat.name }),
-    }, "✕") : null,
+    seat.character ? icon(seat.character, "seat-icon") : el("span", { class: "num" }, i + 1),
+    el("span", { class: "name" }, seat.name),
+  ];
+}
+
+function lobbyCircle(view) {
+  const selected = view.host && view.seats.some((s) => s.name === state.selectedSeat) ? state.selectedSeat : null;
+  const hint = !view.host
+    ? "Waiting for the host"
+    : selected ? `Tap where ${selected} sits` : "Tap two seats to swap them, or drag one onto another";
+  const ring = circle("seats", view.seats, (seat, i) => el(view.host ? "button" : "div", {
+    class: `seat${seat.host ? " host" : ""}${seat.name === view.you ? " you" : ""}${seat.name === selected ? " selected" : ""}`,
+    "data-name": seat.name,
+    "aria-label": view.host ? `Seat ${i + 1}: ${seat.name}` : null,
+  }, seatFace(seat, i)), el("span", { class: "small muted" }, hint));
+  if (view.host) swappable(view, ring);
+  return ring;
+}
+
+/** The selected seat's actions, for the host. */
+function seatTools(view) {
+  const name = state.selectedSeat;
+  const seat = view.seats.find((s) => s.name === name);
+  if (!seat) return null;
+  return el("div", { class: "row seat-tools" },
+    seat.host ? null : el("button", {
+      onclick: () => {
+        if (!confirm(`Remove ${name} from the room?`)) return;
+        state.selectedSeat = null;
+        send({ type: "remove", name });
+      },
+    }, `Remove ${name}`),
+    el("button", { onclick: () => { state.selectedSeat = null; render(); } }, "Cancel"),
   );
 }
 
+function swap(view, a, b) {
+  const order = view.seats.map((s) => s.name);
+  const i = order.indexOf(a);
+  const j = order.indexOf(b);
+  state.selectedSeat = null;
+  if (i < 0 || j < 0 || i === j) return;
+  [order[i], order[j]] = [order[j], order[i]];
+  send({ type: "reseat", order });
+}
+
 /**
- * Drag a seat by its handle; the new order is sent when it is dropped.
- * The list holds the pointer (the dragged seat moves in the DOM, which would
- * lose it), and redraws wait until the drop.
+ * The host swaps two seats by tapping one and then the other, or by
+ * dragging one onto another. Redraws wait while a seat is being dragged.
  */
-function makeDraggable(list) {
-  list.addEventListener("pointerdown", (event) => {
-    const handle = event.target.closest(".handle");
-    if (!handle) return;
-    const item = handle.closest(".seat");
-    event.preventDefault();
-    list.setPointerCapture(event.pointerId);
-    item.classList.add("dragging");
-    state.dragging = true;
-    let moved = false;
+function swappable(view, ring) {
+  ring.addEventListener("click", (event) => {
+    const seat = event.target.closest(".seat");
+    if (!seat || state.dragged) return;
+    const name = seat.dataset.name;
+    if (state.selectedSeat && state.selectedSeat !== name) swap(view, state.selectedSeat, name);
+    else state.selectedSeat = state.selectedSeat === name ? null : name;
+    render();
+  });
+  ring.addEventListener("pointerdown", (event) => {
+    const seat = event.target.closest(".seat");
+    if (!seat) return;
+    const start = { x: event.clientX, y: event.clientY };
+    const under = (e) => document.elementsFromPoint(e.clientX, e.clientY)
+      .find((n) => n !== seat && n.classList.contains("seat")) || null;
     const onMove = (e) => {
-      const siblings = [...list.children].filter((c) => c !== item);
-      const before = siblings.find((c) => {
-        const box = c.getBoundingClientRect();
-        return e.clientY < box.top + box.height / 2;
-      });
-      const next = before || null;
-      if (item.nextElementSibling !== next || (next === null && list.lastElementChild !== item)) {
-        list.insertBefore(item, next);
-        moved = true;
-      }
+      if (!state.dragging && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 12) return;
+      // Held from here, so the drag survives leaving the seat (a tap is not
+      // captured: its click must still reach the seat).
+      if (!state.dragging) ring.setPointerCapture(e.pointerId);
+      state.dragging = true;
+      seat.classList.add("dragging");
+      seat.style.translate = `${e.clientX - start.x}px ${e.clientY - start.y}px`;
+      const onto = under(e);
+      for (const s of ring.querySelectorAll(".seat")) s.classList.toggle("drop", s === onto);
     };
-    const onUp = () => {
-      list.removeEventListener("pointermove", onMove);
-      list.removeEventListener("pointerup", onUp);
-      list.removeEventListener("pointercancel", onUp);
-      item.classList.remove("dragging");
+    const onUp = (e) => {
+      ring.removeEventListener("pointermove", onMove);
+      ring.removeEventListener("pointerup", onUp);
+      ring.removeEventListener("pointercancel", onUp);
+      if (!state.dragging) return;
       state.dragging = false;
-      if (moved) send({ type: "reseat", order: [...list.children].map((c) => c.dataset.name) });
-      else render();
+      // The click that follows a drop is not a tap.
+      state.dragged = true;
+      setTimeout(() => (state.dragged = false), 0);
+      const onto = e.type === "pointerup" ? under(e) : null;
+      if (onto) swap(view, seat.dataset.name, onto.dataset.name);
+      render();
     };
-    list.addEventListener("pointermove", onMove);
-    list.addEventListener("pointerup", onUp);
-    list.addEventListener("pointercancel", onUp);
+    ring.addEventListener("pointermove", onMove);
+    ring.addEventListener("pointerup", onUp);
+    ring.addEventListener("pointercancel", onUp);
   });
 }
 
@@ -545,23 +604,29 @@ function dayActions(view) {
 }
 
 function town(view) {
-  const list = el("ol", { class: "seats", id: "town" });
-  for (const seat of view.seats) {
+  const hands = new Map(view.vote ? view.vote.hands : []);
+  const nominee = view.vote ? view.vote.nominee : null;
+  const ring = circle("town", view.seats, (seat, i) => {
     const nominate = view.may_nominate && view.nominees.includes(seat.name) && seat.name !== view.you;
-    list.append(el("li", { class: `seat${seat.alive ? "" : " dead"}` },
-      el("span", { class: `dot${seat.connected ? " on" : ""}` }),
-      seat.character ? icon(seat.character, "small-icon") : null,
-      el("span", { class: "name" }, seat.name, seat.character ? el("span", { class: `small ${seat.alignment}` }, ` ${seat.character}`) : null),
-      seat.alive ? null : el("span", { class: "badge" }, seat.ghost_vote ? "dead · vote" : "dead"),
-      nominate ? el("button", {
-        style: "width:auto;padding:0 0.8rem",
-        onclick: () => confirm(`Nominate ${seat.name}?`) && send({ type: "nominate", nominee: seat.name }),
-      }, "Nominate") : null,
-    ));
-  }
+    const classes = ["seat", seat.alive ? "" : "dead", seat.name === view.you ? "you" : "",
+      seat.name === nominee ? "nominee" : "", nominate ? "nominable" : "", seat.alignment || ""];
+    return el(nominate ? "button" : "div", {
+      class: classes.filter(Boolean).join(" "),
+      "data-name": seat.name,
+      "aria-label": nominate ? `Nominate ${seat.name}` : null,
+      title: seat.character ? `${seat.name}: ${seat.character}` : seat.name,
+      onclick: nominate ? () => confirm(`Nominate ${seat.name}?`) && send({ type: "nominate", nominee: seat.name }) : null,
+    },
+      seatFace(seat, i),
+      seat.alive ? null : el("span", { class: "shroud" }, seat.ghost_vote ? "☠ vote" : "☠"),
+      hands.get(seat.name) ? el("span", { class: "hand", title: "hand raised" }, "✋") : null,
+    );
+  }, nominee
+    ? el("span", { class: "small" }, `${nominee} is on trial`)
+    : el("span", { class: "small muted" }, view.may_nominate ? "Tap a player to nominate them" : "Town square"));
   return el("div", { class: "card" },
     el("h2", {}, view.may_nominate ? "Town square: tap to nominate" : "Town square"),
-    list,
+    ring,
   );
 }
 

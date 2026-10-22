@@ -61,7 +61,10 @@ await pages[1].locator("#script-view summary").click();
 await pages[1].locator("#script-view .script-character").first().waitFor();
 await pages[1].waitForTimeout(1500);
 await pages[1].locator("#script-view summary").click();
-await host.getByRole("button", { name: "Move Esme up" }).click();
+// Tapping two seats swaps them: Esme and Dev change places.
+await host.locator('#seats .seat[data-name="Esme"]').click();
+await host.waitForTimeout(400);
+await host.locator('#seats .seat[data-name="Dev"]').click();
 await host.waitForTimeout(500);
 
 // The host's one-line bridge command, run as shown (plus BRIDGE's command).
@@ -123,7 +126,7 @@ if (process.env.FULL) {
     let nominated = false;
     for (const page of ordered) {
       // A living nominee, so each execution moves the game on.
-      const buttons = page.locator("#town .seat:not(.dead)").getByRole("button", { name: "Nominate" });
+      const buttons = page.locator("#town button.seat.nominable:not(.dead)");
       if (!(await buttons.count())) continue;
       await pause(page, 1500);
       await buttons.nth(day % (await buttons.count())).click();

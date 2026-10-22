@@ -13,7 +13,6 @@ async function phone(browser) {
 }
 
 const seatNames = (page, list) => page.locator(`${list} .seat .name`).allInnerTexts();
-const clean = (names) => names.map((n) => n.replace(" (you)", "").trim());
 
 /** Answers the page's prompt, if it has one, with the first legal choice. */
 async function answerPrompt(page) {
@@ -71,24 +70,15 @@ test("a table of phones: host, join, seat, start, night prompt, nominate and vot
   await expect(players[0].locator("#bridge")).toHaveCount(0);
   await expect(host.locator("#bridge-command")).toContainText("/bridge.sh | sh -s -- ");
 
-  // The host drags Esme (last) to the top of the circle...
-  const handle = host.locator('#seats .seat[data-name="Esme"] .handle');
-  const top = host.locator('#seats .seat[data-name="Host"]');
-  // A view arriving redraws the list, so a box can be missing for a moment.
-  let from, to;
-  await expect.poll(async () => {
-    [from, to] = [await handle.boundingBox(), await top.boundingBox()];
-    return Boolean(from && to);
-  }).toBe(true);
-  await host.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-  await host.mouse.down();
-  await host.mouse.move(from.x + from.width / 2, to.y + 4, { steps: 12 });
-  await host.mouse.up();
-  await expect.poll(async () => clean(await seatNames(players[2], "#seats"))).toEqual(["Esme", "Host", "Ada", "Bram", "Cleo", "Dev"]);
-  // ...and moves Ada up one with the arrow.
-  await host.getByRole("button", { name: "Move Ada up" }).click();
-  const order = ["Esme", "Ada", "Host", "Bram", "Cleo", "Dev"];
-  await expect.poll(async () => clean(await seatNames(players[4], "#seats"))).toEqual(order);
+  // The host swaps Esme (last) with the first seat by tapping both...
+  await host.locator('#seats .seat[data-name="Esme"]').click();
+  await host.locator('#seats .seat[data-name="Host"]').click();
+  await expect.poll(async () => await seatNames(players[2], "#seats")).toEqual(["Esme", "Ada", "Bram", "Cleo", "Dev", "Host"]);
+  // ...and then the host with Bram.
+  await host.locator('#seats .seat[data-name="Host"]').click();
+  await host.locator('#seats .seat[data-name="Bram"]').click();
+  const order = ["Esme", "Ada", "Host", "Cleo", "Dev", "Bram"];
+  await expect.poll(async () => await seatNames(players[4], "#seats")).toEqual(order);
 
   await shot(host, "1-lobby-host");
   await shot(players[0], "2-lobby-player");
@@ -118,7 +108,7 @@ test("a table of phones: host, join, seat, start, night prompt, nominate and vot
     .map(([i]) => (Number(i) === 0 ? "Host" : PLAYERS[Number(i) - 1]));
   const nominator = pages.find((p, i) => (i === 0 ? "Host" : PLAYERS[i - 1]) !== safe[0]);
   nominator.on("dialog", (d) => d.accept());
-  await nominator.locator("#town .seat", { hasText: safe[0] }).getByRole("button", { name: "Nominate" }).click();
+  await nominator.getByRole("button", { name: `Nominate ${safe[0]}` }).click();
   await expect(host.locator("#vote")).toBeVisible();
   await shot(host, "5-vote");
   for (const page of pages) {
