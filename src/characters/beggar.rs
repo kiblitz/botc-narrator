@@ -93,7 +93,7 @@ fn tokens(state: &game::State, me: &player::Id) -> Vec<game::Reminder> {
 
 /// A dead player with a vote token gives it to the (living) Beggar, who
 /// learns their alignment (as it registers).
-fn beg(ctx: &mut ctx::Write<'_>, me: &player::Id) {
+fn beg(ctx: &mut ctx::Write<'_>, me: &player::Id, _targets: &[player::Id]) {
     let state = ctx.state();
     if !state.is_alive(me) {
         return;

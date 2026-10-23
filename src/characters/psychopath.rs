@@ -24,14 +24,22 @@ impl character::Def for Def {
         Some(kill)
     }
 
-    fn public_claim(&self) -> Option<character::PublicClaim> {
-        Some(character::PublicClaim {
+    fn day_targets(&self) -> Option<character::Targets> {
+        Some(character::Targets {
+            prompt: "Who do you want to kill?",
+            count: 1,
+            candidates: |state, _| state.alive_ids(),
+        })
+    }
+
+    fn claim(&self) -> Option<character::Claim> {
+        Some(character::Claim {
             limit: character::ClaimLimit::EachDay,
-            announcement: "uses the Psychopath ability",
-            resolves_now: true,
-            bluff: |ctx, me| {
-                target(ctx, me);
+            visibility: character::Visibility::Public {
+                announcement: "uses the Psychopath ability on",
+                resolves_now: true,
             },
+            bluff: |_, _, _| {},
         })
     }
 
@@ -67,17 +75,11 @@ impl character::Def for Def {
 }
 
 /// Each day, before nominations, may publicly choose a player: they die.
-fn kill(ctx: &mut ctx::Write<'_>, me: &player::Id) {
+fn kill(ctx: &mut ctx::Write<'_>, me: &player::Id, targets: &[player::Id]) {
     if !ctx.state().is_alive(me) {
         return;
     }
-    if let Some(target) = target(ctx, me) {
-        ability::kill(ctx, me, &target);
+    if let Some(target) = targets.first() {
+        ability::kill(ctx, me, target);
     }
-}
-
-/// Asks whom `me` chooses to kill.
-fn target(ctx: &mut ctx::Write<'_>, me: &player::Id) -> Option<player::Id> {
-    let candidates = ctx.state().alive_ids();
-    ctx.ask_one(me, "Who do you want to kill?", &candidates)
 }

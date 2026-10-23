@@ -202,10 +202,10 @@ fn a_drunk_soldier_dies_to_the_demon_and_a_drunk_slayer_shoots_blanks() {
         .quiet()
         .run(|ctx| narrator::day_action(ctx, &p("Drunk"), &characters::slayer::Def));
     expect![[r#"
-        * Drunk (slayer) marks Drunk: claimed
-        * Announcement: Drunk shoots
-        * Drunk (slayer) marks Drunk: AbilityUsed
           Drunk? Who do you want to slay? => Imp
+        * Drunk (slayer) marks Drunk: claimed
+        * Announcement: Drunk shoots Imp
+        * Drunk (slayer) marks Drunk: AbilityUsed
         * Announcement: Nothing happens
         --- grimoire ---
         Imp: Imp
@@ -275,10 +275,10 @@ fn the_slayer_kills_a_recluse_registering_as_the_demon() {
         .answers(&[&["Recluse"]])
         .run(|ctx| narrator::day_action(ctx, &p("Slayer"), &characters::slayer::Def));
     expect![[r#"
-        * Slayer (slayer) marks Slayer: claimed
-        * Announcement: Slayer shoots
-        * Slayer (slayer) marks Slayer: AbilityUsed
           Slayer? Who do you want to slay? => Recluse
+        * Slayer (slayer) marks Slayer: claimed
+        * Announcement: Slayer shoots Recluse
+        * Slayer (slayer) marks Slayer: AbilityUsed
           storyteller [1 of 2 options] how Recluse registers to Slayer (first option is true): Imp
         * Recluse dies (Ability { by: Id("Slayer") })
         * Evil wins!

@@ -20,6 +20,10 @@ impl character::Def for Def {
 
     /// If the Mutant tried to convince the group they are an Outsider, the
     /// storyteller may execute them (if nobody was executed today).
+    fn causes_madness(&self) -> bool {
+        true
+    }
+
     fn on_day_end(&self, ctx: &mut ctx::Write<'_>, me: &player::Id) {
         if ctx.state().executed_today().is_none()
             && !ctx.state().is_malfunctioning(me)

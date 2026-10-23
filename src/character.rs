@@ -112,28 +112,57 @@ pub struct NightOrder {
 
 pub type ReadOnlyFn = fn(&mut ctx::Read<'_>, &player::Id, u32);
 pub type ReadWriteFn = fn(&mut ctx::Write<'_>, &player::Id, u32);
-pub type DayFn = fn(&mut ctx::Write<'_>, &player::Id);
+/// A day ability: `me` uses it on the `targets` chosen first (see
+/// [`Def::day_targets`]; empty when it has none).
+pub type DayFn = fn(&mut ctx::Write<'_>, &player::Id, &[player::Id]);
 
-/// A day ability used in front of everyone, which any living player may
-/// claim to use whether or not they have it, so that every phone looks the
-/// same and holding it can be bluffed (`Def::public_claim`).
+/// The players a day ability is used on, chosen before it is announced and
+/// before anything else is asked, so a phone can pick them on the town
+/// square and confirm or cancel without the table hearing of it.
 #[derive(Clone, Copy)]
-pub struct PublicClaim {
+pub struct Targets {
+    /// What the player is asked, if they have not chosen yet.
+    pub prompt: &'static str,
+    /// How many to choose (at most as many as there are candidates).
+    pub count: usize,
+    /// Whom `me` may choose.
+    pub candidates: fn(&game::State, &player::Id) -> Vec<player::Id>,
+}
+
+/// A day ability any living player may claim to use whether or not they have
+/// it, so that every phone looks the same and holding it can be bluffed
+/// (`Def::claim`).
+#[derive(Clone, Copy)]
+pub struct Claim {
     /// How often each player is offered it; the ability still enforces its
     /// own limit for real users (the Slayer's `ability::use_once`).
     pub limit: ClaimLimit,
-    /// What the table is told first: "{player} {announcement}".
-    pub announcement: &'static str,
-    /// Whether it takes effect at once, so the table is told "Nothing
-    /// happens" afterwards unless someone died or the game ended (the
-    /// Slayer's shot, the Psychopath's kill, the Damsel guess: abilities
-    /// whose only immediate effects are those); not for statements judged
-    /// at night (the Gossip).
-    pub resolves_now: bool,
+    pub visibility: Visibility,
     /// A player without the ability: asked the same questions as a holder
     /// (share the asking with the real ability in one helper, like the
-    /// Slayer's `aim`, so the two cannot drift apart), and nothing happens.
+    /// Juggler's `guesses`, so the two cannot drift apart), and nothing
+    /// happens.
     pub bluff: DayFn,
+}
+
+/// Whether a claimable day ability is used in front of everyone or on a
+/// private visit to the storyteller.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Visibility {
+    Public {
+        /// What the table is told: "{player} {announcement} {targets}".
+        announcement: &'static str,
+        /// Whether it takes effect at once, so the table is told "Nothing
+        /// happens" afterwards unless someone died or the game ended (the
+        /// Slayer's shot, the Psychopath's kill, the Damsel guess: abilities
+        /// whose only immediate effects are those); not for statements
+        /// judged at night (the Gossip).
+        resolves_now: bool,
+    },
+    /// The player is woken (called over) for the whole use, so their answers
+    /// are private; a player without the ability is told
+    /// `info::Message::Nothing` (the Artist, Fisherman, Savant, Puzzlemaster).
+    Private,
 }
 
 /// How often each living player may publicly claim a day ability.
@@ -190,9 +219,16 @@ pub trait Def: Sync {
         None
     }
 
-    /// Whether anyone may claim this ability's `day_action` in public (see
-    /// [`PublicClaim`]); `None` (the default) offers it only to its users.
-    fn public_claim(&self) -> Option<PublicClaim> {
+    /// The players `day_action` is used on, if any (see [`Targets`]).
+    fn day_targets(&self) -> Option<Targets> {
+        None
+    }
+
+    /// Whether any living player may claim to use this ability's
+    /// `day_action` (see [`Claim`]); `None` (the default) offers it only to
+    /// its users (the Travellers, whose characters are public, and the
+    /// Atheist, whose use ends the game).
+    fn claim(&self) -> Option<Claim> {
         None
     }
 
@@ -316,6 +352,13 @@ pub trait Def: Sync {
     /// The ability that made `mad` mad (a `game::Effect::Mad` token placed by
     /// `me`) learns that they broke madness.
     fn on_madness_broken(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _mad: &player::Id) {}
+
+    /// Whether this ability may make a player mad (the Cerenovus, Harpy,
+    /// Pixie, Mutant): then the phones let anyone report breaking madness,
+    /// since the storyteller cannot hear the table (`narrator::report_madness`).
+    fn causes_madness(&self) -> bool {
+        false
+    }
 
     /// Whether a player with this character can never be drunk or poisoned
     /// (the Beggar: "you are sober & healthy").

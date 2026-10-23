@@ -984,9 +984,9 @@ fn a_bluffed_psychopath_kill_does_nothing_and_comes_back_each_day() {
         narrator::day_action(ctx, &p("Empath"), &characters::psychopath::Def);
     });
     expect![[r#"
-        * Empath (psychopath) marks Empath: claimed
-        * Announcement: Empath uses the Psychopath ability
           Empath? Who do you want to kill? => Chef
+        * Empath (psychopath) marks Empath: claimed
+        * Announcement: Empath uses the Psychopath ability on Chef
         * Announcement: Nothing happens
         --- grimoire ---
         Psycho: Psychopath
@@ -1018,9 +1018,9 @@ fn psychopath_kills_by_day_and_survives_execution_unless_losing_roshambo() {
         ctx.execute(&p("Psycho"));
     });
     expect![[r#"
-        * Psycho (psychopath) marks Psycho: claimed
-        * Announcement: Psycho uses the Psychopath ability
           Psycho? Who do you want to kill? => Chef
+        * Psycho (psychopath) marks Psycho: claimed
+        * Announcement: Psycho uses the Psychopath ability on Chef
         * Chef dies (Ability { by: Id("Psycho") })
         * Empath nominates Psycho
         * Psycho is executed

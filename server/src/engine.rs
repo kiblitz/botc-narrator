@@ -23,6 +23,7 @@ use crate::bridged;
 use crate::inbox;
 use crate::phone;
 use crate::room;
+use crate::view;
 
 /// How long the table waits for people and the bridge.
 #[derive(Clone, Copy, Debug)]
@@ -241,10 +242,18 @@ fn day(ctx: &mut ctx::Write<'_>, room: &room::Room, inbox: &rc::Rc<cell::RefCell
                     Voted::DayEnded => return narrator::end_day(ctx),
                 }
             }
-            Some(inbox::Input::DayAction { player, ability }) => {
+            Some(inbox::Input::DayAction {
+                player,
+                ability,
+                targets,
+            }) => {
                 let player = player::Id::new(player);
-                if let Some(ability) = usable(ctx, &player, &ability) {
-                    narrator::day_action(ctx, &player, ability);
+                if ability == room::MADNESS {
+                    narrator::report_madness(ctx, &player);
+                } else if let Some(ability) = usable(ctx, &player, &ability) {
+                    let targets: Vec<player::Id> =
+                        targets.into_iter().map(player::Id::new).collect();
+                    narrator::day_action_on(ctx, &player, ability, &targets);
                 }
             }
             Some(_) => {}
@@ -327,19 +336,66 @@ fn usable(ctx: &ctx::Write<'_>, player: &player::Id, id: &str) -> Option<charact
         .map(|(_, a)| a)
 }
 
-/// Who may nominate and which day abilities can be used, for the phones.
+/// The text of the madness report on the phones' lists.
+const MADNESS_TEXT: &str = "Honour system: the storyteller cannot hear the table, so if you \
+    broke madness today (or, as the Mutant, claimed to be an Outsider), report it yourself. \
+    The storyteller may then act on it as the ability says. Anyone may report it; only the storyteller hears of it.";
+
+/// Each living player's day actions (see `room::DayAction`).
+fn day_actions(state: &game::State) -> Vec<room::DayAction> {
+    let offered = narrator::day_actions(state);
+    let menu = narrator::day_menu(state);
+    let mut actions = Vec::new();
+    for player in state.alive_ids() {
+        let entry = |ability: character::Ref, shared: bool| {
+            let targets = narrator::day_targets(state, &player, ability);
+            room::DayAction {
+                player: player.to_string(),
+                ability: ability.id(),
+                name: ability.name(),
+                text: view::ability_text(ability.id()),
+                private: ability
+                    .claim()
+                    .is_some_and(|c| c.visibility == character::Visibility::Private),
+                shared,
+                targets: targets.map(|(candidates, count)| room::Targets {
+                    prompt: ability.day_targets().map_or("", |t| t.prompt),
+                    candidates: candidates.iter().map(ToString::to_string).collect(),
+                    count,
+                }),
+                available: offered
+                    .iter()
+                    .any(|(p, a)| *p == player && character::same(*a, ability)),
+            }
+        };
+        actions.extend(menu.iter().map(|a| entry(*a, true)));
+        // Abilities only their holder may use (Travellers, the Atheist).
+        actions.extend(
+            offered
+                .iter()
+                .filter(|(p, a)| *p == player && a.claim().is_none())
+                .map(|(_, a)| entry(*a, false)),
+        );
+        if narrator::madness_possible(state) {
+            actions.push(room::DayAction {
+                player: player.to_string(),
+                ability: room::MADNESS,
+                name: "I broke madness",
+                text: MADNESS_TEXT.to_string(),
+                private: true,
+                shared: true,
+                targets: None,
+                available: narrator::may_report_madness(state, &player),
+            });
+        }
+    }
+    actions
+}
+
+/// Who may nominate and which day actions can be used, for the phones.
 fn refresh(ctx: &ctx::Write<'_>, room: &room::Room, players_nominate: bool) {
     let state = ctx.state();
-    // Publicly claimable abilities are offered to everyone alike, so the
-    // phones do not show who really has them.
-    let actions: Vec<room::DayAction> = narrator::day_actions(state)
-        .into_iter()
-        .map(|(user, ability)| room::DayAction {
-            player: user.to_string(),
-            ability: ability.id(),
-            name: ability.name(),
-        })
-        .collect();
+    let actions = day_actions(state);
     let able: Vec<String> = state
         .alive_ids()
         .into_iter()

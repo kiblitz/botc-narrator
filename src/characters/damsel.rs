@@ -36,14 +36,22 @@ impl character::Def for Def {
     }
 
     /// Anyone may say they guess the Damsel; only a Minion's guess counts.
-    fn public_claim(&self) -> Option<character::PublicClaim> {
-        Some(character::PublicClaim {
+    fn day_targets(&self) -> Option<character::Targets> {
+        Some(character::Targets {
+            prompt: "Who is the Damsel?",
+            count: 1,
+            candidates: |state, me| state.alive_except(me),
+        })
+    }
+
+    fn claim(&self) -> Option<character::Claim> {
+        Some(character::Claim {
             limit: character::ClaimLimit::OncePerGame,
-            announcement: "guesses who the Damsel is",
-            resolves_now: true,
-            bluff: |ctx, me| {
-                ask_guess(ctx, me);
+            visibility: character::Visibility::Public {
+                announcement: "guesses that the Damsel is",
+                resolves_now: true,
             },
+            bluff: |_, _, _| {},
         })
     }
 
@@ -76,8 +84,8 @@ fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
 
 /// A Minion publicly guesses who the Damsel is (the Minions' one guess): if
 /// right, and the Damsel is alive and functioning, the Damsel's team loses.
-fn guess(ctx: &mut ctx::Write<'_>, minion: &player::Id) {
-    let Some(guessed) = ask_guess(ctx, minion) else {
+fn guess(ctx: &mut ctx::Write<'_>, _minion: &player::Id, targets: &[player::Id]) {
+    let Some(guessed) = targets.first().cloned() else {
         return;
     };
     let damsels: Vec<player::Id> = ctx
@@ -97,8 +105,3 @@ fn guess(ctx: &mut ctx::Write<'_>, minion: &player::Id) {
     }
 }
 
-/// Asks `me` whom they guess is the Damsel.
-fn ask_guess(ctx: &mut ctx::Write<'_>, me: &player::Id) -> Option<player::Id> {
-    let candidates = ctx.state().alive_except(me);
-    ctx.ask_one(me, "Who is the Damsel?", &candidates)
-}

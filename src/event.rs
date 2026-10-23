@@ -59,6 +59,9 @@ pub enum Event {
         alignment: character::Alignment,
     },
     FabledAdded(&'static str),
+    /// A player told the storyteller they broke madness today (the
+    /// storyteller cannot hear the table; `narrator::report_madness`).
+    MadnessReported(player::Id),
     /// The storyteller judged that a mad player broke their madness.
     MadnessBroken {
         player: player::Id,
@@ -119,6 +122,7 @@ impl Event {
             | Event::AbilityGained { player, .. }
             | Event::AbilityLost { player, .. }
             | Event::AlignmentChanged { player, .. }
+            | Event::MadnessReported(player)
             | Event::MadnessBroken { player, .. } => vec![player],
             Event::ReminderPlaced { player, reminder }
             | Event::ReminderRemoved { player, reminder } => {
@@ -176,6 +180,7 @@ impl Event {
             }
             Event::Claimed { claims, .. } => claims.iter().map(|(_, c)| *c).collect(),
             Event::PhaseBegan(_)
+            | Event::MadnessReported(_)
             | Event::Nominated { .. }
             | Event::Executed(_)
             | Event::Died { .. }
@@ -224,6 +229,7 @@ impl fmt::Display for Event {
                 write!(f, "{player} is now {alignment}")
             }
             Event::FabledAdded(name) => write!(f, "the {name} is in play"),
+            Event::MadnessReported(player) => write!(f, "{player} reports breaking madness"),
             Event::MadnessBroken { player, about } => {
                 write!(f, "{player} broke madness about the {about}")
             }

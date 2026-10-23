@@ -2,6 +2,7 @@
 //! but cannot change the grimoire; [`Write`] can also change it, and resolves
 //! rule interactions (protection, redirects, death triggers, win checks).
 
+use crate::ability;
 use crate::character;
 use crate::event;
 use crate::game;
@@ -118,9 +119,16 @@ impl<'a> Read<'a> {
         answer
     }
 
-    /// Whether `player` tried to convince the group they are `about`.
+    /// Whether `player` tried to convince the group they are `about`: the
+    /// table says so, or they reported breaking madness today.
     pub fn is_mad_about(&mut self, player: &player::Id, about: &'static str) -> bool {
-        self.io.is_mad_about(player, about)
+        reported_madness(self.state, player) || self.io.is_mad_about(player, about)
+    }
+
+    /// Whether `player`, mad about being `about`, broke their madness: they
+    /// reported it today, or the table says so.
+    pub fn broke_madness(&mut self, player: &player::Id, about: &'static str) -> bool {
+        reported_madness(self.state, player) || self.io.broke_madness(player, about)
     }
 
     /// Ask a player a yes/no question (do they agree?).
@@ -890,6 +898,10 @@ impl<'a> Write<'a> {
         self.read().is_mad_about(player, about)
     }
 
+    pub fn broke_madness(&mut self, player: &player::Id, about: &'static str) -> bool {
+        self.read().broke_madness(player, about)
+    }
+
     pub fn choose<T: Clone>(
         &mut self,
         reason: storyteller::Reason,
@@ -949,4 +961,11 @@ impl<'a> Write<'a> {
     ) -> Option<character::Ref> {
         self.read().registers_as(asker, target, kind)
     }
+}
+
+/// Whether `player` reported breaking madness today (`narrator::report_madness`).
+pub fn reported_madness(state: &game::State, player: &player::Id) -> bool {
+    ability::today(state)
+        .iter()
+        .any(|e| matches!(e, event::Event::MadnessReported(p) if p == player))
 }

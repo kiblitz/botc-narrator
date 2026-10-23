@@ -37,6 +37,10 @@ impl character::Def for Def {
         Some(character::NightAction::ReadWrite(act))
     }
 
+    fn causes_madness(&self) -> bool {
+        true
+    }
+
     fn on_madness_broken(&self, ctx: &mut ctx::Write<'_>, me: &player::Id, mad: &player::Id) {
         if mad == me {
             let reminder = game::Reminder::new(&Def, me, BROKE, game::Expiry::Never);

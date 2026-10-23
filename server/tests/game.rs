@@ -377,67 +377,145 @@ async fn only_the_host_nominates_and_enters_the_votes() {
     assert_eq!(phones[0].view()["stage"], "day");
 }
 
-/// The day abilities a phone is offered.
+/// The day actions a phone may use now.
 fn day_abilities(view: &serde_json::Value) -> Vec<String> {
     view["day_actions"]
         .as_array()
         .into_iter()
         .flatten()
+        .filter(|a| a["available"] == true)
         .filter_map(|a| a["ability"].as_str())
         .map(ToString::to_string)
         .collect()
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn every_living_phone_may_claim_the_slayers_shot_so_none_shows_who_has_it() {
-    let base = common::serve(common::quick(), 4).await;
-    let (_room, phones, _) = common::table(&base, &PLAYERS).await;
+/// A phone's day actions list as every phone should show it alike: without
+/// whom this player may target or whether they used it already.
+fn shared_list(view: &serde_json::Value) -> Vec<serde_json::Value> {
+    view["day_actions"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|a| {
+            json!({
+                "ability": a["ability"],
+                "name": a["name"],
+                "text": a["text"],
+                "private": a["private"],
+                "shared": a["shared"],
+                "count": a["targets"]["count"],
+            })
+        })
+        .collect()
+}
+
+fn alive(view: &serde_json::Value, name: &str) -> bool {
+    view["seats"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|s| s["name"] == name && s["alive"] == true)
+}
+
+fn log_texts(view: &serde_json::Value) -> Vec<String> {
+    view["log"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|e| e["text"].as_str())
+        .map(ToString::to_string)
+        .collect()
+}
+
+/// Starts `script` (seeded by the server) and answers every prompt until day.
+async fn start_and_reach_day(phones: &[common::Phone], script: &str) {
     common::until(&phones[0], time::Duration::from_secs(5), |v| {
         v["seats"].as_array().is_some_and(|s| s.len() == 6)
     })
     .await;
+    phones[0].send(json!({"type": "script", "id": script}));
+    common::until(&phones[0], time::Duration::from_secs(5), |v| {
+        v["script"]["id"] == script
+    })
+    .await;
     phones[0].send(json!({"type": "start"}));
-    // Through the first night, answering every prompt.
     let deadline = time::Instant::now() + time::Duration::from_secs(60);
     while phones[0].view()["stage"] != "day" {
         assert!(time::Instant::now() < deadline, "{:#}", phones[0].view());
-        for phone in &phones {
+        for phone in phones {
             if let Some(prompt) = phone.view()["prompt"].as_object() {
                 phone.send(common::answer(prompt));
             }
         }
         tokio::time::sleep(time::Duration::from_millis(50)).await;
     }
-    let alive = |name: &str| {
-        phones[0].view()["seats"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|s| s["name"] == name && s["alive"] == true)
-    };
-    for phone in &phones {
+    for phone in phones {
         common::until(phone, time::Duration::from_secs(5), |v| v["stage"] == "day").await;
+    }
+}
+
+/// What each phone has heard so far.
+fn heard(phones: &[common::Phone]) -> Vec<usize> {
+    phones.iter().map(|p| log_texts(&p.view()).len()).collect()
+}
+
+/// Nobody but `except` heard anything since `before` (from [`heard`]).
+fn nobody_else_heard(phones: &[common::Phone], before: &[usize], except: &str) {
+    for (phone, before) in phones.iter().zip(before) {
+        if phone.name != except {
+            assert_eq!(
+                log_texts(&phone.view()).len(),
+                *before,
+                "{} heard of {except}'s action",
+                phone.name
+            );
+        }
+    }
+}
+
+fn check_no_leaks(phones: &[common::Phone]) {
+    let mut leaks = Vec::new();
+    for phone in phones {
+        common::check_private(&phone.name, &phone.view(), &mut leaks);
+    }
+    assert_eq!(leaks, Vec::<String>::new());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn every_living_phone_may_claim_the_slayers_shot_so_none_shows_who_has_it() {
+    let base = common::serve(common::quick(), 4).await;
+    let (_room, phones, _) = common::table(&base, &PLAYERS).await;
+    start_and_reach_day(&phones, "trouble_brewing").await;
+    for phone in &phones {
         let offered = day_abilities(&phone.view());
-        if alive(&phone.name) {
+        if alive(&phones[0].view(), &phone.name) {
             assert_eq!(offered, ["slayer"], "{}", phone.name);
         } else {
             assert!(offered.is_empty(), "{}", phone.name);
         }
     }
-    // Every living player shoots once; each shot is announced the same way.
-    let shooters: Vec<&common::Phone> = phones.iter().filter(|p| alive(&p.name)).collect();
+    // Every living player shoots once, at someone picked on the phone
+    // beforehand; each shot is announced the same way.
+    let shooters: Vec<&common::Phone> = phones
+        .iter()
+        .filter(|p| alive(&phones[0].view(), &p.name))
+        .collect();
     for shooter in &shooters {
-        if !phones[0].view()["winner"].is_null() || !alive(&shooter.name) {
+        let view = phones[0].view();
+        if !view["winner"].is_null() || !alive(&view, &shooter.name) {
             break;
         }
-        shooter.send(json!({"type": "day_action", "ability": "slayer"}));
-        common::until(shooter, time::Duration::from_secs(5), |v| {
-            v["prompt"].is_object()
-        })
-        .await;
-        let prompt = shooter.view()["prompt"].as_object().unwrap().clone();
-        shooter.send(common::answer(&prompt));
-        let shoots = format!("Announcement: {} shoots", shooter.name);
+        let entry = shooter.view()["day_actions"][0].clone();
+        let target = entry["targets"]["candidates"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|c| c.as_str())
+            .find(|c| *c != shooter.name)
+            .unwrap()
+            .to_string();
+        shooter.send(json!({"type": "day_action", "ability": "slayer", "targets": [target]}));
+        let shoots = format!("Announcement: {} shoots {target}", shooter.name);
         common::until(&phones[0], time::Duration::from_secs(10), |v| {
             let log = v["log"].as_array().unwrap();
             let at = log.iter().rposition(|e| e["text"] == shoots.as_str());
@@ -450,14 +528,144 @@ async fn every_living_phone_may_claim_the_slayers_shot_so_none_shows_who_has_it(
             })
         })
         .await;
+        // Picked beforehand: the shooter was never asked.
+        let chose = format!("{} chose {target}", shooter.name);
+        assert!(!log_texts(&phones[0].view()).contains(&chose));
         common::until(shooter, time::Duration::from_secs(5), |v| {
             !day_abilities(v).contains(&"slayer".to_string())
         })
         .await;
     }
-    let mut leaks = Vec::new();
-    for phone in &phones {
-        common::check_private(&phone.name, &phone.view(), &mut leaks);
+    check_no_leaks(&phones);
+}
+
+/// Every living phone lists the same day actions, private visits too; a
+/// player without the Savant's ability visits like the Savant and is told
+/// nothing, and nobody else hears of it; a Psychopath's kill shows on every
+/// phone as a death, without its cause. (Seed 10 deals the Midnight Oasis to
+/// six: Vigormortis, Snake Charmer, Psychopath, Barber, Savant, Farmer.)
+#[tokio::test(flavor = "multi_thread")]
+async fn every_living_phone_lists_the_same_day_actions_and_visits_do_not_show() {
+    let base = common::serve(common::quick(), 10).await;
+    let (_room, phones, _) = common::table(&base, &PLAYERS).await;
+    start_and_reach_day(&phones, "the_midnight_oasis").await;
+    let living: Vec<&common::Phone> = phones
+        .iter()
+        .filter(|p| alive(&phones[0].view(), &p.name))
+        .collect();
+    let list = shared_list(&living[0].view());
+    let abilities: Vec<&str> = list.iter().filter_map(|a| a["ability"].as_str()).collect();
+    for ability in ["savant", "fisherman", "psychopath", "damsel"] {
+        assert!(abilities.contains(&ability), "{abilities:?}");
     }
-    assert_eq!(leaks, Vec::<String>::new());
+    assert!(!abilities.contains(&"madness"), "no madness on this script");
+    for phone in &living {
+        let view = phone.view();
+        assert_eq!(shared_list(&view), list, "{}", phone.name);
+        let actions = view["day_actions"].as_array().unwrap().clone();
+        assert!(
+            actions.iter().all(|a| a["available"] == true),
+            "{}",
+            phone.name
+        );
+    }
+    let character = |phone: &common::Phone| {
+        phone.view()["me"]["character"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+
+    // A visit as the Savant by someone else: private, and nothing to learn.
+    let visitor = living
+        .iter()
+        .find(|p| !["Savant", "Psychopath"].contains(&character(p).as_str()))
+        .unwrap();
+    let before = heard(&phones);
+    visitor.send(json!({"type": "day_action", "ability": "savant"}));
+    common::until(visitor, time::Duration::from_secs(10), |v| {
+        log_texts(v)
+            .iter()
+            .any(|t| t == "The storyteller has nothing for you")
+    })
+    .await;
+    nobody_else_heard(&phones, &before, &visitor.name);
+    common::until(visitor, time::Duration::from_secs(5), |v| {
+        !day_abilities(v).contains(&"savant".to_string())
+    })
+    .await;
+
+    // The Psychopath kills someone good: every phone shows the death, not
+    // its cause.
+    let psychopath = living
+        .iter()
+        .find(|p| character(p) == "Psychopath")
+        .unwrap();
+    let victim = living
+        .iter()
+        .find(|p| p.name != psychopath.name && p.view()["me"]["alignment"] == "Good")
+        .unwrap();
+    psychopath.send(json!({
+        "type": "day_action",
+        "ability": "psychopath",
+        "targets": [victim.name],
+    }));
+    let dies = format!("{} dies", victim.name);
+    let announced = format!(
+        "Announcement: {} uses the Psychopath ability on {}",
+        psychopath.name, victim.name
+    );
+    for phone in &phones {
+        common::until(phone, time::Duration::from_secs(10), |v| {
+            !alive(v, &victim.name) && log_texts(v).contains(&dies)
+        })
+        .await;
+        let texts = log_texts(&phone.view());
+        assert!(texts.contains(&announced), "{texts:?}");
+        assert!(
+            !texts.iter().any(|t| t.contains("Ability {")),
+            "{} saw the cause",
+            phone.name
+        );
+    }
+    check_no_leaks(&phones);
+}
+
+/// On a script with madness every living phone may report breaking it; the
+/// reporter is told it was noted, and nobody else hears of it.
+#[tokio::test(flavor = "multi_thread")]
+async fn anyone_may_report_breaking_madness_where_there_is_madness() {
+    let base = common::serve(common::quick(), 4).await;
+    let (_room, phones, _) = common::table(&base, &PLAYERS).await;
+    start_and_reach_day(&phones, "catfishing").await;
+    let living: Vec<&common::Phone> = phones
+        .iter()
+        .filter(|p| alive(&phones[0].view(), &p.name))
+        .collect();
+    for phone in &living {
+        let offered = day_abilities(&phone.view());
+        assert!(offered.contains(&"madness".to_string()), "{}", phone.name);
+    }
+    let reporter = living[1];
+    let before = heard(&phones);
+    reporter.send(json!({"type": "day_action", "ability": "madness"}));
+    common::until(reporter, time::Duration::from_secs(10), |v| {
+        log_texts(v)
+            .iter()
+            .any(|t| t == "The storyteller has noted it")
+            && !day_abilities(v).contains(&"madness".to_string())
+    })
+    .await;
+    nobody_else_heard(&phones, &before, &reporter.name);
+    // Once a day.
+    reporter.send(json!({"type": "day_action", "ability": "madness"}));
+    tokio::time::sleep(time::Duration::from_millis(300)).await;
+    let refused = reporter
+        .errors
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|e| e.contains("Not now"));
+    assert!(refused);
+    check_no_leaks(&phones);
 }

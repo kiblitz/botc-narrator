@@ -22,13 +22,21 @@ impl character::Def for Def {
     fn day_action(&self) -> Option<character::DayFn> {
         Some(visit)
     }
+
+    fn claim(&self) -> Option<character::Claim> {
+        Some(character::Claim {
+            limit: character::ClaimLimit::OncePerGame,
+            visibility: character::Visibility::Private,
+            bluff: |_, _, _| {},
+        })
+    }
 }
 
 /// Once per game, by day, visits the storyteller for advice to help their
 /// team win, modelled as whom to trust: good advice trusts players on the
 /// Fisherman's team and distrusts the others; bad advice (when
 /// malfunctioning) is the reverse.
-fn visit(ctx: &mut ctx::Write<'_>, me: &player::Id) {
+fn visit(ctx: &mut ctx::Write<'_>, me: &player::Id, _targets: &[player::Id]) {
     if !ctx.state().is_alive(me) || !ability::use_once(ctx, me, &Def) {
         return;
     }
@@ -48,7 +56,5 @@ fn visit(ctx: &mut ctx::Write<'_>, me: &player::Id) {
             .collect()
     };
     let (good, bad) = (advice(true), advice(false));
-    ctx.wake(me);
     ctx.inform(me, good, bad);
-    ctx.sleep(me);
 }

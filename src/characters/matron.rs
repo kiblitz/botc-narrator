@@ -27,7 +27,7 @@ impl character::Def for Def {
 
 /// Chooses up to three pairs of players, one after another, who swap seats.
 /// Malfunctioning, the swaps do not happen.
-fn swap(ctx: &mut ctx::Write<'_>, me: &player::Id) {
+fn swap(ctx: &mut ctx::Write<'_>, me: &player::Id, _targets: &[player::Id]) {
     if !ctx.state().is_alive(me) {
         return;
     }

@@ -32,6 +32,10 @@ const state = {
   dragged: false,
   // The host's nomination being entered: nominator, then nominee, then confirm.
   nomination: { nominator: null, nominee: null },
+  // The Day actions screen while open: the action being used (its id), if
+  // one was picked, and the targets tapped so far. Nothing is sent before
+  // Confirm.
+  day: null,
 };
 
 // ---------- helpers ----------
@@ -243,8 +247,12 @@ function game(view) {
   const pending = view.host && nominationCard(view);
   if (pending) parts.push(pending);
   if (view.stage === "dusk") parts.push(el("p", { class: "banner" }, "The day is over. Waiting for the host to start the night."));
-  if (view.day_actions.length) parts.push(dayActions(view));
-  if (["day", "vote", "dusk", "over"].includes(view.stage)) parts.push(town(view));
+  const day = dayScreen(view);
+  if (day) parts.push(...day);
+  else {
+    if (view.day_actions.length) parts.push(dayActionsButton());
+    if (["day", "vote", "dusk", "over"].includes(view.stage)) parts.push(town(view));
+  }
   if (state.error) parts.push(el("p", { class: "error center" }, state.error));
   parts.push(log(view));
   if (view.host) parts.push(hostDock(view));
@@ -638,12 +646,119 @@ function nominationCard(view) {
       el("button", { class: "primary", id: "confirm-nomination", onclick: confirmed }, "Confirm"), cancel));
 }
 
-function dayActions(view) {
-  return el("div", { class: "card stack" },
-    el("h2", {}, "Day abilities"),
-    el("p", { class: "muted" }, "Anyone may claim these in public, whether or not they have the ability."),
-    view.day_actions.map((a) => el("button", { onclick: () => confirm(`Use the ${a.name} ability now, in front of everyone?`) && send({ type: "day_action", ability: a.ability }) }, icon(a.name, "inline-icon"), ` Use the ${a.name} ability`)),
+// The day action that reports breaking madness (room::MADNESS).
+const MADNESS = "madness";
+
+function dayActionsButton() {
+  return el("button", { class: "primary", id: "day-actions", onclick: () => { state.day = { using: null, picked: [] }; render(); } }, "Day actions");
+}
+
+function closeDay() {
+  state.day = null;
+  render();
+}
+
+/**
+ * The Day actions screen, if open: the list (the same on every living
+ * phone), or the action being used: its targets tapped on the town square,
+ * then Confirm (or Cancel, which sends nothing).
+ */
+function dayScreen(view) {
+  if (!state.day) return null;
+  const actions = view.day_actions;
+  const using = actions.find((a) => a.ability === state.day.using && a.available);
+  // Closed when the day ends (or the list is gone: this player died).
+  if (view.stage !== "day" || actions.length === 0) {
+    state.day = null;
+    return null;
+  }
+  if (!using) {
+    state.day.using = null;
+    return [dayList(view)];
+  }
+  return useAction(view, using);
+}
+
+function dayList(view) {
+  const madness = view.day_actions.some((a) => a.ability === MADNESS);
+  return el("div", { class: "card stack", id: "day-list" },
+    el("div", { class: "row" }, el("h2", {}, "Day actions"), el("button", { id: "close-day", onclick: closeDay }, "Close")),
+    el("p", { class: "muted small", id: "honour-note" },
+      "Everyone has this same list, whatever their character, so using one shows nothing about who really has it. ",
+      "The storyteller cannot hear the table: it only knows what is entered on the phones, so the table runs on the honour system."),
+    madness ? el("p", { class: "muted small", id: "madness-note" },
+      "Madness is on this script. The storyteller can't hear the table: if you broke madness, report it yourself.") : null,
+    ...view.day_actions.map((a) => el("div", { class: `day-action${a.available ? "" : " used"}`, "data-ability": a.ability },
+      a.ability === MADNESS ? el("span", { class: "inline-icon madness-icon" }, "?") : icon(a.name, "inline-icon"),
+      el("div", {},
+        el("strong", {}, a.name),
+        el("span", { class: "muted small" }, a.private ? " · private visit" : a.ability === MADNESS ? " · to the storyteller" : " · in public"),
+        a.shared ? null : el("span", { class: "muted small" }, " · yours alone"),
+        el("p", { class: "small" }, a.text),
+      ),
+      el("button", {
+        id: `use-${a.ability}`,
+        disabled: !a.available,
+        onclick: () => { state.day = { using: a.ability, picked: [] }; render(); },
+      }, a.available ? "Use" : "Used"),
+    )),
   );
+}
+
+/** What using `a` will do, as the player is told before they confirm. */
+function useText(a) {
+  if (a.ability === MADNESS) return "Tell the storyteller you broke madness today?";
+  if (a.private) return `Visit the storyteller as the ${a.name}? Only you see what follows.`;
+  return `Use the ${a.name} ability in front of everyone? The table is told.`;
+}
+
+function useAction(view, a) {
+  const picked = state.day.picked;
+  const targets = a.targets;
+  const ready = !targets || picked.length === targets.count;
+  const confirmed = () => {
+    send({ type: "day_action", ability: a.ability, targets: [...picked] });
+    state.day = null;
+    render();
+  };
+  const card = el("div", { class: "card alert stack", id: "day-use" },
+    el("h2", {}, a.ability === MADNESS ? null : icon(a.name, "inline-icon"), ` ${a.name}`),
+    el("p", {}, useText(a)),
+    targets ? el("p", { class: "banner", id: "day-targets" }, picked.length ? `${targets.prompt} ${picked.join(", ")}` : targets.prompt) : null,
+    targets && targets.count > 1 ? el("p", { class: "muted small center" }, `${picked.length} of ${targets.count} picked`) : null,
+    el("div", { class: "row" },
+      el("button", { class: "primary", id: "confirm-day", disabled: !ready, onclick: confirmed }, "Confirm"),
+      el("button", { id: "cancel-day", onclick: () => { state.day = { using: null, picked: [] }; render(); } }, "Cancel"),
+    ),
+  );
+  return targets ? [card, targetCircle(view, a)] : [card];
+}
+
+/** The town square for picking `a`'s targets: tap a seat to pick it, again to drop it. */
+function targetCircle(view, a) {
+  const picked = state.day.picked;
+  const { candidates, count } = a.targets;
+  const ring = circle("target-circle", view.seats, (seat, i) => {
+    const can = candidates.includes(seat.name);
+    const chosen = picked.includes(seat.name);
+    const toggle = () => {
+      if (chosen) picked.splice(picked.indexOf(seat.name), 1);
+      else if (count === 1) picked.splice(0, picked.length, seat.name);
+      else if (picked.length < count) picked.push(seat.name);
+      render();
+    };
+    const classes = ["seat", seat.alive ? "" : "dead", seat.name === view.you ? "you" : "", chosen ? "selected" : "", can ? "nominable" : ""];
+    return el(can ? "button" : "div", {
+      class: classes.filter(Boolean).join(" "),
+      "data-name": seat.name,
+      "aria-label": can ? `${chosen ? "Drop" : "Pick"} ${seat.name}` : null,
+      onclick: can ? toggle : null,
+    },
+      seatFace(seat, i),
+      seat.alive ? null : el("span", { class: "shroud" }, "☠"),
+    );
+  }, el("span", { class: "small muted" }, `Tap ${count === 1 ? "a player" : `${count} players`}`));
+  return el("div", { class: "card" }, el("h2", {}, "Town square"), ring);
 }
 
 function town(view) {

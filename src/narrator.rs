@@ -322,16 +322,12 @@ pub fn day_action_users(state: &game::State, ability: character::Ref) -> Vec<pla
     users
 }
 
-/// The token on a player who has publicly claimed an ability (within its
+/// The token on a player who has claimed an ability (within its
 /// `character::ClaimLimit`).
 const CLAIMED: game::Effect = game::Effect::Custom("claimed");
 
-/// Every day action that may be used now, with who may use it. A publicly
-/// claimable ability (`character::Def::public_claim`) on the script or in
-/// play is offered to every living player within its limit, whoever really
-/// has it, so the phones all look the same; any other ability to its living
-/// users (see [`day_action_users`]) who have not used it.
-pub fn day_actions(state: &game::State) -> Vec<(player::Id, character::Ref)> {
+/// Every ability with a day action on the script or in play, in that order.
+fn day_abilities(state: &game::State) -> Vec<character::Ref> {
     let mut abilities: Vec<character::Ref> = Vec::new();
     let in_play = state
         .seat_order()
@@ -344,9 +340,27 @@ pub fn day_actions(state: &game::State) -> Vec<(player::Id, character::Ref)> {
             abilities.push(ability);
         }
     }
+    abilities
+}
+
+/// The claimable day abilities (`character::Def::claim`) on the script or in
+/// play: the same list for every living player, whatever their character,
+/// so no phone shows who has which.
+pub fn day_menu(state: &game::State) -> Vec<character::Ref> {
+    day_abilities(state)
+        .into_iter()
+        .filter(|a| a.claim().is_some())
+        .collect()
+}
+
+/// Every day action that may be used now, with who may use it. A claimable
+/// ability (see [`day_menu`]) is offered to every living player within its
+/// limit, whoever really has it; any other ability to its living users (see
+/// [`day_action_users`]) who have not used it.
+pub fn day_actions(state: &game::State) -> Vec<(player::Id, character::Ref)> {
     let mut actions = Vec::new();
-    for ability in abilities {
-        let users: Vec<player::Id> = match ability.public_claim() {
+    for ability in day_abilities(state) {
+        let users: Vec<player::Id> = match ability.claim() {
             Some(claim) => state
                 .alive_ids()
                 .into_iter()
@@ -362,7 +376,7 @@ pub fn day_actions(state: &game::State) -> Vec<(player::Id, character::Ref)> {
     actions
 }
 
-/// Whether `player` may publicly claim `ability` now, within `limit`.
+/// Whether `player` may claim `ability` now, within `limit`.
 fn may_claim(
     state: &game::State,
     player: &player::Id,
@@ -376,19 +390,66 @@ fn may_claim(
     allowed_now && !ability::has_mark(state, player, ability, player, CLAIMED)
 }
 
+/// Whom `player` may choose for `ability`'s targets, and how many they
+/// choose; `None` if it has no targets.
+pub fn day_targets(
+    state: &game::State,
+    player: &player::Id,
+    ability: character::Ref,
+) -> Option<(Vec<player::Id>, usize)> {
+    let targets = ability.day_targets()?;
+    let candidates = (targets.candidates)(state, player);
+    let count = targets.count.min(candidates.len());
+    Some((candidates, count))
+}
+
 /// The player uses `ability`'s day action (the Slayer's shot), if it is one
-/// of the [`day_actions`] they may use now. A publicly claimable ability is
-/// announced, then works for a real user and is a bluff for anyone else:
-/// the same questions, and the same "Nothing happens" as a failed use.
+/// of the [`day_actions`] they may use now, and is asked for its targets.
 pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id, ability: character::Ref) {
+    day_action_on(ctx, player, ability, &[]);
+}
+
+/// The player uses `ability`'s day action on `chosen` (picked on their phone
+/// beforehand), if it is one of the [`day_actions`] they may use now; if
+/// `chosen` are not legal targets, the player is asked for them.
+///
+/// The targets come first, then a claimable ability is used: in public, it
+/// is announced ("{player} {announcement} {targets}"), works for a real user
+/// and is a bluff for anyone else (the same questions, and the same "Nothing
+/// happens" as a failed use); in private, the player is called over for the
+/// whole visit (their answers are private), and anyone without the ability
+/// is asked the same and told `info::Message::Nothing`.
+pub fn day_action_on(
+    ctx: &mut ctx::Write<'_>,
+    player: &player::Id,
+    ability: character::Ref,
+    chosen: &[player::Id],
+) {
     let offered = day_actions(ctx.state())
         .iter()
         .any(|(p, a)| p == player && character::same(*a, ability));
     let Some(f) = ability.day_action().filter(|_| offered) else {
         return;
     };
-    let Some(claim) = ability.public_claim() else {
-        return f(ctx, player);
+    let claim = ability.claim();
+    let private = claim.is_some_and(|c| c.visibility == character::Visibility::Private);
+    if private {
+        ctx.wake(player);
+    }
+    let targets = match day_targets(ctx.state(), player, ability) {
+        Some((candidates, count))
+            if storyteller::is_selection(chosen, count, |p| candidates.contains(p)) =>
+        {
+            chosen.to_vec()
+        }
+        Some((candidates, count)) => {
+            let prompt = ability.day_targets().map_or("", |t| t.prompt);
+            ctx.ask(player, prompt, &candidates, count)
+        }
+        None => Vec::new(),
+    };
+    let Some(claim) = claim else {
+        return f(ctx, player, &targets);
     };
     // Gone if the claimant dies, so a revived player (the Professor's) may
     // claim again, as a revived Slayer shoots again.
@@ -400,19 +461,76 @@ pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id, ability: charac
         player,
         game::Reminder::new(ability, player, CLAIMED, expiry),
     );
-    ctx.announce(format!("{player} {}", claim.announcement));
-    let before = ctx.state().history().len();
-    if day_action_users(ctx.state(), ability).contains(player) {
-        f(ctx, player);
-    } else {
-        (claim.bluff)(ctx, player);
+    let real = day_action_users(ctx.state(), ability).contains(player);
+    match claim.visibility {
+        character::Visibility::Public {
+            announcement,
+            resolves_now,
+        } => {
+            let on: Vec<&str> = targets.iter().map(player::Id::as_str).collect();
+            let announcement = if on.is_empty() {
+                format!("{player} {announcement}")
+            } else {
+                format!("{player} {announcement} {}", on.join(", "))
+            };
+            ctx.announce(announcement);
+            let before = ctx.state().history().len();
+            if real {
+                f(ctx, player, &targets);
+            } else {
+                (claim.bluff)(ctx, player, &targets);
+            }
+            let someone_died = ctx.state().history()[before..]
+                .iter()
+                .any(|e| matches!(e, event::Event::Died { .. }));
+            if resolves_now && !someone_died && ctx.state().winner().is_none() {
+                ctx.announce("Nothing happens");
+            }
+        }
+        character::Visibility::Private => {
+            if real {
+                f(ctx, player, &targets);
+            } else {
+                (claim.bluff)(ctx, player, &targets);
+                ctx.tell(player, &info::Message::Nothing);
+            }
+            ctx.sleep(player);
+        }
     }
-    let someone_died = ctx.state().history()[before..]
+}
+
+/// Whether madness is possible in this game: an ability that may make a
+/// player mad (`character::Def::causes_madness`) is on the script or in play.
+pub fn madness_possible(state: &game::State) -> bool {
+    let in_play = state
+        .seat_order()
+        .into_iter()
+        .flat_map(|p| state.abilities(&p));
+    state
+        .script()
         .iter()
-        .any(|e| matches!(e, event::Event::Died { .. }));
-    if claim.resolves_now && !someone_died && ctx.state().winner().is_none() {
-        ctx.announce("Nothing happens");
+        .copied()
+        .chain(in_play)
+        .any(|c| c.causes_madness())
+}
+
+/// Whether `player` may report breaking madness now: madness is possible, they
+/// live and they have not reported it today.
+pub fn may_report_madness(state: &game::State, player: &player::Id) -> bool {
+    madness_possible(state) && state.is_alive(player) && !ctx::reported_madness(state, player)
+}
+
+/// `player` tells the storyteller they broke madness today (or, as the
+/// Mutant, claimed to be an Outsider): the storyteller cannot hear the
+/// table, so this is on their honour. Anyone may report it, mad or not, and
+/// is told the same; it counts when madness is judged at the end of the day
+/// (`check_madness`, `ctx::Read::is_mad_about`).
+pub fn report_madness(ctx: &mut ctx::Write<'_>, player: &player::Id) {
+    if !may_report_madness(ctx.state(), player) {
+        return;
     }
+    ctx.record(event::Event::MadnessReported(player.clone()));
+    ctx.tell(player, &info::Message::Noted);
 }
 
 /// Whether `id` has `c`'s ability now and wakes for it tonight (not if a
@@ -577,7 +695,7 @@ pub fn check_madness(ctx: &mut ctx::Write<'_>) {
         })
         .collect();
     for (player, reminder, about) in mad {
-        if !ctx.state().is_alive(&player) || !ctx.io().broke_madness(&player, about) {
+        if !ctx.state().is_alive(&player) || !ctx.broke_madness(&player, about) {
             continue;
         }
         ctx.record(event::Event::MadnessBroken {

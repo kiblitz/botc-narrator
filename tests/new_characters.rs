@@ -8,6 +8,7 @@ use expect_test::expect;
 use botc_narrator::character;
 use botc_narrator::characters;
 use botc_narrator::ctx;
+use botc_narrator::event;
 use botc_narrator::game;
 use botc_narrator::narrator;
 use botc_narrator::script;
@@ -361,4 +362,69 @@ fn fang_gu_jumps_into_a_recluse_only_if_it_registers_as_an_outsider() {
     .run(|ctx| narrator::run_order(ctx, &[&characters::fang_gu::Def], 2));
     assert_eq!(g.state.character(&p("Recluse")).id(), "recluse");
     assert!(!g.state.is_alive(&p("Recluse")), "{}", g.transcript());
+}
+
+/// The storyteller cannot hear the table: anyone may report breaking
+/// madness by day. A mad player's report counts when madness is judged; a
+/// report from someone who is not mad does nothing, and both are told the
+/// same.
+#[test]
+fn a_reported_madness_break_lets_the_cerenovus_execute_and_others_do_nothing() {
+    let mut g = cerenovus_game();
+    g.answers(&[&["Chef"]])
+        .run(|ctx| {
+            ctx.advance_phase();
+            narrator::run_order(ctx, &[&characters::cerenovus::Def], 1);
+            ctx.advance_phase();
+        })
+        .quiet();
+    assert!(narrator::may_report_madness(&g.state, &p("Monk")));
+    g.picks(&[&[1]]).run(|ctx| {
+        narrator::report_madness(ctx, &p("Monk"));
+        narrator::report_madness(ctx, &p("Chef"));
+        // Once a day.
+        narrator::report_madness(ctx, &p("Chef"));
+        narrator::check_madness(ctx);
+    });
+    expect![[r#"
+        * Monk reports breaking madness
+          -> Monk: The storyteller has noted it
+        * Chef reports breaking madness
+          -> Chef: The storyteller has noted it
+        * Chef broke madness about the Washerwoman
+          storyteller [1 of 2 options] Cerenovus Ceren: execute the mad player?: Yes
+        * Chef is executed
+        * Chef dies (Execution)
+        --- grimoire ---
+        Imp: Imp
+        Ceren: Cerenovus
+        Chef: Chef [dead] [Mad (Washerwoman) by cerenovus]
+        Monk: Monk
+        Mayor: Mayor
+    "#]]
+    .assert_eq(&g.transcript());
+    assert!(!narrator::may_report_madness(&g.state, &p("Monk")));
+}
+
+#[test]
+fn madness_cannot_be_reported_on_a_script_without_madness() {
+    let mut g = common::Game::new(&[
+        ("Imp", &characters::imp::Def),
+        ("Chef", &characters::chef::Def),
+        ("Monk", &characters::monk::Def),
+    ]);
+    g.run(|ctx| {
+        narrator::setup(ctx, &common::trouble_brewing());
+        ctx.advance_phase();
+        ctx.advance_phase();
+        narrator::report_madness(ctx, &p("Chef"));
+    })
+    .quiet();
+    assert!(!narrator::may_report_madness(&g.state, &p("Chef")));
+    assert!(
+        !g.state
+            .history()
+            .iter()
+            .any(|e| matches!(e, event::Event::MadnessReported(_)))
+    );
 }

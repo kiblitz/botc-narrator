@@ -262,9 +262,9 @@ fn gossip_true_statement_kills_a_player_tonight() {
         .picks(&[&[3]])
         .run(act(gossip, 2));
     expect![[r#"
-        * Gossip (gossip) marks Gossip: claimed
-        * Announcement: Gossip gossips
           Gossip? Who is your statement about? => Imp
+        * Gossip (gossip) marks Gossip: claimed
+        * Announcement: Gossip gossips about Imp
           Gossip? Which character do you say they are? => Imp
         * Gossip claims: Imp is the Imp
         * === Night 2 ===
@@ -292,9 +292,9 @@ fn a_gossip_bluffing_the_juggler_makes_no_statement() {
         .run(next_phase)
         .run(act(gossip, 2));
     expect![[r#"
-        * Gossip (juggler) marks Gossip: claimed
-        * Announcement: Gossip juggles
           Gossip? Whose characters do you guess? => Imp
+        * Gossip (juggler) marks Gossip: claimed
+        * Announcement: Gossip guesses the characters of Imp, Chef, Empath
           Gossip? Which character is Imp? => Imp
           Gossip? Which character is Chef? => Washerwoman
           Gossip? Which character is Empath? => Washerwoman
@@ -320,9 +320,9 @@ fn gossip_false_statement_kills_nobody() {
         .run(next_phase)
         .run(act(gossip, 2));
     expect![[r#"
-        * Gossip (gossip) marks Gossip: claimed
-        * Announcement: Gossip gossips
           Gossip? Who is your statement about? => Chef
+        * Gossip (gossip) marks Gossip: claimed
+        * Announcement: Gossip gossips about Chef
           Gossip? Which character do you say they are? => Imp
         * Gossip claims: Chef is the Imp
         * === Night 2 ===
@@ -416,10 +416,10 @@ fn juggler_learns_how_many_first_day_guesses_were_right() {
         .run(next_phase)
         .run(act(juggler, 2));
     expect![[r#"
-        * Juggler (juggler) marks Juggler: claimed
-        * Announcement: Juggler juggles
-        * Juggler (juggler) marks Juggler: AbilityUsed
           Juggler? Whose characters do you guess? => Imp, Chef, Baron
+        * Juggler (juggler) marks Juggler: claimed
+        * Announcement: Juggler guesses the characters of Imp, Chef, Baron
+        * Juggler (juggler) marks Juggler: AbilityUsed
           Juggler? Which character is Imp? => Imp
           Juggler? Which character is Chef? => Empath
           Juggler? Which character is Baron? => Baron
@@ -519,15 +519,16 @@ fn artist_asks_one_question_per_game() {
         .run(day_action("Artist", artist))
         .run(day_action("Artist", artist));
     expect![[r#"
-        * Artist (artist) marks Artist: AbilityUsed
         wake Artist
           Artist? Whom is your question about? => Imp
+        * Artist (artist) marks Artist: claimed
+        * Artist (artist) marks Artist: AbilityUsed
           Artist? Are they which character? => Imp
           storyteller [1 of 1 options] information for Artist (Artist): "Yes"
           -> Artist: Yes
         sleep Artist
         --- grimoire ---
-        Artist: Artist [AbilityUsed by artist]
+        Artist: Artist [claimed by artist] [AbilityUsed by artist]
         Imp: Imp
         Empath: Empath
     "#]]
@@ -543,17 +544,56 @@ fn artist_asks_one_question_per_game() {
         .picks(&[&[1]])
         .run(day_action("Artist", artist));
     expect![[r#"
-        * Artist (artist) marks Artist: AbilityUsed
         wake Artist
           Artist? Whom is your question about? => Imp
+        * Artist (artist) marks Artist: claimed
+        * Artist (artist) marks Artist: AbilityUsed
           Artist? Are they which character? => Imp
           storyteller [1 of 2 options] information for Artist (Artist), who is poisoned or drunk: false info is allowed: "No" (false)
           -> Artist: No
         sleep Artist
         --- grimoire ---
-        Artist: Artist [Poisoned by poisoner] [AbilityUsed by artist]
+        Artist: Artist [Poisoned by poisoner] [claimed by artist] [AbilityUsed by artist]
         Imp: Imp
         Empath: Empath
+    "#]]
+    .assert_eq(&g.transcript());
+}
+
+/// A private visit is offered to every living player, so whose phone offers
+/// it shows nothing; a non-holder is asked the same questions in private and
+/// told nothing.
+#[test]
+fn anyone_may_visit_the_storyteller_as_the_artist_and_a_non_holder_learns_nothing() {
+    let artist: character::Ref = &characters::artist::Def;
+    let seats: [(&str, character::Ref); 3] = [
+        ("Artist", artist),
+        ("Imp", &characters::imp::Def),
+        ("Empath", &characters::empath::Def),
+    ];
+    let mut g = common::Game::new(&seats);
+    to_day(&mut g, 1);
+    let offered: Vec<String> = narrator::day_actions(&g.state)
+        .into_iter()
+        .filter(|(_, a)| a.id() == "artist")
+        .map(|(p, _)| p.to_string())
+        .collect();
+    assert_eq!(offered, ["Artist", "Imp", "Empath"]);
+    g.answers(&[&["Imp"]])
+        .characters(&["Imp"])
+        .run(day_action("Empath", artist))
+        .run(day_action("Empath", artist));
+    expect![[r#"
+        wake Empath
+          Empath? Whom is your question about? => Imp
+        * Empath (artist) marks Empath: claimed
+          Empath? Are they which character? => Imp
+          -> Empath: The storyteller has nothing for you
+        sleep Empath
+        --- grimoire ---
+        Artist: Artist
+        Imp: Imp
+        Empath: Empath [claimed by artist]
     "#]]
     .assert_eq(&g.transcript());
 }
@@ -575,13 +615,14 @@ fn savant_learns_one_true_and_one_false_statement() {
         .run(day_action("Savant", savant));
     expect![[r#"
         wake Savant
+        * Savant (savant) marks Savant: claimed
           storyteller [1 of 6 options] Savant Savant: the Savant's true statement: "Poisoner is the Poisoner"
           storyteller [1 of 12 options] Savant Savant: the Savant's false statement: "Poisoner is Good" (false)
           storyteller [1 of 2 options] information for Savant (Savant): "Poisoner is Good; Poisoner is the Poisoner"
           -> Savant: Poisoner is Good; Poisoner is the Poisoner
         sleep Savant
         --- grimoire ---
-        Savant: Savant
+        Savant: Savant [claimed by savant]
         Imp: Imp
         Poisoner: Poisoner
         Chef: Chef
@@ -597,13 +638,14 @@ fn savant_learns_one_true_and_one_false_statement() {
         .run(day_action("Savant", savant));
     expect![[r#"
         wake Savant
+        * Savant (savant) marks Savant: claimed
           storyteller [1 of 6 options] Savant Savant: the Savant's true statement: "Poisoner is the Poisoner"
           storyteller [1 of 12 options] Savant Savant: the Savant's false statement: "Poisoner is Good" (false)
           storyteller [1 of 4 options] information for Savant (Savant), who is poisoned or drunk: false info is allowed: "Poisoner is the Poisoner; Poisoner is Evil" (false)
           -> Savant: Poisoner is the Poisoner; Poisoner is Evil
         sleep Savant
         --- grimoire ---
-        Savant: Savant [Poisoned by poisoner]
+        Savant: Savant [Poisoned by poisoner] [claimed by savant]
         Imp: Imp
         Poisoner: Poisoner
         Chef: Chef
@@ -626,13 +668,14 @@ fn fisherman_gets_advice_once() {
     g.run(day_action("Fisher", fisherman))
         .run(day_action("Fisher", fisherman));
     expect![[r#"
-        * Fisher (fisherman) marks Fisher: AbilityUsed
         wake Fisher
+        * Fisher (fisherman) marks Fisher: claimed
+        * Fisher (fisherman) marks Fisher: AbilityUsed
           storyteller [1 of 2 options] information for Fisher (Fisherman): "Do not trust Imp"
           -> Fisher: Do not trust Imp
         sleep Fisher
         --- grimoire ---
-        Fisher: Fisherman [AbilityUsed by fisherman]
+        Fisher: Fisherman [claimed by fisherman] [AbilityUsed by fisherman]
         Imp: Imp
         Chef: Chef
     "#]]
@@ -646,13 +689,14 @@ fn fisherman_gets_advice_once() {
         .picks(&[&[2]])
         .run(day_action("Fisher", fisherman));
     expect![[r#"
-        * Fisher (fisherman) marks Fisher: AbilityUsed
         wake Fisher
+        * Fisher (fisherman) marks Fisher: claimed
+        * Fisher (fisherman) marks Fisher: AbilityUsed
           storyteller [1 of 4 options] information for Fisher (Fisherman), who is poisoned or drunk: false info is allowed: "Trust Imp" (false)
           -> Fisher: Trust Imp
         sleep Fisher
         --- grimoire ---
-        Fisher: Fisherman [Poisoned by poisoner] [AbilityUsed by fisherman]
+        Fisher: Fisherman [Poisoned by poisoner] [claimed by fisherman] [AbilityUsed by fisherman]
         Imp: Imp
         Chef: Chef
     "#]]

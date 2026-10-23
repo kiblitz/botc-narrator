@@ -74,8 +74,10 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 |---|---|
 | `night_order` | its official first-night / other-nights positions (clocktower.online numbering) |
 | `night_action`, `wakes_tonight` | what it does at its turn; whether it wakes tonight (default: alive), checked when the turn comes |
-| `day_action`, `day_action_users` | a day ability (Slayer); who may really use it while their ability is active (default the holder; the Damsel lets every Minion guess) |
-| `public_claim` | the day ability is used in public, so any living player may claim it (`character::PublicClaim`: how often, the announcement, the bluff); see below |
+| `day_action`, `day_action_users` | a day ability (Slayer), given its targets; who may really use it while their ability is active (default the holder; the Damsel lets every Minion guess) |
+| `day_targets` | the players a day ability is used on, chosen first (`character::Targets`: prompt, count, candidates) |
+| `claim` | any living player may claim the day ability (`character::Claim`: how often, public with an announcement or a private visit, the bluff); see below |
+| `causes_madness` | the ability may make a player mad, so players may report breaking madness (`narrator::report_madness`) |
 | `can_nominate` | whether the holder may nominate (the Golem only once); `narrator::nominate` refuses otherwise |
 | `setup_counts`, `duplicates_in_setup` | how it changes the setup counts (Baron: +2 Outsiders; options for "+0 or +1"); copies filling extra slots (Legion, Riot) |
 | `requires` | characters that must be in play with it ("[+the Damsel]"): `setup::choose` swaps one in for a Townsfolk |
@@ -87,7 +89,7 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `on_learns_death` | the dead player learns they died: at once by day, at dawn for a night death (Klutz, Moonchild) |
 | `on_choose`, `on_chosen` | at night, the chooser's abilities, then each chosen player's (Lunatic, Goon), whenever a player chooses players with `ctx.ask` (any night choice counts, e.g. the Demon's Barber swap) |
 | `on_win` | the game was won; every player's abilities, dead ones too (Politician) |
-| `on_madness_broken` | a player this ability made mad broke madness (`narrator::check_madness`, judged by the table) |
+| `on_madness_broken` | a player this ability made mad broke madness (`narrator::check_madness`, judged by the table or reported by the player) |
 | `misregistration` | how it may register falsely |
 | `counts_as_demon` | whether a living holder keeps evil in the game (good wins when none lives; a Lil' Monsta-like carrier gains such an ability) |
 | `forces_false_info` | makes other players' information false (Vortox) |
@@ -100,7 +102,7 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `vetoes_win` | stops a win for now (Mastermind) |
 | `seated_next_to_demon` | must sit beside a Demon (Marionette; the simulator's seating arranges it) |
 
-Public claims: every living player is offered a publicly claimable day ability of a character on the script or in play (`narrator::day_actions`), whoever really has it, so holding it can be bluffed. The table is told "{player} {announcement}", a real user (including a Drunk or poisoned one) uses the ability and anyone else is asked the same questions with no effect, and an ability that resolves at once ends with "Nothing happens" when nobody died and the game goes on. Each player may claim it within its `character::ClaimLimit` (a `claimed` reminder token, gone when they die). Claimable: the Slayer's shot (once per game), the Psychopath's kill (each day), the Damsel guess (once per game; only a Minion's counts, once for all Minions), the Gossip's statement (each day) and the Juggler's guesses (the first day); public claims (`ability::claim`) are tagged with the ability, so a bluffed Juggler guess is not a Gossip statement. Not claimable: private visits to the storyteller (Artist, Fisherman, Savant, Puzzlemaster), the Travellers' abilities (Beggar, Matron: their characters are public), and the Atheist's execution of the Storyteller (modelled without a vote, so it stays the Atheist claimant's).
+Claims: every living player is offered every claimable day ability of a character on the script or in play (`narrator::day_menu`, `narrator::day_actions`), whoever really has it, so holding it can be bluffed. Its targets (`day_targets`) are chosen first (the phones pick them beforehand: `narrator::day_action_on`). A private visit (`character::Visibility::Private`: Artist, Fisherman, Savant, Puzzlemaster) wakes the player for the whole use; a non-holder is asked the same and told "The storyteller has nothing for you". In public, the table is told "{player} {announcement} {targets}", a real user (including a Drunk or poisoned one) uses the ability and anyone else is asked the same questions with no effect, and an ability that resolves at once ends with "Nothing happens" when nobody died and the game goes on. Each player may claim it within its `character::ClaimLimit` (a `claimed` reminder token, gone when they die). Claimable: the Slayer's shot (once per game), the Psychopath's kill (each day), the Damsel guess (once per game; only a Minion's counts, once for all Minions), the Gossip's statement (each day) and the Juggler's guesses (the first day); public claims (`ability::claim`) are tagged with the ability, so a bluffed Juggler guess is not a Gossip statement. Not claimable: the Travellers' abilities (Beggar, Matron: their characters are public), and the Atheist's execution of the Storyteller (modelled without a vote, so it stays the Atheist claimant's).
 
 Extra deaths at other times are plain `ctx::Write::kill` calls from any hook.
 

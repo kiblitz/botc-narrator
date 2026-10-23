@@ -67,6 +67,11 @@ pub enum Message {
     Accuracy(Accuracy),
     /// A secret word (the Mezepheles's).
     Word(&'static str),
+    /// A visit to the storyteller with nothing to learn: what a player who
+    /// claims a private day ability they do not have is told.
+    Nothing,
+    /// The storyteller took note of what a player reported (madness).
+    Noted,
 }
 
 /// Around the circle: clockwise is increasing seat order.
@@ -111,7 +116,9 @@ impl Message {
             | Message::NotInPlay(_)
             | Message::Selected { .. }
             | Message::Accuracy(_)
-            | Message::Word(_) => Vec::new(),
+            | Message::Word(_)
+            | Message::Nothing
+            | Message::Noted => Vec::new(),
         }
     }
 
@@ -139,7 +146,7 @@ impl Message {
             | Message::IsAligned { .. }
             | Message::Advice { .. } => Vec::new(),
             Message::Accuracy(_) => Vec::new(),
-            Message::Word(_) => Vec::new(),
+            Message::Word(_) | Message::Nothing | Message::Noted => Vec::new(),
         }
     }
 }
@@ -196,6 +203,8 @@ impl fmt::Display for Message {
             } => write!(f, "Do not trust {player}"),
             Message::Statements(statements) => f.write_str(&join_with(statements, "; ")),
             Message::Word(word) => write!(f, "The word is \"{word}\""),
+            Message::Nothing => f.write_str("The storyteller has nothing for you"),
+            Message::Noted => f.write_str("The storyteller has noted it"),
         }
     }
 }

@@ -32,10 +32,12 @@ pub enum Input {
     },
     /// The host closes the vote: hands not raised are no.
     CloseVote,
-    /// A player uses a public day ability (the Slayer's shot), by character id.
+    /// A player uses a day action (the Slayer's shot, by character id, or
+    /// `room::MADNESS`) on the targets picked on their phone.
     DayAction {
         player: String,
         ability: String,
+        targets: Vec<String>,
     },
     EndDay,
     StartNight,

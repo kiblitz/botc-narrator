@@ -101,6 +101,14 @@ fn choice(script: &script::Script) -> ScriptChoice {
     }
 }
 
+/// A character's ability text (empty if it has none).
+pub fn ability_text(id: &str) -> String {
+    ABILITIES
+        .get(&id.replace('_', ""))
+        .cloned()
+        .unwrap_or_default()
+}
+
 /// Every character's ability text, by id without underscores (`build.rs`).
 static ABILITIES: sync::LazyLock<collections::HashMap<String, String>> =
     sync::LazyLock::new(|| {
@@ -136,10 +144,7 @@ pub fn script(id: &str) -> Option<Script> {
                 id: c.id(),
                 name: c.name(),
                 kind: c.kind(),
-                ability: ABILITIES
-                    .get(&c.id().replace('_', ""))
-                    .cloned()
-                    .unwrap_or_default(),
+                ability: ability_text(c.id()),
             })
             .collect(),
     })

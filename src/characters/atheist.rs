@@ -43,7 +43,7 @@ impl character::Def for Def {
 /// The town nominates and executes the Storyteller, modelled as a day action
 /// of whoever believes they are the Atheist: good wins if an Atheist is in
 /// play, evil wins otherwise (a Drunk who believes they are the Atheist).
-fn execute_storyteller(ctx: &mut ctx::Write<'_>, me: &player::Id) {
+fn execute_storyteller(ctx: &mut ctx::Write<'_>, me: &player::Id, _targets: &[player::Id]) {
     if !ctx.state().is_alive(me) || !ability::use_once(ctx, me, &Def) {
         return;
     }

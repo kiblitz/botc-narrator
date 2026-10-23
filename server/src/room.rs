@@ -462,7 +462,7 @@ pub struct Game {
     pub nominees: Vec<String>,
     /// Who may nominate now.
     pub may_nominate: Vec<String>,
-    /// Public day abilities players may use now.
+    /// Each living player's list of day actions.
     pub day_actions: Vec<DayAction>,
     /// The storyteller is deciding something.
     pub thinking: bool,
@@ -573,12 +573,37 @@ pub struct Vote {
     pub hands: Vec<(String, bool)>,
 }
 
+/// The day action that reports breaking madness (not a character id).
+pub const MADNESS: &str = "madness";
+
+/// An entry in a player's list of day actions. The claimable abilities and
+/// the madness report are on every living player's list alike (`shared`), so
+/// no list shows a character; an ability only its holder may use (the
+/// Travellers', the Atheist's) is on theirs alone.
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct DayAction {
     pub player: String,
-    /// The character id, sent back to use it.
+    /// The character id (or `MADNESS`), sent back to use it.
     pub ability: &'static str,
     pub name: &'static str,
+    /// The ability's text, or what the report is.
+    pub text: String,
+    /// A private visit to the storyteller rather than a public use.
+    pub private: bool,
+    pub shared: bool,
+    /// Whom the player picks on the town square first, if anyone.
+    pub targets: Option<Targets>,
+    /// Whether the player may use it now (not if they already have, within
+    /// its limit).
+    pub available: bool,
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct Targets {
+    pub prompt: &'static str,
+    pub candidates: Vec<String>,
+    /// How many to pick.
+    pub count: usize,
 }
 
 /// A name with its whitespace collapsed, if its length and characters are fine.

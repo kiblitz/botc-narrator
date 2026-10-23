@@ -23,6 +23,14 @@ impl character::Def for Def {
     fn day_action(&self) -> Option<character::DayFn> {
         Some(visit)
     }
+
+    fn claim(&self) -> Option<character::Claim> {
+        Some(character::Claim {
+            limit: character::ClaimLimit::EachDay,
+            visibility: character::Visibility::Private,
+            bluff: |_, _, _| {},
+        })
+    }
 }
 
 /// A statement the Savant may hear, and its opposite (a true statement's
@@ -38,17 +46,15 @@ struct Statement {
 /// storyteller picks the true and the false one; when the Savant is
 /// malfunctioning both may instead be true (the false one's opposite) or
 /// both false (the true one's opposite).
-fn visit(ctx: &mut ctx::Write<'_>, me: &player::Id) {
+fn visit(ctx: &mut ctx::Write<'_>, me: &player::Id, _targets: &[player::Id]) {
     if !ctx.state().is_alive(me) {
         return;
     }
     let (truths, lies) = statements(&mut ctx.read(), me);
-    ctx.wake(me);
     let mut read = ctx.read();
     let truth = pick(&mut read, me, truths, true);
     let lie = pick(&mut read, me, lies, false);
     let (Some(truth), Some(lie)) = (truth, lie) else {
-        read.sleep(me);
         return;
     };
     let pair = |a: &info::Message, b: &info::Message| {
@@ -63,7 +69,6 @@ fn visit(ctx: &mut ctx::Write<'_>, me: &player::Id) {
         pair(&truth.opposite, &lie.message),
     ];
     read.inform(me, truthful, misinformation);
-    read.sleep(me);
 }
 
 /// The true and the false statements about the other players.

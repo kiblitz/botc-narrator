@@ -46,12 +46,28 @@ Playing.
   raised hands live; the vote stays open until the host closes it. The
   storyteller's nominations (the Bishop) and the Butcher's second nomination
   (asked on the Butcher's phone) are voted on the same way.
-  Public day abilities (the Slayer's shot) show up as the same button on
-  every living player's phone, whoever really has them, so they can be
-  bluffed (user, 2026-10-22): a non-holder's use is asked the same questions
-  and announced like a failed real one ("X shoots", "X chose Y", "Nothing
-  happens"). Private day abilities (the Artist's question) show up only for
-  their holder.
+- **Day actions** (user, 2026-10-22): by day every living phone has one
+  **Day actions** button. It opens the same list on every phone, whatever
+  the character: each day ability on the script (with its ability text),
+  public ones (Slayer, Psychopath, Damsel guess, Gossip, Juggler) and
+  private visits to the storyteller (Artist, Fisherman, Savant,
+  Puzzlemaster), so using one shows nothing about who really has it. An
+  action with targets opens the town square: tap the seats, then
+  **Confirm**; **Cancel** goes back and sends nothing. A public use is
+  announced with its targets ("X shoots Y"), then works for a real holder
+  and does nothing for anyone else ("Nothing happens"); a kill shows on
+  every phone as a death ("Y dies"), never its cause. A private visit is
+  asked the same questions in private; a player without the ability is told
+  "The storyteller has nothing for you". Each action is offered within its
+  limit (once per game, each day, the first day). Travellers' abilities
+  (their characters are public) and the Atheist's (it ends the game) are on
+  their holder's list only, marked "yours alone".
+- Honour system: the storyteller cannot hear the table. On scripts with
+  madness (Cerenovus, Harpy, Pixie, Mutant), the list also has **I broke
+  madness**, for everyone, once a day: the storyteller notes it (the same
+  reply for anyone) and judges it at the end of the day as the ability says
+  (it may execute a mad player; a Mutant who reports it claimed to be an
+  Outsider). A report from someone who is not mad does nothing.
 - When the game ends, everyone sees every character and the storyteller's notes.
 
 A phone that sleeps or reloads reconnects to its seat (the seat is kept in the
@@ -134,7 +150,8 @@ hour untouched, a running one after four, a finished one after thirty minutes,
 and the server holds at most 64 rooms.
 
 Not yet modelled: Travellers joining, the
-storyteller's judgement of madness (mad players never break madness), and
+storyteller's own judgement of madness (only self-reports count), a fake
+private visit answers at once while a real one waits for the storyteller, and
 "did you say the word / lose roshambo" are asked to the player themself.
 
 The live site can be played end to end from this machine with `server/e2e/live.mjs` (an anonymous host, five guests and a bridge on this PC; `VIDEO=dir` records it; see its header).

@@ -355,6 +355,32 @@ fn mutant_claiming_outsider_may_be_executed() {
     .assert_eq(&g.transcript());
 }
 
+/// A Mutant who reports breaking madness (claiming to be an Outsider) may be
+/// executed, though the table never said so.
+#[test]
+fn a_mutant_reporting_madness_may_be_executed() {
+    let mut g = game(&characters::mutant::Def);
+    g.picks(&[&[1]]).run(|ctx| {
+        narrator::report_madness(ctx, &p("Out"));
+        narrator::end_day(ctx);
+    });
+    expect![[r#"
+        * Out reports breaking madness
+          -> Out: The storyteller has noted it
+          storyteller [1 of 2 options] Mutant Out: execute the Mutant?: Yes
+        * Out is executed
+        * Out dies (Execution)
+        --- grimoire ---
+        Imp: Imp
+        Poisoner: Poisoner
+        Out: Mutant [dead]
+        Chef: Chef
+        Monk: Monk
+        Empath: Empath
+    "#]]
+    .assert_eq(&g.transcript());
+}
+
 #[test]
 fn poisoned_mutant_is_not_executed() {
     let mut g = game(&characters::mutant::Def);
@@ -603,16 +629,17 @@ fn puzzlemaster_guessing_right_learns_the_demon() {
         narrator::day_action(ctx, &p("Out"), &characters::puzzlemaster::Def);
     });
     expect![[r#"
-        * Out (puzzlemaster) marks Out: AbilityUsed
-          Out? Who is the drunk player? => Chef
         wake Out
+          Out? Who is the drunk player? => Chef
+        * Out (puzzlemaster) marks Out: claimed
+        * Out (puzzlemaster) marks Out: AbilityUsed
           storyteller [1 of 1 options] information for Out (Puzzlemaster): "Imp"
           -> Out: Imp
         sleep Out
         --- grimoire ---
         Imp: Imp
         Poisoner: Poisoner
-        Out: Puzzlemaster [AbilityUsed by puzzlemaster]
+        Out: Puzzlemaster [claimed by puzzlemaster] [AbilityUsed by puzzlemaster]
         Chef: Chef [Drunk by puzzlemaster]
         Monk: Monk
         Empath: Empath
@@ -627,7 +654,7 @@ fn puzzlemaster_guessing_right_learns_the_demon() {
         --- grimoire ---
         Imp: Imp
         Poisoner: Poisoner
-        Out: Puzzlemaster [AbilityUsed by puzzlemaster]
+        Out: Puzzlemaster [claimed by puzzlemaster] [AbilityUsed by puzzlemaster]
         Chef: Chef [Drunk by puzzlemaster]
         Monk: Monk
         Empath: Empath
@@ -642,16 +669,17 @@ fn puzzlemaster_guessing_wrong_learns_a_non_demon() {
         narrator::day_action(ctx, &p("Out"), &characters::puzzlemaster::Def);
     });
     expect![[r#"
-        * Out (puzzlemaster) marks Out: AbilityUsed
-          Out? Who is the drunk player? => Monk
         wake Out
+          Out? Who is the drunk player? => Monk
+        * Out (puzzlemaster) marks Out: claimed
+        * Out (puzzlemaster) marks Out: AbilityUsed
           storyteller [1 of 4 options] Puzzlemaster Out: which non-Demon player to show (wrong guess): Poisoner
           -> Out: Poisoner
         sleep Out
         --- grimoire ---
         Imp: Imp
         Poisoner: Poisoner
-        Out: Puzzlemaster [AbilityUsed by puzzlemaster]
+        Out: Puzzlemaster [claimed by puzzlemaster] [AbilityUsed by puzzlemaster]
         Chef: Chef [Drunk by puzzlemaster]
         Monk: Monk
         Empath: Empath
@@ -708,13 +736,13 @@ fn minions_learn_the_damsel_and_a_right_guess_wins() {
         narrator::day_action(ctx, &p("Poisoner"), &characters::damsel::Def);
     });
     expect![[r#"
-        * Imp (damsel) marks Imp: claimed
-        * Announcement: Imp guesses who the Damsel is
           Imp? Who is the Damsel? => Out
+        * Imp (damsel) marks Imp: claimed
+        * Announcement: Imp guesses that the Damsel is Out
         * Announcement: Nothing happens
-        * Poisoner (damsel) marks Poisoner: claimed
-        * Announcement: Poisoner guesses who the Damsel is
           Poisoner? Who is the Damsel? => Out
+        * Poisoner (damsel) marks Poisoner: claimed
+        * Announcement: Poisoner guesses that the Damsel is Out
         * Out (damsel) marks Out: AbilityUsed
         * Evil wins!
         --- grimoire ---

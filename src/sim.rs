@@ -674,6 +674,7 @@ impl Recorder {
             | event::Event::AbilityGained { player, .. }
             | event::Event::AbilityLost { player, .. }
             | event::Event::MadnessBroken { player, .. }
+            | event::Event::MadnessReported(player)
             | event::Event::AlignmentChanged { player, .. }
             | event::Event::ReminderPlaced { player, .. }
             | event::Event::ReminderRemoved { player, .. } => {

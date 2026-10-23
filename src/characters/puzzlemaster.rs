@@ -40,17 +40,32 @@ impl character::Def for Def {
     fn day_action(&self) -> Option<character::DayFn> {
         Some(guess)
     }
+
+    fn day_targets(&self) -> Option<character::Targets> {
+        Some(character::Targets {
+            prompt: "Who is the drunk player?",
+            count: 1,
+            candidates: ability::others,
+        })
+    }
+
+    fn claim(&self) -> Option<character::Claim> {
+        Some(character::Claim {
+            limit: character::ClaimLimit::OncePerGame,
+            visibility: character::Visibility::Private,
+            bluff: |_, _, _| {},
+        })
+    }
 }
 
 /// Once per game, guesses who the drunk player is: if right, learns the
 /// Demon player; if wrong, learns a player who is not the Demon (false info).
 /// Whether the guess was right is never said.
-fn guess(ctx: &mut ctx::Write<'_>, me: &player::Id) {
+fn guess(ctx: &mut ctx::Write<'_>, me: &player::Id, targets: &[player::Id]) {
     if !ctx.state().is_alive(me) || !ability::use_once(ctx, me, &Def) {
         return;
     }
-    let candidates = ability::others(ctx.state(), me);
-    let Some(guessed) = ctx.ask_one(me, "Who is the drunk player?", &candidates) else {
+    let Some(guessed) = targets.first() else {
         return;
     };
     let others = ability::others(ctx.state(), me);
@@ -60,8 +75,7 @@ fn guess(ctx: &mut ctx::Write<'_>, me: &player::Id) {
     let as_message = |players: Vec<player::Id>| -> Vec<info::Message> {
         players.into_iter().map(info::Message::Player).collect()
     };
-    let right = ability::has_mark(ctx.state(), me, &Def, &guessed, game::Effect::Drunk);
-    ctx.wake(me);
+    let right = ability::has_mark(ctx.state(), me, &Def, guessed, game::Effect::Drunk);
     if right {
         ctx.inform(me, as_message(demons), as_message(not_demons));
     } else if let Some(shown) = ability::storyteller_picks_player(
@@ -73,5 +87,4 @@ fn guess(ctx: &mut ctx::Write<'_>, me: &player::Id) {
     ) {
         ctx.tell(me, &info::Message::Player(shown));
     }
-    ctx.sleep(me);
 }

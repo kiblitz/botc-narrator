@@ -85,10 +85,10 @@ fn poisoned_chef_and_three_phases() {
     });
     expect![[r#"
         * === Day 1 ===
-        * Buffy (slayer) marks Buffy: claimed
-        * Announcement: Buffy shoots
-        * Buffy (slayer) marks Buffy: AbilityUsed
           Buffy? Who do you want to slay? => Ivy
+        * Buffy (slayer) marks Buffy: claimed
+        * Announcement: Buffy shoots Ivy
+        * Buffy (slayer) marks Buffy: AbilityUsed
         * Announcement: Nothing happens
         --- grimoire ---
         Lucius: Imp
@@ -331,10 +331,10 @@ fn scarlet_woman_catches_the_demon_with_five_alive() {
     expect![[r#"
         * === Night 1 ===
         * === Day 1 ===
-        * Slayer (slayer) marks Slayer: claimed
-        * Announcement: Slayer shoots
-        * Slayer (slayer) marks Slayer: AbilityUsed
           Slayer? Who do you want to slay? => Imp
+        * Slayer (slayer) marks Slayer: claimed
+        * Announcement: Slayer shoots Imp
+        * Slayer (slayer) marks Slayer: AbilityUsed
         * Imp dies (Ability { by: Id("Slayer") })
         * Scarlet becomes the Imp
         --- grimoire ---
@@ -750,9 +750,9 @@ fn anyone_may_bluff_the_slayers_shot_once_and_nothing_happens() {
     g.answers(&[&["Imp"]])
         .run(|ctx| narrator::day_action(ctx, &p("Chef"), &slayer::Def));
     expect![[r#"
-        * Chef (slayer) marks Chef: claimed
-        * Announcement: Chef shoots
           Chef? Who do you want to slay? => Imp
+        * Chef (slayer) marks Chef: claimed
+        * Announcement: Chef shoots Imp
         * Announcement: Nothing happens
         --- grimoire ---
         Imp: Imp
@@ -793,10 +793,10 @@ fn a_real_slayers_shot_is_announced_like_a_bluff() {
     g.answers(&[&["Ivy"]])
         .run(|ctx| narrator::day_action(ctx, &p("Slayer"), &slayer::Def));
     expect![[r#"
-        * Slayer (slayer) marks Slayer: claimed
-        * Announcement: Slayer shoots
-        * Slayer (slayer) marks Slayer: AbilityUsed
           Slayer? Who do you want to slay? => Ivy
+        * Slayer (slayer) marks Slayer: claimed
+        * Announcement: Slayer shoots Ivy
+        * Slayer (slayer) marks Slayer: AbilityUsed
         * Announcement: Nothing happens
         --- grimoire ---
         Imp: Imp

@@ -43,13 +43,23 @@ impl character::Def for Def {
     }
 
     /// Anyone may guess on the first day; only the Juggler learns anything.
-    fn public_claim(&self) -> Option<character::PublicClaim> {
-        Some(character::PublicClaim {
+    fn day_targets(&self) -> Option<character::Targets> {
+        Some(character::Targets {
+            prompt: "Whose characters do you guess?",
+            count: GUESSES,
+            candidates: ability::others,
+        })
+    }
+
+    fn claim(&self) -> Option<character::Claim> {
+        Some(character::Claim {
             limit: character::ClaimLimit::FirstDay,
-            announcement: "juggles",
-            resolves_now: false,
-            bluff: |ctx, me| {
-                let guesses = guesses(ctx, me);
+            visibility: character::Visibility::Public {
+                announcement: "guesses the characters of",
+                resolves_now: false,
+            },
+            bluff: |ctx, me, targets| {
+                let guesses = guesses(ctx, me, targets);
                 ability::claim(ctx, me, &Def, guesses);
             },
         })
@@ -57,24 +67,26 @@ impl character::Def for Def {
 }
 
 /// On the first day, publicly guesses up to five players' characters.
-fn juggle(ctx: &mut ctx::Write<'_>, me: &player::Id) {
+fn juggle(ctx: &mut ctx::Write<'_>, me: &player::Id, targets: &[player::Id]) {
     if ctx.state().phase() != game::Phase::Day(1)
         || !ctx.state().is_alive(me)
         || !ability::use_once(ctx, me, &Def)
     {
         return;
     }
-    let guesses = guesses(ctx, me);
+    let guesses = guesses(ctx, me, targets);
     ability::claim(ctx, me, &Def, guesses);
 }
 
-/// Asks `me` for their guesses.
-fn guesses(ctx: &mut ctx::Write<'_>, me: &player::Id) -> Vec<(player::Id, character::Ref)> {
-    let others = ability::others(ctx.state(), me);
+/// Asks `me` which character each of the `players` is.
+fn guesses(
+    ctx: &mut ctx::Write<'_>,
+    me: &player::Id,
+    players: &[player::Id],
+) -> Vec<(player::Id, character::Ref)> {
     let characters = ctx.state().script().to_vec();
-    let players = ctx.ask(me, "Whose characters do you guess?", &others, GUESSES);
     let mut guesses = Vec::new();
-    for player in players {
+    for player in players.iter().cloned() {
         let prompt = format!("Which character is {player}?");
         if let Some(character) = ctx.ask_character(me, &prompt, &characters) {
             guesses.push((player, character));

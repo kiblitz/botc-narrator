@@ -34,11 +34,21 @@ impl character::Def for Def {
     }
 
     /// Anyone may make a public statement; only the Gossip's is judged.
-    fn public_claim(&self) -> Option<character::PublicClaim> {
-        Some(character::PublicClaim {
+    fn day_targets(&self) -> Option<character::Targets> {
+        Some(character::Targets {
+            prompt: "Who is your statement about?",
+            count: 1,
+            candidates: ability::others,
+        })
+    }
+
+    fn claim(&self) -> Option<character::Claim> {
+        Some(character::Claim {
             limit: character::ClaimLimit::EachDay,
-            announcement: "gossips",
-            resolves_now: false,
+            visibility: character::Visibility::Public {
+                announcement: "gossips about",
+                resolves_now: false,
+            },
             bluff: gossip,
         })
     }
@@ -47,13 +57,12 @@ impl character::Def for Def {
 /// Each day, a public statement: "this player is this character". It is
 /// only recorded (`ability::claim`) and judged tonight by the Gossip's own
 /// night action, so a bluffer's statement does nothing.
-fn gossip(ctx: &mut ctx::Write<'_>, me: &player::Id) {
+fn gossip(ctx: &mut ctx::Write<'_>, me: &player::Id, targets: &[player::Id]) {
     if !ctx.state().is_alive(me) {
         return;
     }
-    let others = ability::others(ctx.state(), me);
     let characters = ctx.state().script().to_vec();
-    let Some(target) = ctx.ask_one(me, "Who is your statement about?", &others) else {
+    let Some(target) = targets.first().cloned() else {
         return;
     };
     let Some(character) = ctx.ask_character(me, "Which character do you say they are?", &characters)

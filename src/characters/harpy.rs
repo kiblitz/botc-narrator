@@ -37,6 +37,10 @@ impl character::Def for Def {
     }
 
     /// The mad player broke madness: the storyteller may kill either or both.
+    fn causes_madness(&self) -> bool {
+        true
+    }
+
     fn on_madness_broken(&self, ctx: &mut ctx::Write<'_>, me: &player::Id, mad: &player::Id) {
         let state = ctx.state();
         let second = state

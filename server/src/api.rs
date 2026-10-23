@@ -297,8 +297,12 @@ pub enum FromPhone {
         #[serde(default)]
         yes: Option<bool>,
     },
+    /// A day action from the phone's list, with the targets picked on the
+    /// town square (if it has any).
     DayAction {
         ability: String,
+        #[serde(default)]
+        targets: Vec<String>,
     },
     // The host's (the host runs nominations and votes for the table):
     Nominate {
@@ -537,13 +541,13 @@ pub fn handle(
             room.send(inbox::Input::Vote { voter, yes });
             Ok(())
         }
-        FromPhone::DayAction { ability } => {
+        FromPhone::DayAction { ability, targets } => {
             let may = room.read(|s| {
                 s.game.as_ref().is_some_and(|g| {
                     g.stage == room::Stage::Day
                         && g.day_actions
                             .iter()
-                            .any(|a| a.player == name && a.ability == ability)
+                            .any(|a| a.player == name && a.ability == ability && a.available)
                 })
             });
             if !may {
@@ -552,6 +556,7 @@ pub fn handle(
             room.send(inbox::Input::DayAction {
                 player: name.to_string(),
                 ability,
+                targets,
             });
             Ok(())
         }

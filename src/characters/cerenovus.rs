@@ -33,6 +33,10 @@ impl character::Def for Def {
 
     /// The storyteller may execute a player who broke madness (if nobody has
     /// been executed today).
+    fn causes_madness(&self) -> bool {
+        true
+    }
+
     fn on_madness_broken(&self, ctx: &mut ctx::Write<'_>, me: &player::Id, mad: &player::Id) {
         if ctx.state().executed_today().is_none()
             && ability::storyteller_agrees(&mut ctx.read(), me, &Def, "execute the mad player?")
