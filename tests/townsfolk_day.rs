@@ -598,6 +598,48 @@ fn anyone_may_visit_the_storyteller_as_the_artist_and_a_non_holder_learns_nothin
     .assert_eq(&g.transcript());
 }
 
+/// A revived Artist is offered the visit again (the claim token went with
+/// their death) but has spent the ability: answered like a bluffer, so the
+/// visit looks the same.
+#[test]
+fn a_revived_artist_with_the_question_spent_is_told_nothing() {
+    let artist: character::Ref = &characters::artist::Def;
+    let mut g = common::Game::new(&[
+        ("Artist", artist),
+        ("Imp", &characters::imp::Def),
+        ("Empath", &characters::empath::Def),
+        ("Chef", &characters::chef::Def),
+        ("Monk", &characters::monk::Def),
+    ]);
+    to_day(&mut g, 1);
+    g.answers(&[&["Imp"]])
+        .characters(&["Imp"])
+        .run(day_action("Artist", artist))
+        .run(|ctx| {
+            ctx.execute(&p("Artist"));
+            ctx.revive(&p("Artist"));
+        })
+        .quiet()
+        .answers(&[&["Imp"]])
+        .characters(&["Imp"])
+        .run(day_action("Artist", artist));
+    expect![[r#"
+        wake Artist
+          Artist? Whom is your question about? => Imp
+        * Artist (artist) marks Artist: claimed
+          Artist? Are they which character? => Imp
+          -> Artist: The storyteller has nothing for you
+        sleep Artist
+        --- grimoire ---
+        Artist: Artist [AbilityUsed by artist] [claimed by artist]
+        Imp: Imp
+        Empath: Empath
+        Chef: Chef
+        Monk: Monk
+    "#]]
+    .assert_eq(&g.transcript());
+}
+
 // --- Savant -----------------------------------------------------------------------
 
 #[test]

@@ -390,17 +390,30 @@ fn may_claim(
     allowed_now && !ability::has_mark(state, player, ability, player, CLAIMED)
 }
 
-/// Whom `player` may choose for `ability`'s targets, and how many they
-/// choose; `None` if it has no targets.
-pub fn day_targets(
+/// `ability`'s targets (`character::Def::day_targets`) as `player` chooses
+/// them now.
+pub struct TargetChoice {
+    pub prompt: &'static str,
+    pub candidates: Vec<player::Id>,
+    /// How many to choose: at most as many as there are candidates.
+    pub count: usize,
+}
+
+/// Whom `player` may choose for `ability`'s targets now; `None` if it has
+/// no targets.
+pub fn target_choice(
     state: &game::State,
     player: &player::Id,
     ability: character::Ref,
-) -> Option<(Vec<player::Id>, usize)> {
+) -> Option<TargetChoice> {
     let targets = ability.day_targets()?;
     let candidates = (targets.candidates)(state, player);
     let count = targets.count.min(candidates.len());
-    Some((candidates, count))
+    Some(TargetChoice {
+        prompt: targets.prompt,
+        candidates,
+        count,
+    })
 }
 
 /// The player uses `ability`'s day action (the Slayer's shot), if it is one
@@ -418,7 +431,7 @@ pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id, ability: charac
 /// and is a bluff for anyone else (the same questions, and the same "Nothing
 /// happens" as a failed use); in private, the player is called over for the
 /// whole visit (their answers are private), and anyone without the ability
-/// is asked the same and told `info::Message::Nothing`.
+/// (or with it spent) is asked the same and told `info::Message::Nothing`.
 pub fn day_action_on(
     ctx: &mut ctx::Write<'_>,
     player: &player::Id,
@@ -436,16 +449,15 @@ pub fn day_action_on(
     if private {
         ctx.wake(player);
     }
-    let targets = match day_targets(ctx.state(), player, ability) {
-        Some((candidates, count))
-            if storyteller::is_selection(chosen, count, |p| candidates.contains(p)) =>
+    let targets = match target_choice(ctx.state(), player, ability) {
+        Some(choice)
+            if storyteller::is_selection(chosen, choice.count, |p| {
+                choice.candidates.contains(p)
+            }) =>
         {
             chosen.to_vec()
         }
-        Some((candidates, count)) => {
-            let prompt = ability.day_targets().map_or("", |t| t.prompt);
-            ctx.ask(player, prompt, &candidates, count)
-        }
+        Some(choice) => ctx.ask(player, choice.prompt, &choice.candidates, choice.count),
         None => Vec::new(),
     };
     let Some(claim) = claim else {
@@ -488,7 +500,9 @@ pub fn day_action_on(
             }
         }
         character::Visibility::Private => {
-            if real {
+            // A holder whose once-per-game use is spent (offered again
+            // after a revival) is answered like anyone without it.
+            if real && !ability::used(ctx.state(), player, ability) {
                 f(ctx, player, &targets);
             } else {
                 (claim.bluff)(ctx, player, &targets);

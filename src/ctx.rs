@@ -120,7 +120,8 @@ impl<'a> Read<'a> {
     }
 
     /// Whether `player` tried to convince the group they are `about`: the
-    /// table says so, or they reported breaking madness today.
+    /// table says so, or they reported breaking madness today (a report is
+    /// not about anything in particular: it counts for every madness).
     pub fn is_mad_about(&mut self, player: &player::Id, about: &'static str) -> bool {
         reported_madness(self.state, player) || self.io.is_mad_about(player, about)
     }

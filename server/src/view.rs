@@ -286,7 +286,10 @@ pub fn of(code: &str, state: &room::State, you: &str) -> View {
                     .collect()
             })
             .unwrap_or_default(),
-        thinking: game.is_some_and(|g| g.thinking),
+        // Not while someone visits the storyteller by day: how long the
+        // storyteller thinks would show whether the visitor has the ability.
+        thinking: game
+            .is_some_and(|g| g.thinking && !(g.stage == room::Stage::Day && !g.awake.is_empty())),
         bridge: Bridge {
             connected: state.bridge.is_some(),
             pairing: host.then(|| state.pairing.clone()),

@@ -348,7 +348,7 @@ fn day_actions(state: &game::State) -> Vec<room::DayAction> {
     let mut actions = Vec::new();
     for player in state.alive_ids() {
         let entry = |ability: character::Ref, shared: bool| {
-            let targets = narrator::day_targets(state, &player, ability);
+            let targets = narrator::target_choice(state, &player, ability);
             room::DayAction {
                 player: player.to_string(),
                 ability: ability.id(),
@@ -358,10 +358,10 @@ fn day_actions(state: &game::State) -> Vec<room::DayAction> {
                     .claim()
                     .is_some_and(|c| c.visibility == character::Visibility::Private),
                 shared,
-                targets: targets.map(|(candidates, count)| room::Targets {
-                    prompt: ability.day_targets().map_or("", |t| t.prompt),
-                    candidates: candidates.iter().map(ToString::to_string).collect(),
-                    count,
+                targets: targets.map(|choice| room::Targets {
+                    prompt: choice.prompt,
+                    candidates: choice.candidates.iter().map(ToString::to_string).collect(),
+                    count: choice.count,
                 }),
                 available: offered
                     .iter()
