@@ -511,6 +511,33 @@ impl table::Io for Recorder {
         answer
     }
 
+    /// A canned question (the Artist's): "Is [player] the [character]?",
+    /// about another player and a character on the script, seen only by the
+    /// asker and the storyteller. The Artist is the only ability that asks
+    /// for text; another one would need its own canned text here.
+    fn ask_text(&mut self, player: &player::Id, prompt: &str) -> String {
+        let others: Vec<player::Id> = self
+            .view
+            .players()
+            .iter()
+            .map(|p| p.id.clone())
+            .filter(|id| id != player)
+            .collect();
+        let (Some(target), Some(character)) = (
+            others.choose(&mut self.rng).cloned(),
+            self.view.script().choose(&mut self.rng).copied(),
+        ) else {
+            return String::new();
+        };
+        let question = format!("Is {target} the {}?", character.name());
+        let text = format!("{prompt}: \"{question}\"");
+        let step = self.push(Kind::Ask, Some(player), text, Audience::Player);
+        step.players = vec![target.to_string()];
+        step.characters = vec![character.name()];
+        step.flow = Some(Flow::from_player(player));
+        question
+    }
+
     fn broke_madness(&mut self, _player: &player::Id, _about: &'static str) -> bool {
         self.rng.random_bool(BREAKS_MADNESS)
     }

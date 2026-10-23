@@ -850,3 +850,47 @@ async fn the_artist_types_a_question_that_only_they_and_the_storyteller_see() {
     }
     check_no_leaks(&phones);
 }
+
+/// Without a bridge the Artist still types their question; the random
+/// fallback answers it yes or no, and only the Artist sees either.
+#[tokio::test(flavor = "multi_thread")]
+async fn without_a_bridge_the_artist_types_a_question_and_the_fallback_answers() {
+    const ARTIST_SEED: u64 = 1;
+    const QUESTION: &str = "Am I next to the Demon?";
+    let base = common::serve(common::quick(), ARTIST_SEED).await;
+    let (_room, phones, _) = common::table(&base, &PLAYERS).await;
+    start_and_reach_day(&phones, "laissez_un_faire").await;
+    let artist = phones
+        .iter()
+        .find(|p| p.view()["me"]["character"] == "Artist" && alive(&p.view(), &p.name))
+        .expect("a living Artist");
+    let before = heard(&phones);
+    artist.send(json!({"type": "day_action", "ability": "artist"}));
+    common::until(artist, time::Duration::from_secs(10), |v| {
+        v["prompt"]["kind"] == "text"
+    })
+    .await;
+    let prompt = artist.view()["prompt"].clone();
+    artist.send(json!({"type": "answer", "prompt": prompt["id"], "text": QUESTION}));
+    let (yes, no) = (
+        format!("\"{QUESTION}\": Yes"),
+        format!("\"{QUESTION}\": No"),
+    );
+    common::until(artist, time::Duration::from_secs(10), |v| {
+        let log = log_texts(v);
+        log.contains(&yes) || log.contains(&no)
+    })
+    .await;
+    assert!(log_texts(&artist.view()).contains(&format!("You asked: \"{QUESTION}\"")));
+    nobody_else_heard(&phones, &before, &artist.name);
+    for phone in &phones {
+        if phone.name != artist.name {
+            assert!(
+                !phone.view().to_string().contains(QUESTION),
+                "{} saw it",
+                phone.name
+            );
+        }
+    }
+    check_no_leaks(&phones);
+}

@@ -131,13 +131,3 @@ fn prompt_for_a_players_question_says_how_to_answer_it() {
         Reply with only the chosen option number(s), separated by spaces."#]]
     .assert_eq(tail);
 }
-
-#[test]
-fn the_claude_storyteller_reads_text_and_random_does_not() {
-    assert!(storyteller::Strategy::reads_text(
-        &claude::Storyteller::new()
-    ));
-    assert!(!storyteller::Strategy::reads_text(
-        &storyteller::Random::seeded(1)
-    ));
-}

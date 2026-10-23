@@ -89,10 +89,6 @@ impl storyteller::Strategy for Storyteller {
             }
         }
     }
-
-    fn reads_text(&self) -> bool {
-        true
-    }
 }
 
 pub fn prompt(goal: &str, decision: &storyteller::Decision, view: &game::State) -> String {

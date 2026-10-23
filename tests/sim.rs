@@ -496,3 +496,29 @@ fn madness_reminders_name_the_character_separately() {
         .expect("a madness token in some game");
     assert!(mad.character.is_some(), "{mad:?}");
 }
+
+/// Simulated players type canned questions for the Artist, which the
+/// storyteller answers; only the asker and the storyteller see them.
+#[test]
+fn simulated_artists_type_a_question_and_are_answered() {
+    let script = script::by_id("laissez_un_faire").expect("Laissez un Faire has the Artist");
+    let (trace, i) = (0..300)
+        .map(|seed| sim::simulate(seed, 8, &script))
+        .find_map(|t| {
+            let i = t.steps.iter().position(|s| {
+                s.text
+                    .starts_with("Ask the storyteller any yes/no question: \"Is ")
+            })?;
+            Some((t, i))
+        })
+        .expect("an Artist question");
+    let asked = &trace.steps[i];
+    assert!(matches!(asked.audience, sim::Audience::Player));
+    assert_eq!(asked.players.len(), 1);
+    assert_eq!(asked.characters.len(), 1);
+    assert!(
+        trace.steps[i..]
+            .iter()
+            .any(|s| s.kind == sim::Kind::Decision && s.text.contains(" asks \"Is "))
+    );
+}

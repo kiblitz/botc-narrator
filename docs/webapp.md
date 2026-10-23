@@ -66,13 +66,9 @@ Playing.
   every phone as a death ("Y dies"), never its cause. A private visit is
   asked the same questions in private; a player without the ability is told
   "The storyteller has nothing for you". The Artist types any yes/no question
-  (only their phone and the storyteller see it) while a storyteller bridge is
-  paired; without one the random storyteller cannot read it, so the Artist
-  asks "Is [player] [character]?" instead, answered from how that player
-  registers (false answers are possible when the Artist is drunk or
-  poisoned, as for any information). If the bridge goes away or fails between
-  the question and its answer, the random fallback answers yes or no
-  regardless. Each action is offered within its
+  (only their phone and the storyteller see it), answered by the bridge's
+  LLM. Without a bridge, or if it fails, the random fallback answers yes or
+  no at random (it only keeps the game going). Each action is offered within its
   limit (once per game, each day, the first day). Travellers' abilities
   (their characters are public) are on their holder's list only, marked
   "yours alone". The Atheist has no day action (see nominating the

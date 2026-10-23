@@ -144,18 +144,11 @@ impl<'a> Read<'a> {
         (!text.is_empty()).then_some(text)
     }
 
-    /// Whether the storyteller understands free text, so may [`Read::answer`]
-    /// a player's own question.
-    pub fn storyteller_reads_text(&self) -> bool {
-        self.storyteller.reads_text()
-    }
-
     /// The storyteller answers `player`'s own yes/no `question` and tells
     /// them. The engine cannot judge the question, so the decision says
     /// which answers are legal (`storyteller::Honesty`): only the true one
     /// for a functioning player, either when malfunctioning, the untrue one
-    /// when their information must be false. Ask only a storyteller that
-    /// [`Read::storyteller_reads_text`]. Returns the answer.
+    /// when their information must be false. Returns the answer.
     pub fn answer(&mut self, player: &player::Id, question: &str) -> bool {
         let malfunctioning = self.state.is_malfunctioning(player);
         let honesty = if self.must_lie(player, malfunctioning) {
@@ -950,10 +943,6 @@ impl<'a> Write<'a> {
 
     pub fn ask_text(&mut self, player: &player::Id, prompt: &str) -> Option<String> {
         self.read().ask_text(player, prompt)
-    }
-
-    pub fn storyteller_reads_text(&self) -> bool {
-        self.storyteller.reads_text()
     }
 
     pub fn answer(&mut self, player: &player::Id, question: &str) -> bool {

@@ -166,8 +166,6 @@ pub struct Game {
     pub state: game::State,
     pub table: Recorder,
     pub storyteller: storyteller::Scripted,
-    /// Whether the storyteller reads free text (`Game::reading_text`).
-    reads_text: bool,
 }
 
 impl Game {
@@ -176,7 +174,6 @@ impl Game {
             state: state(seats),
             table: Recorder::default(),
             storyteller: storyteller::Scripted::default(),
-            reads_text: false,
         }
     }
 
@@ -186,7 +183,6 @@ impl Game {
             state: game::State::seated(seats),
             table: Recorder::default(),
             storyteller: storyteller::Scripted::default(),
-            reads_text: false,
         }
     }
 
@@ -213,19 +209,7 @@ impl Game {
 
     /// Queue picks for the next storyteller decisions.
     pub fn picks(&mut self, picks: &[&[usize]]) -> &mut Self {
-        let picks = storyteller::Scripted::new(picks.iter().map(|p| p.to_vec()));
-        self.storyteller = if self.reads_text {
-            picks.reading_text()
-        } else {
-            picks
-        };
-        self
-    }
-
-    /// From now on the storyteller reads free text (stands in for an LLM).
-    pub fn reading_text(&mut self) -> &mut Self {
-        self.reads_text = true;
-        self.storyteller = std::mem::take(&mut self.storyteller).reading_text();
+        self.storyteller = storyteller::Scripted::new(picks.iter().map(|p| p.to_vec()));
         self
     }
 

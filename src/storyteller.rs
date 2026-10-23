@@ -50,8 +50,8 @@ pub enum Reason {
         question: &'static str,
     },
     /// The yes/no answer to a question `player` typed for their ability
-    /// (the Artist's). Only a strategy that [`Strategy::reads_text`] is asked
-    /// for one; `honesty` says which answers the rules allow.
+    /// (the Artist's); `honesty` says which answers the rules allow. The
+    /// storyteller is assumed to read it (an LLM); `Random` only guesses.
     Question {
         player: player::Id,
         character: &'static str,
@@ -241,16 +241,11 @@ pub fn is_selection<T: PartialEq>(items: &[T], count: usize, allowed: impl Fn(&T
 /// invalid answer falls back to the first `count` options.
 pub trait Strategy {
     fn decide(&mut self, decision: &Decision, view: &game::State) -> Vec<usize>;
-
-    /// Whether this storyteller understands free text (an LLM), so may be
-    /// asked to answer a player's own question ([`Reason::Question`]).
-    /// Abilities ask a structured question instead when it does not.
-    fn reads_text(&self) -> bool {
-        false
-    }
 }
 
-/// Uniformly random legal choices.
+/// Uniformly random legal choices: only a fallback so a game never stalls.
+/// It cannot read a player's question ([`Reason::Question`]), so it answers
+/// yes or no at random whatever the `Honesty`.
 pub struct Random {
     rng: rand::rngs::StdRng,
 }
@@ -280,21 +275,13 @@ impl Strategy for Random {
 #[derive(Default)]
 pub struct Scripted {
     picks: VecDeque<Vec<usize>>,
-    reads_text: bool,
 }
 
 impl Scripted {
     pub fn new(picks: impl IntoIterator<Item = Vec<usize>>) -> Self {
         Self {
             picks: picks.into_iter().collect(),
-            reads_text: false,
         }
-    }
-
-    /// Stands in for a storyteller that reads free text (an LLM).
-    pub fn reading_text(mut self) -> Self {
-        self.reads_text = true;
-        self
     }
 }
 
@@ -303,9 +290,5 @@ impl Strategy for Scripted {
         self.picks
             .pop_front()
             .unwrap_or_else(|| (0..decision.count).collect())
-    }
-
-    fn reads_text(&self) -> bool {
-        self.reads_text
     }
 }
