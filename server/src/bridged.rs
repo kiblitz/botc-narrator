@@ -107,7 +107,9 @@ impl storyteller::Strategy for Storyteller {
     }
 
     /// While a bridge is paired, its LLM reads the players' own questions.
-    /// Should it fail to answer one after all, the random fallback answers.
+    /// Checked when the question is asked: should the bridge then fail to
+    /// answer it, the random fallback answers yes or no whatever the
+    /// question's `storyteller::Honesty` (it cannot judge the question).
     fn reads_text(&self) -> bool {
         self.room.read(|s| s.bridge.is_some())
     }

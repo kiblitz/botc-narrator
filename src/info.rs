@@ -6,6 +6,18 @@ use crate::player;
 /// The most characters of free text a player may type (`ctx::Read::ask_text`).
 pub const TEXT_LIMIT: usize = 200;
 
+/// Typed text as the engine keeps it: whitespace collapsed to single spaces,
+/// cut to [`TEXT_LIMIT`] characters.
+pub fn clean_text(typed: &str) -> String {
+    typed
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .take(TEXT_LIMIT)
+        .collect()
+}
+
 /// Information the storyteller gives a player. Typed so engines can render it
 /// and storytellers can reason about which values are true.
 #[derive(Clone, Debug, PartialEq, Eq)]

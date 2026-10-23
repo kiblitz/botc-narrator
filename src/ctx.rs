@@ -138,16 +138,9 @@ impl<'a> Read<'a> {
     }
 
     /// Ask a player to type a short free text; `None` if they typed nothing.
-    /// Whitespace is collapsed and the text cut to [`info::TEXT_LIMIT`].
+    /// The text is cleaned up with [`info::clean_text`].
     pub fn ask_text(&mut self, player: &player::Id, prompt: &str) -> Option<String> {
-        let typed = self.io.ask_text(player, prompt);
-        let text: String = typed
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ")
-            .chars()
-            .take(info::TEXT_LIMIT)
-            .collect();
+        let text = info::clean_text(&self.io.ask_text(player, prompt));
         (!text.is_empty()).then_some(text)
     }
 
@@ -165,14 +158,13 @@ impl<'a> Read<'a> {
     /// [`Read::storyteller_reads_text`]. Returns the answer.
     pub fn answer(&mut self, player: &player::Id, question: &str) -> bool {
         let malfunctioning = self.state.is_malfunctioning(player);
-        let honesty =
-            if self.forced_false(player) || (!malfunctioning && self.lying_storyteller(player)) {
-                storyteller::Honesty::False
-            } else if malfunctioning {
-                storyteller::Honesty::Either
-            } else {
-                storyteller::Honesty::Truthful
-            };
+        let honesty = if self.must_lie(player, malfunctioning) {
+            storyteller::Honesty::False
+        } else if malfunctioning {
+            storyteller::Honesty::Either
+        } else {
+            storyteller::Honesty::Truthful
+        };
         let reason = storyteller::Reason::Question {
             player: player.clone(),
             character: self.state.believed(player).name(),
@@ -268,11 +260,7 @@ impl<'a> Read<'a> {
         misinformation: Vec<info::Message>,
     ) -> Option<info::Message> {
         let malfunctioning = self.state.is_malfunctioning(player);
-        let forced = !misinformation.is_empty() && self.forced_false(player);
-        // A malfunctioning player may be told either anyway, so a lying
-        // storyteller (Knaves) is only asked about for a functioning one.
-        let must_lie = forced
-            || (!malfunctioning && !misinformation.is_empty() && self.lying_storyteller(player));
+        let must_lie = !misinformation.is_empty() && self.must_lie(player, malfunctioning);
         let mut options: Vec<(info::Message, bool)> = if must_lie {
             Vec::new()
         } else {
@@ -392,6 +380,14 @@ impl<'a> Read<'a> {
             Some(c) => storyteller::Choice::Character(c.name()),
             None => storyteller::Choice::NotOfKind(kind),
         })
+    }
+
+    /// Whether `receiver`'s information must be false: an ability forces it
+    /// (Vortox), or a lying storyteller (Knaves) tells it. A malfunctioning
+    /// player may be told either anyway, so the lying storyteller is only
+    /// asked about for a functioning one.
+    fn must_lie(&mut self, receiver: &player::Id, malfunctioning: bool) -> bool {
+        self.forced_false(receiver) || (!malfunctioning && self.lying_storyteller(receiver))
     }
 
     /// Whether a living, functioning player's ability forces `receiver`'s

@@ -451,10 +451,12 @@ impl table::Io for Table {
             Some(inbox::Answer::Text(text)) => text,
             _ => String::new(),
         };
-        let said = if text.trim().is_empty() {
+        // As the engine keeps it, so the echo matches the storyteller's question.
+        let cleaned = info::clean_text(&text);
+        let said = if cleaned.is_empty() {
             "You asked nothing".to_string()
         } else {
-            format!("You asked: \"{}\"", text.trim())
+            format!("You asked: \"{cleaned}\"")
         };
         self.private(player, said);
         text
