@@ -29,7 +29,8 @@ use crate::table;
 
 pub const MIN_PLAYERS: usize = setup::MIN_PLAYERS;
 pub const MAX_PLAYERS: usize = setup::MAX_PLAYERS;
-const MAX_DAYS: u32 = 12;
+/// A game still running on this day stops without a winner.
+pub const MAX_DAYS: u32 = 12;
 /// Chance a player uses an unused day ability (the Slayer's shot) on a given day.
 const DAY_ACTION: f64 = 0.35;
 /// Chance a living player without a publicly claimable day ability claims
@@ -1069,4 +1070,118 @@ pub fn scripts_json() -> String {
         })
         .collect();
     serde_json::to_string(&scripts).expect("scripts serialize")
+}
+
+/// The order phases come in: setup, then night 1, day 1, night 2, ...
+fn phase_order(phase: game::Phase) -> u32 {
+    match phase {
+        game::Phase::Setup => 0,
+        game::Phase::Night(n) => 2 * n,
+        game::Phase::Day(n) => 2 * n + 1,
+    }
+}
+
+/// Checks that a finished trace is well formed, returning one message per
+/// broken invariant (empty when all hold). Only rules every game must keep
+/// are checked, so a message is always a bug:
+///
+/// - every step's grimoire snapshot exists, and every snapshot seats the
+///   same players as the deal (seats may swap, never appear or vanish);
+/// - every player a step names (its player, players, voters, flow) is seated;
+/// - phases never go back;
+/// - who sees what: storyteller decisions are storyteller-only, what a
+///   player is told and their wakes and sleeps are that player's only, and
+///   public death announcements give no cause ("X dies" by day, "X died in
+///   the night" at dawn);
+/// - nobody raises a hand twice in one vote;
+/// - every player dead at the end had their death announced publicly.
+///
+/// A game without a winner (stopped at [`MAX_DAYS`]) is not a broken
+/// invariant here: the caller decides whether that is "stuck".
+pub fn problems(trace: &Trace) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut seated: Vec<&str> = trace.players.iter().map(|s| s.name.as_str()).collect();
+    seated.sort_unstable();
+    for (i, snapshot) in trace.snapshots.iter().enumerate() {
+        let mut names: Vec<&str> = snapshot.iter().map(|s| s.name.as_str()).collect();
+        names.sort_unstable();
+        if names != seated {
+            out.push(format!(
+                "snapshot {i} seats {names:?}, not the deal's {seated:?}"
+            ));
+        }
+    }
+    let is_seated = |name: &str| seated.binary_search(&name).is_ok();
+    let mut phase = game::Phase::Setup;
+    for (i, step) in trace.steps.iter().enumerate() {
+        let at = format!("step {i} ({:?} {:?})", step.kind, step.text);
+        if step.snapshot >= trace.snapshots.len() {
+            out.push(format!("{at}: snapshot {} does not exist", step.snapshot));
+        }
+        let endpoints = step.flow.iter().flat_map(|f| [&f.from, &f.to]);
+        let named = step
+            .player
+            .iter()
+            .chain(&step.players)
+            .chain(&step.voters)
+            .chain(endpoints.filter_map(|e| match e {
+                Endpoint::Player(name) => Some(name),
+                Endpoint::Storyteller => None,
+            }));
+        for name in named {
+            if !is_seated(name) {
+                out.push(format!("{at}: names unseated player {name:?}"));
+            }
+        }
+        if phase_order(step.phase) < phase_order(phase) {
+            out.push(format!("{at}: phase {} after {phase}", step.phase));
+        }
+        phase = step.phase;
+        let audience_ok = match step.kind {
+            Kind::Decision => matches!(step.audience, Audience::Storyteller),
+            Kind::Tell | Kind::Wake | Kind::Sleep => {
+                matches!(step.audience, Audience::Player) && step.player.is_some()
+            }
+            _ => true,
+        };
+        if !audience_ok {
+            out.push(format!("{at}: seen by {:?}", step.audience));
+        }
+        if step.kind == Kind::Death
+            && matches!(step.audience, Audience::Public)
+            && let Some(player) = &step.player
+            && step.text != format!("{player} dies")
+            && step.text != format!("{player} died in the night")
+        {
+            out.push(format!(
+                "{at}: public death announcement says more than who died"
+            ));
+        }
+        let mut voters: Vec<&String> = step.voters.iter().collect();
+        voters.sort_unstable();
+        voters.dedup();
+        if voters.len() != step.voters.len() {
+            out.push(format!("{at}: a voter raised a hand twice"));
+        }
+    }
+    for seat in trace
+        .snapshots
+        .last()
+        .into_iter()
+        .flatten()
+        .filter(|s| !s.alive)
+    {
+        let announced = trace.steps.iter().any(|s| {
+            s.kind == Kind::Death
+                && matches!(s.audience, Audience::Public)
+                && s.player.as_deref() == Some(seat.name.as_str())
+        });
+        if !announced {
+            out.push(format!(
+                "{} is dead but their death was never announced",
+                seat.name
+            ));
+        }
+    }
+    out
 }

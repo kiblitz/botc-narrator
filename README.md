@@ -162,6 +162,10 @@ sh scripts/serve-web.sh              # build the wasm and serve at http://localh
 
 Building needs `wasm-pack` and the `wasm32-unknown-unknown` target; the Playwright tests (`site/tests`) run in `scripts/check.sh`.
 
+## Play-testing
+
+`scripts/soak.sh` (the `soak` binary, `src/soak.rs`) plays random simulator games forever over every script and legal player count on all cores but one, with random seeds. Flags: `--out DIR` (default `C:/Users/Gabriel Lee/Projects/botc-soak`), `--games N`, `--minutes M`, `--threads T`. Each game is a failure when it panics, breaks an invariant of `sim::problems` (snapshots exist and keep the same seats, every named player is seated, phases never go back, decisions are storyteller-only and tells / wakes / sleeps the player's only, public deaths give no cause, nobody votes twice, every dead player's death was announced) or is stuck (no winner by `sim::MAX_DAYS`). Output: `failures.jsonl` (appended: time, commit, script, players, seed, kind, message, signature; at most `soak::MAX_PER_SIGNATURE` lines per signature, across runs) and `summary.json` / `summary.md` (rewritten every 30 s by default: games, win rates and average days per script, failures grouped by signature with a count and a repro). A failure reproduces with `sim::simulate(seed, players, &script::by_id(script).unwrap())`.
+
 ## Multiplayer web app
 
 `server/` serves <https://botc.kiblitz.xyz>: anyone opens a room (no account), players join by code on their phones, the engine is the storyteller and a paired bridge (`bridge/`, Codex by default) makes its choices. See [docs/webapp.md](docs/webapp.md).
@@ -171,6 +175,7 @@ Building needs `wasm-pack` and the `wasm32-unknown-unknown` target; the Playwrig
 ```sh
 sh scripts/check.sh                  # fmt, clippy, tests, Playwright, deploy tests (the merge gate)
 bash scripts/deploy.sh               # deploy main to slot1 (deploy/README.md)
+sh scripts/soak.sh --minutes 10      # play-test random games (see Play-testing)
 cargo test -- --ignored              # also calls the real Claude Code CLI
 cargo run -- random 42               # demo game, random storyteller, seed 42
 cargo run -- claude                  # demo game with Claude Code as storyteller

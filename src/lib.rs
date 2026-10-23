@@ -16,5 +16,6 @@ pub mod player;
 pub mod script;
 pub mod setup;
 pub mod sim;
+pub mod soak;
 pub mod storyteller;
 pub mod table;

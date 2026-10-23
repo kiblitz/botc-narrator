@@ -37,3 +37,4 @@ Rust Blood on the Clocktower storyteller engine. Read README.md for the architec
 
 - Module-qualified paths: `use crate::player;` then `player::Id`. Types don't repeat the module name (each character is `chef::Def`).
 - Tests are `expect-test` transcripts in `tests/`. Update them with `UPDATE_EXPECT=1 cargo test`, then review the diff.
+- Play-testing: `sh scripts/soak.sh` runs `src/bin/soak.rs` (`soak::run`) until stopped; failures go to `C:/Users/Gabriel Lee/Projects/botc-soak/failures.jsonl` and `summary.md`. Reproduce one with `sim::simulate(seed, players, &script::by_id(script).unwrap())` and pass the trace to `sim::problems` / `soak::judge`; per the bug rule, the regression test reproduces it first. New invariants go in `sim::problems` only if every legal game keeps them (no false positives).
