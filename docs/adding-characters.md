@@ -86,7 +86,7 @@ Override only the hooks the ability uses (the full list is in the README,
 | not-in-play characters, the script | `not_in_play`, `ctx.state().script()` |
 | madness | `game::Effect::Mad(name)` + `on_madness_broken` |
 | "died today", "nominated today" | `died_today`, `nominators_today` |
-| a public claim ("X is the Y"), read back that night | `claim`, `claims_today` |
+| a public claim ("X is the Y"), read back that night | `claim`, `claims_today` (tagged with the ability that claimed) |
 | what the player was told | `ctx.inform` returns the chosen message |
 | "[+the Damsel]" | hook `requires` |
 | "if you nominated" (with the nominee) | `nominations_today` |
@@ -99,7 +99,7 @@ Override only the hooks the ability uses (the full list is in the README,
 | alternate demon / forced false info | hooks `counts_as_demon`, `forces_false_info` |
 | evil info / no Demon in the game | hooks `joins_evil_info` (Magician), `hides_evil_info` + `narrator::evil_info` (Poppy Grower), `demonless` (Atheist) |
 | survive a death | hook `intercept_death` returning `Prevent` (Fool, Sailor, Tea Lady, Pacifist, Innkeeper); the dying player's own abilities are asked last |
-| day ability | hook `day_action`; the simulator offers every unused one each day; a private visit to the storyteller is `ctx.wake(me)` ... `ctx.sleep(me)` (answers inside it are private); `day_action_users` lets others use it (Damsel guess) |
+| day ability | hook `day_action`; `narrator::day_actions` offers it (to the server and the simulator) while unused; a private visit to the storyteller is `ctx.wake(me)` ... `ctx.sleep(me)` (answers inside it are private); `day_action_users` lets others use it (Damsel guess); `public_claim` when it is used in front of everyone, so any living player may claim it (a bluff: same questions, no effect; ask them in one helper shared by the real ability and the bluff, like the Slayer's `aim`) |
 | ask a player yes/no | `ctx.ask_yes_no` (the Harlot's visit) |
 | sober / acts twice / restored / execution-only | `game::Effect::Sober`, `ActsTwice`, `AbilityRestored`, `ExecutionOnly` with `mark`; hook `always_sober` |
 | votes and nominations | hooks `vote_weight`, `storyteller_nominations`, `nominates_again`; `ctx.remove_reminder`, `ctx.spend_ghost_vote` |

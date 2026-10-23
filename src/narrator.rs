@@ -302,15 +302,16 @@ fn acting(state: &game::State, c: character::Ref) -> Vec<player::Id> {
     acting
 }
 
-/// Who may use `ability`'s day action now: for each player with the ability,
-/// its `day_action_users` (themself, or every Minion for the Damsel's guess).
+/// Who may really use `ability`'s day action now: for each player with the
+/// ability active, its `day_action_users` (themself, or every Minion for the
+/// Damsel's guess).
 pub fn day_action_users(state: &game::State, ability: character::Ref) -> Vec<player::Id> {
     if ability.day_action().is_none() {
         return Vec::new();
     }
     let mut users: Vec<player::Id> = Vec::new();
     for holder in state.seat_order() {
-        if state.has_ability(&holder, ability.id()) {
+        if state.ability_active(&holder) && state.has_ability(&holder, ability.id()) {
             for user in ability.day_action_users(state, &holder) {
                 if !users.contains(&user) {
                     users.push(user);
@@ -321,23 +322,105 @@ pub fn day_action_users(state: &game::State, ability: character::Ref) -> Vec<pla
     users
 }
 
+/// The token on a player who has publicly claimed an ability (within its
+/// `character::ClaimLimit`).
+const CLAIMED: game::Effect = game::Effect::Custom("claimed");
+
+/// Every day action that may be used now, with who may use it. A publicly
+/// claimable ability (`character::Def::public_claim`) on the script or in
+/// play is offered to every living player within its limit, whoever really
+/// has it, so the phones all look the same; any other ability to its living
+/// users (see [`day_action_users`]) who have not used it.
+pub fn day_actions(state: &game::State) -> Vec<(player::Id, character::Ref)> {
+    let mut abilities: Vec<character::Ref> = Vec::new();
+    let in_play = state
+        .seat_order()
+        .into_iter()
+        .filter(|p| state.ability_active(p))
+        .flat_map(|p| state.abilities(&p));
+    for ability in state.script().iter().copied().chain(in_play) {
+        if ability.day_action().is_some() && !abilities.iter().any(|a| character::same(*a, ability))
+        {
+            abilities.push(ability);
+        }
+    }
+    let mut actions = Vec::new();
+    for ability in abilities {
+        let users: Vec<player::Id> = match ability.public_claim() {
+            Some(claim) => state
+                .alive_ids()
+                .into_iter()
+                .filter(|p| may_claim(state, p, ability, claim.limit))
+                .collect(),
+            None => day_action_users(state, ability)
+                .into_iter()
+                .filter(|u| state.is_alive(u) && !ability::used(state, u, ability))
+                .collect(),
+        };
+        actions.extend(users.into_iter().map(|u| (u, ability)));
+    }
+    actions
+}
+
+/// Whether `player` may publicly claim `ability` now, within `limit`.
+fn may_claim(
+    state: &game::State,
+    player: &player::Id,
+    ability: character::Ref,
+    limit: character::ClaimLimit,
+) -> bool {
+    let allowed_now = match limit {
+        character::ClaimLimit::FirstDay => state.phase() == game::Phase::Day(1),
+        character::ClaimLimit::OncePerGame | character::ClaimLimit::EachDay => true,
+    };
+    allowed_now && !ability::has_mark(state, player, ability, player, CLAIMED)
+}
+
+/// The player uses `ability`'s day action (the Slayer's shot), if it is one
+/// of the [`day_actions`] they may use now. A publicly claimable ability is
+/// announced, then works for a real user and is a bluff for anyone else:
+/// the same questions, and the same "Nothing happens" as a failed use.
+pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id, ability: character::Ref) {
+    let offered = day_actions(ctx.state())
+        .iter()
+        .any(|(p, a)| p == player && character::same(*a, ability));
+    let Some(f) = ability.day_action().filter(|_| offered) else {
+        return;
+    };
+    let Some(claim) = ability.public_claim() else {
+        return f(ctx, player);
+    };
+    // Gone if the claimant dies, so a revived player (the Professor's) may
+    // claim again, as a revived Slayer shoots again.
+    let expiry = match claim.limit {
+        character::ClaimLimit::EachDay => game::Expiry::Dusk,
+        character::ClaimLimit::OncePerGame | character::ClaimLimit::FirstDay => game::Expiry::Death,
+    };
+    ctx.add_reminder(
+        player,
+        game::Reminder::new(ability, player, CLAIMED, expiry),
+    );
+    ctx.announce(format!("{player} {}", claim.announcement));
+    let before = ctx.state().history().len();
+    if day_action_users(ctx.state(), ability).contains(player) {
+        f(ctx, player);
+    } else {
+        (claim.bluff)(ctx, player);
+    }
+    let someone_died = ctx.state().history()[before..]
+        .iter()
+        .any(|e| matches!(e, event::Event::Died { .. }));
+    if claim.resolves_now && !someone_died && ctx.state().winner().is_none() {
+        ctx.announce("Nothing happens");
+    }
+}
+
 /// Whether `id` has `c`'s ability now and wakes for it tonight (not if a
 /// `DoesNotWake` token is on them, as on the Demon the Exorcist chose).
 fn wakes(state: &game::State, c: character::Ref, id: &player::Id) -> bool {
     state.has_ability(id, c.id())
         && c.wakes_tonight(state, id)
         && !state.has_effect(id, game::Effect::DoesNotWake)
-}
-
-/// The player uses `ability`'s day action (the Slayer's shot), if it has one
-/// and they may use it (see [`day_action_users`]).
-pub fn day_action(ctx: &mut ctx::Write<'_>, player: &player::Id, ability: character::Ref) {
-    if !day_action_users(ctx.state(), ability).contains(player) {
-        return;
-    }
-    if let Some(f) = ability.day_action() {
-        f(ctx, player);
-    }
 }
 
 /// Whether every ability of `player` lets them nominate (the Golem only once).

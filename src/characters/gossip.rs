@@ -32,9 +32,21 @@ impl character::Def for Def {
     fn day_action(&self) -> Option<character::DayFn> {
         Some(gossip)
     }
+
+    /// Anyone may make a public statement; only the Gossip's is judged.
+    fn public_claim(&self) -> Option<character::PublicClaim> {
+        Some(character::PublicClaim {
+            limit: character::ClaimLimit::EachDay,
+            announcement: "gossips",
+            resolves_now: false,
+            bluff: gossip,
+        })
+    }
 }
 
-/// Each day, a public statement: "this player is this character".
+/// Each day, a public statement: "this player is this character". It is
+/// only recorded (`ability::claim`) and judged tonight by the Gossip's own
+/// night action, so a bluffer's statement does nothing.
 fn gossip(ctx: &mut ctx::Write<'_>, me: &player::Id) {
     if !ctx.state().is_alive(me) {
         return;
@@ -48,14 +60,14 @@ fn gossip(ctx: &mut ctx::Write<'_>, me: &player::Id) {
     else {
         return;
     };
-    ability::claim(ctx, me, vec![(target, character)]);
+    ability::claim(ctx, me, &Def, vec![(target, character)]);
 }
 
 /// Tonight, if today's statement was true, a player of the storyteller's
 /// choice dies. Only the Gossip's health tonight matters.
 fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
     let state = ctx.state();
-    let true_statement = ability::claims_today(state, me)
+    let true_statement = ability::claims_today(state, me, &Def)
         .iter()
         .any(|(p, character)| state.character(p).name() == *character);
     if !true_statement || state.is_malfunctioning(me) {

@@ -978,6 +978,38 @@ fn psychopath_game() -> common::Game {
 }
 
 #[test]
+fn a_bluffed_psychopath_kill_does_nothing_and_comes_back_each_day() {
+    let mut g = psychopath_game();
+    g.answers(&[&["Chef"]]).run(|ctx| {
+        narrator::day_action(ctx, &p("Empath"), &characters::psychopath::Def);
+    });
+    expect![[r#"
+        * Empath (psychopath) marks Empath: claimed
+        * Announcement: Empath uses the Psychopath ability
+          Empath? Who do you want to kill? => Chef
+        * Announcement: Nothing happens
+        --- grimoire ---
+        Psycho: Psychopath
+        Imp: Imp
+        Chef: Chef
+        Empath: Empath [claimed by psychopath]
+        Monk: Monk
+    "#]]
+    .assert_eq(&g.transcript());
+    let offered = |g: &common::Game| {
+        narrator::day_actions(&g.state)
+            .iter()
+            .any(|(p, a)| p.as_str() == "Empath" && a.id() == "psychopath")
+    };
+    assert!(!offered(&g), "once a day");
+    g.run(|ctx| {
+        ctx.advance_phase();
+        ctx.advance_phase();
+    });
+    assert!(offered(&g), "again the next day");
+}
+
+#[test]
 fn psychopath_kills_by_day_and_survives_execution_unless_losing_roshambo() {
     let mut g = psychopath_game();
     g.answers(&[&["Chef"]]).run(|ctx| {
@@ -986,6 +1018,8 @@ fn psychopath_kills_by_day_and_survives_execution_unless_losing_roshambo() {
         ctx.execute(&p("Psycho"));
     });
     expect![[r#"
+        * Psycho (psychopath) marks Psycho: claimed
+        * Announcement: Psycho uses the Psychopath ability
           Psycho? Who do you want to kill? => Chef
         * Chef dies (Ability { by: Id("Psycho") })
         * Empath nominates Psycho
@@ -994,7 +1028,7 @@ fn psychopath_kills_by_day_and_survives_execution_unless_losing_roshambo() {
         * Announcement: Psycho does not lose roshambo
         * Psycho survives (psychopath)
         --- grimoire ---
-        Psycho: Psychopath
+        Psycho: Psychopath [claimed by psychopath]
         Imp: Imp
         Chef: Chef [dead]
         Empath: Empath

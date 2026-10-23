@@ -46,7 +46,12 @@ Playing.
   raised hands live; the vote stays open until the host closes it. The
   storyteller's nominations (the Bishop) and the Butcher's second nomination
   (asked on the Butcher's phone) are voted on the same way.
-  Public day abilities (the Slayer's shot) show up as a button for their holder.
+  Public day abilities (the Slayer's shot) show up as the same button on
+  every living player's phone, whoever really has them, so they can be
+  bluffed (user, 2026-10-22): a non-holder's use is asked the same questions
+  and announced like a failed real one ("X shoots", "X chose Y", "Nothing
+  happens"). Private day abilities (the Artist's question) show up only for
+  their holder.
 - When the game ends, everyone sees every character and the storyteller's notes.
 
 A phone that sleeps or reloads reconnects to its seat (the seat is kept in the

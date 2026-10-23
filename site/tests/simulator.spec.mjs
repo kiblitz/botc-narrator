@@ -183,13 +183,13 @@ test("the stepper has only back and forward", async ({ page }) => {
 
 test("votes highlight the nominee and everyone who voted", async ({ page }) => {
   await open(page);
-  // Seed 36 / 8 players: on day 1, Ada nominates Bram and three players vote.
+  // Seed 36 / 8 players: on day 1, Cleo nominates Finn and five players vote.
   await page.keyboard.press("Shift+ArrowRight");
   await page.keyboard.press("ArrowRight"); // nomination
   await page.keyboard.press("ArrowRight"); // vote
-  await expect(page.locator("#caption")).toContainText("3 votes for Bram");
-  await expect(page.locator('.seat[data-name="Bram"]')).toHaveClass(/nominee/);
-  await expect(page.locator(".seat.voted")).toHaveCount(3);
+  await expect(page.locator("#caption")).toContainText("5 votes for Finn");
+  await expect(page.locator('.seat[data-name="Finn"]')).toHaveClass(/nominee/);
+  await expect(page.locator(".seat.voted")).toHaveCount(5);
   await page.keyboard.press("ArrowRight");
   await expect(page.locator(".seat.voted")).toHaveCount(0);
 });
@@ -238,11 +238,11 @@ test("arrows show which way communication goes", async ({ page }) => {
   // A wake step has no arrow.
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#arrows .flow-arrow")).toHaveCount(0);
-  // Day 1: Ada nominates Bram, player to player.
+  // Day 1: Cleo nominates Finn, player to player.
   await page.keyboard.press("Shift+ArrowRight");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("#arrows .flow-arrow.event")).toHaveCount(1);
-  await expect(page.locator("#caption .who")).toHaveText("Ada → Bram: ");
+  await expect(page.locator("#caption .who")).toHaveText("Cleo → Finn: ");
 });
 
 test("the arrow is drawn above the centre text", async ({ page }) => {

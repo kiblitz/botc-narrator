@@ -74,7 +74,8 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 |---|---|
 | `night_order` | its official first-night / other-nights positions (clocktower.online numbering) |
 | `night_action`, `wakes_tonight` | what it does at its turn; whether it wakes tonight (default: alive), checked when the turn comes |
-| `day_action`, `day_action_users` | a public day ability (Slayer); who may use it (default the holder; the Damsel lets every Minion guess) |
+| `day_action`, `day_action_users` | a day ability (Slayer); who may really use it while their ability is active (default the holder; the Damsel lets every Minion guess) |
+| `public_claim` | the day ability is used in public, so any living player may claim it (`character::PublicClaim`: how often, the announcement, the bluff); see below |
 | `can_nominate` | whether the holder may nominate (the Golem only once); `narrator::nominate` refuses otherwise |
 | `setup_counts`, `duplicates_in_setup` | how it changes the setup counts (Baron: +2 Outsiders; options for "+0 or +1"); copies filling extra slots (Legion, Riot) |
 | `requires` | characters that must be in play with it ("[+the Damsel]"): `setup::choose` swaps one in for a Townsfolk |
@@ -98,6 +99,8 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `demonless` | the game has no Demon, so good does not win by the Demon dying (Atheist) |
 | `vetoes_win` | stops a win for now (Mastermind) |
 | `seated_next_to_demon` | must sit beside a Demon (Marionette; the simulator's seating arranges it) |
+
+Public claims: every living player is offered a publicly claimable day ability of a character on the script or in play (`narrator::day_actions`), whoever really has it, so holding it can be bluffed. The table is told "{player} {announcement}", a real user (including a Drunk or poisoned one) uses the ability and anyone else is asked the same questions with no effect, and an ability that resolves at once ends with "Nothing happens" when nobody died and the game goes on. Each player may claim it within its `character::ClaimLimit` (a `claimed` reminder token, gone when they die). Claimable: the Slayer's shot (once per game), the Psychopath's kill (each day), the Damsel guess (once per game; only a Minion's counts, once for all Minions), the Gossip's statement (each day) and the Juggler's guesses (the first day); public claims (`ability::claim`) are tagged with the ability, so a bluffed Juggler guess is not a Gossip statement. Not claimable: private visits to the storyteller (Artist, Fisherman, Savant, Puzzlemaster), the Travellers' abilities (Beggar, Matron: their characters are public), and the Atheist's execution of the Storyteller (modelled without a vote, so it stays the Atheist claimant's).
 
 Extra deaths at other times are plain `ctx::Write::kill` calls from any hook.
 
@@ -146,7 +149,7 @@ Minions: the Harpy wakes at 26 / 17 (officially 26.5 / 17.5, after the Fearmonge
 
 `site/` is a static page that generates random, plausible games of any registered script in the browser (the engine compiled to WebAssembly from `web/`) and lets you step through them. Players sit in a circle; each step shows who is awake, what they were told or asked, storyteller decisions and public events. Click a player to see everything they know so far, or switch the view to one player's point of view to hide what they couldn't see. Pick a script: every script in `script::all()` is listed, and a test plays each one across many seeds and player counts. Games are reproducible from `#script=...&seed=...&players=...` in the URL. Information steps highlight the players and characters they name. **View script** lists the script's characters by kind with their ability text (`site/abilities.json`, generated and gitignored: `scripts/build-web.sh` runs `scripts/abilities.mjs` over `data/characters/*.json` and `data/abilities/*.json`). The **Names** box sets seat names clockwise (`sim::simulate_named`); the game is the same as with the default names, and the names are kept in the URL.
 
-Generation (`sim.rs`) uses legal setups for 5-15 players (`setup::choose`), players who act on simple heuristics (evil targets good), a random storyteller, daily nominations with a majority vote (no ghost votes; vote weights apply), up to two Travellers with random alignments when the script has them, mad players who break madness with a fixed probability, players who "may choose" choosing no-one now and then (the Po charging), and night deaths announced at dawn. Day actions such as the Slayer's shot are public.
+Generation (`sim.rs`) uses legal setups for 5-15 players (`setup::choose`), players who act on simple heuristics (evil targets good), a random storyteller, daily nominations with a majority vote (no ghost votes; vote weights apply), up to two Travellers with random alignments when the script has them, mad players who break madness with a fixed probability, players who "may choose" choosing no-one now and then (the Po charging), and night deaths announced at dawn. Day actions such as the Slayer's shot are public, and now and then a player bluffs one (a shot by someone who is not the Slayer).
 
 ```sh
 sh scripts/serve-web.sh              # build the wasm and serve at http://localhost:8080

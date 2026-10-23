@@ -640,8 +640,9 @@ function nominationCard(view) {
 
 function dayActions(view) {
   return el("div", { class: "card stack" },
-    el("h2", {}, "Your day ability"),
-    view.day_actions.map((a) => el("button", { onclick: () => confirm(`Use the ${a.name} ability now, in front of everyone?`) && send({ type: "day_action", ability: a.ability }) }, icon(a.name), ` Use the ${a.name} ability`)),
+    el("h2", {}, "Day abilities"),
+    el("p", { class: "muted" }, "Anyone may claim these in public, whether or not they have the ability."),
+    view.day_actions.map((a) => el("button", { onclick: () => confirm(`Use the ${a.name} ability now, in front of everyone?`) && send({ type: "day_action", ability: a.ability }) }, icon(a.name, "inline-icon"), ` Use the ${a.name} ability`)),
   );
 }
 

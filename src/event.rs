@@ -82,6 +82,8 @@ pub enum Event {
     /// (the Juggler's guesses, the Gossip's statement).
     Claimed {
         player: player::Id,
+        /// The id of the character whose ability the claim was made with.
+        ability: &'static str,
         claims: Vec<(player::Id, &'static str)>,
     },
     Voted {
@@ -128,7 +130,7 @@ impl Event {
             }
             Event::KillRedirected { from, to } => vec![from, to],
             Event::SeatsSwapped(a, b) => vec![a, b],
-            Event::Claimed { player, claims } => std::iter::once(player)
+            Event::Claimed { player, claims, .. } => std::iter::once(player)
                 .chain(claims.iter().map(|(p, _)| p))
                 .collect(),
             Event::Voted {
@@ -238,7 +240,7 @@ impl fmt::Display for Event {
             Event::FabledMarked { fabled, effect } => write!(f, "the {fabled} is marked: {effect}"),
             Event::SeatsSwapped(a, b) => write!(f, "{a} and {b} swap seats"),
             Event::GhostVoteSpent(p) => write!(f, "{p} gives away their vote token"),
-            Event::Claimed { player, claims } => {
+            Event::Claimed { player, claims, .. } => {
                 let claims: Vec<String> = claims
                     .iter()
                     .map(|(p, c)| format!("{p} is the {c}"))

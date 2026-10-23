@@ -35,11 +35,24 @@ impl character::Def for Def {
 
     /// The night after the day they guessed.
     fn wakes_tonight(&self, state: &game::State, me: &player::Id) -> bool {
-        state.is_alive(me) && !ability::claims_today(state, me).is_empty()
+        state.is_alive(me) && !ability::claims_today(state, me, &Def).is_empty()
     }
 
     fn day_action(&self) -> Option<character::DayFn> {
         Some(juggle)
+    }
+
+    /// Anyone may guess on the first day; only the Juggler learns anything.
+    fn public_claim(&self) -> Option<character::PublicClaim> {
+        Some(character::PublicClaim {
+            limit: character::ClaimLimit::FirstDay,
+            announcement: "juggles",
+            resolves_now: false,
+            bluff: |ctx, me| {
+                let guesses = guesses(ctx, me);
+                ability::claim(ctx, me, &Def, guesses);
+            },
+        })
     }
 }
 
@@ -51,6 +64,12 @@ fn juggle(ctx: &mut ctx::Write<'_>, me: &player::Id) {
     {
         return;
     }
+    let guesses = guesses(ctx, me);
+    ability::claim(ctx, me, &Def, guesses);
+}
+
+/// Asks `me` for their guesses.
+fn guesses(ctx: &mut ctx::Write<'_>, me: &player::Id) -> Vec<(player::Id, character::Ref)> {
     let others = ability::others(ctx.state(), me);
     let characters = ctx.state().script().to_vec();
     let players = ctx.ask(me, "Whose characters do you guess?", &others, GUESSES);
@@ -61,12 +80,12 @@ fn juggle(ctx: &mut ctx::Write<'_>, me: &player::Id) {
             guesses.push((player, character));
         }
     }
-    ability::claim(ctx, me, guesses);
+    guesses
 }
 
 /// Learns how many of today's guesses were correct (as the players register).
 fn act(ctx: &mut ctx::Read<'_>, me: &player::Id, _night: u32) {
-    let guesses = ability::claims_today(ctx.state(), me);
+    let guesses = ability::claims_today(ctx.state(), me, &Def);
     let correct = guesses
         .iter()
         .filter(|(p, character)| ctx.registered_character(me, p).name() == *character)

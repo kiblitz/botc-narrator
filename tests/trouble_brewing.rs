@@ -85,8 +85,11 @@ fn poisoned_chef_and_three_phases() {
     });
     expect![[r#"
         * === Day 1 ===
+        * Buffy (slayer) marks Buffy: claimed
+        * Announcement: Buffy shoots
         * Buffy (slayer) marks Buffy: AbilityUsed
           Buffy? Who do you want to slay? => Ivy
+        * Announcement: Nothing happens
         --- grimoire ---
         Lucius: Imp
         Ivy: Poisoner
@@ -94,7 +97,7 @@ fn poisoned_chef_and_three_phases() {
         Gordon: Chef [Poisoned by poisoner]
         Zoltar: Fortune Teller
         Friar: Monk
-        Buffy: Slayer [AbilityUsed by slayer]
+        Buffy: Slayer [claimed by slayer] [AbilityUsed by slayer]
     "#]]
     .assert_eq(&g.transcript());
 
@@ -134,7 +137,7 @@ fn poisoned_chef_and_three_phases() {
         Gordon: Chef [dead]
         Zoltar: Fortune Teller [Poisoned by poisoner]
         Friar: Monk
-        Buffy: Slayer [AbilityUsed by slayer]
+        Buffy: Slayer [claimed by slayer] [AbilityUsed by slayer]
     "#]]
     .assert_eq(&g.transcript());
 }
@@ -328,6 +331,8 @@ fn scarlet_woman_catches_the_demon_with_five_alive() {
     expect![[r#"
         * === Night 1 ===
         * === Day 1 ===
+        * Slayer (slayer) marks Slayer: claimed
+        * Announcement: Slayer shoots
         * Slayer (slayer) marks Slayer: AbilityUsed
           Slayer? Who do you want to slay? => Imp
         * Imp dies (Ability { by: Id("Slayer") })
@@ -335,7 +340,7 @@ fn scarlet_woman_catches_the_demon_with_five_alive() {
         --- grimoire ---
         Imp: Imp [dead]
         Scarlet: Imp
-        Slayer: Slayer [AbilityUsed by slayer]
+        Slayer: Slayer [claimed by slayer] [AbilityUsed by slayer]
         Chef: Chef
         Empath: Empath
     "#]]
@@ -715,4 +720,90 @@ fn mayor_wins_with_three_alive_and_no_execution() {
         narrator::end_day(ctx);
     });
     assert_eq!(g.state.winner(), None);
+}
+
+#[test]
+fn anyone_may_bluff_the_slayers_shot_once_and_nothing_happens() {
+    // No Slayer in play, but on the script: every living player is offered
+    // the shot, so nobody's phone shows who the Slayer is.
+    let mut g = common::Game::new(&[
+        ("Imp", &imp::Def),
+        ("Ivy", &poisoner::Def),
+        ("Chef", &chef::Def),
+        ("Empath", &empath::Def),
+        ("Monk", &monk::Def),
+    ]);
+    g.run(|ctx| {
+        ctx.set_script(common::trouble_brewing().characters);
+        ctx.advance_phase();
+        ctx.advance_phase();
+    })
+    .quiet();
+    let offered: Vec<String> = narrator::day_actions(&g.state)
+        .into_iter()
+        .filter(|(_, a)| a.id() == "slayer")
+        .map(|(p, _)| p.to_string())
+        .collect();
+    assert_eq!(offered, ["Imp", "Ivy", "Chef", "Empath", "Monk"]);
+
+    // The Chef shoots the Imp: announced as any failed shot.
+    g.answers(&[&["Imp"]])
+        .run(|ctx| narrator::day_action(ctx, &p("Chef"), &slayer::Def));
+    expect![[r#"
+        * Chef (slayer) marks Chef: claimed
+        * Announcement: Chef shoots
+          Chef? Who do you want to slay? => Imp
+        * Announcement: Nothing happens
+        --- grimoire ---
+        Imp: Imp
+        Ivy: Poisoner
+        Chef: Chef [claimed by slayer]
+        Empath: Empath
+        Monk: Monk
+    "#]]
+    .assert_eq(&g.transcript());
+    assert!(g.state.is_alive(&p("Imp")));
+
+    // Once per game: the Chef is not offered it again, and cannot use it.
+    assert!(
+        !narrator::day_actions(&g.state)
+            .iter()
+            .any(|(p, a)| p.as_str() == "Chef" && a.id() == "slayer")
+    );
+    g.answers(&[&["Imp"]])
+        .run(|ctx| narrator::day_action(ctx, &p("Chef"), &slayer::Def));
+    assert!(!g.transcript().contains("shoots"));
+}
+
+#[test]
+fn a_real_slayers_shot_is_announced_like_a_bluff() {
+    let mut g = common::Game::new(&[
+        ("Imp", &imp::Def),
+        ("Ivy", &poisoner::Def),
+        ("Slayer", &slayer::Def),
+        ("Empath", &empath::Def),
+        ("Monk", &monk::Def),
+    ]);
+    g.run(|ctx| {
+        ctx.set_script(common::trouble_brewing().characters);
+        ctx.advance_phase();
+        ctx.advance_phase();
+    })
+    .quiet();
+    g.answers(&[&["Ivy"]])
+        .run(|ctx| narrator::day_action(ctx, &p("Slayer"), &slayer::Def));
+    expect![[r#"
+        * Slayer (slayer) marks Slayer: claimed
+        * Announcement: Slayer shoots
+        * Slayer (slayer) marks Slayer: AbilityUsed
+          Slayer? Who do you want to slay? => Ivy
+        * Announcement: Nothing happens
+        --- grimoire ---
+        Imp: Imp
+        Ivy: Poisoner
+        Slayer: Slayer [claimed by slayer] [AbilityUsed by slayer]
+        Empath: Empath
+        Monk: Monk
+    "#]]
+    .assert_eq(&g.transcript());
 }

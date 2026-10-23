@@ -696,7 +696,8 @@ fn minions_learn_the_damsel_and_a_right_guess_wins() {
     "#]]
     .assert_eq(&g.transcript());
 
-    // The Demon cannot guess; a Minion's right guess wins.
+    // The Demon may only bluff a guess (nothing happens); a Minion's right
+    // guess wins.
     g.run(|ctx| {
         ctx.advance_phase();
     })
@@ -707,12 +708,18 @@ fn minions_learn_the_damsel_and_a_right_guess_wins() {
         narrator::day_action(ctx, &p("Poisoner"), &characters::damsel::Def);
     });
     expect![[r#"
+        * Imp (damsel) marks Imp: claimed
+        * Announcement: Imp guesses who the Damsel is
+          Imp? Who is the Damsel? => Out
+        * Announcement: Nothing happens
+        * Poisoner (damsel) marks Poisoner: claimed
+        * Announcement: Poisoner guesses who the Damsel is
           Poisoner? Who is the Damsel? => Out
         * Out (damsel) marks Out: AbilityUsed
         * Evil wins!
         --- grimoire ---
-        Imp: Imp
-        Poisoner: Poisoner [knows Damsel by damsel]
+        Imp: Imp [claimed by damsel]
+        Poisoner: Poisoner [knows Damsel by damsel] [claimed by damsel]
         Out: Damsel [AbilityUsed by damsel]
         Chef: Chef
         Monk: Monk

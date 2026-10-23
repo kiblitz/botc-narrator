@@ -126,26 +126,40 @@ pub fn nominations_today(state: &game::State) -> Vec<(Option<player::Id>, player
         .collect()
 }
 
-/// What `me` publicly claimed today (or during the last day, if it is
-/// night): pairs of a player and the name of the character `me` said they
-/// are (names, since events compare by value). Claims are not tagged with
-/// the ability that made them.
-pub fn claims_today(state: &game::State, me: &player::Id) -> Vec<(player::Id, &'static str)> {
+/// What `me` publicly claimed today with `source`'s ability (or during the
+/// last day, if it is night): pairs of a player and the name of the
+/// character `me` said they are (names, since events compare by value).
+pub fn claims_today(
+    state: &game::State,
+    me: &player::Id,
+    source: character::Ref,
+) -> Vec<(player::Id, &'static str)> {
     today(state)
         .iter()
         .filter_map(|e| match e {
-            event::Event::Claimed { player, claims } if player == me => Some(claims.clone()),
+            event::Event::Claimed {
+                player,
+                ability,
+                claims,
+            } if player == me && *ability == source.id() => Some(claims.clone()),
             _ => None,
         })
         .flatten()
         .collect()
 }
 
-/// `me` publicly claims that each of `claims` is that character.
-pub fn claim(ctx: &mut ctx::Write<'_>, me: &player::Id, claims: Vec<(player::Id, character::Ref)>) {
+/// `me` publicly claims, with `source`'s ability, that each of `claims` is
+/// that character.
+pub fn claim(
+    ctx: &mut ctx::Write<'_>,
+    me: &player::Id,
+    source: character::Ref,
+    claims: Vec<(player::Id, character::Ref)>,
+) {
     let claims = claims.into_iter().map(|(p, c)| (p, c.name())).collect();
     ctx.record(event::Event::Claimed {
         player: me.clone(),
+        ability: source.id(),
         claims,
     });
 }

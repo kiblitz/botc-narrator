@@ -262,6 +262,8 @@ fn gossip_true_statement_kills_a_player_tonight() {
         .picks(&[&[3]])
         .run(act(gossip, 2));
     expect![[r#"
+        * Gossip (gossip) marks Gossip: claimed
+        * Announcement: Gossip gossips
           Gossip? Who is your statement about? => Imp
           Gossip? Which character do you say they are? => Imp
         * Gossip claims: Imp is the Imp
@@ -278,6 +280,36 @@ fn gossip_true_statement_kills_a_player_tonight() {
 }
 
 #[test]
+fn a_gossip_bluffing_the_juggler_makes_no_statement() {
+    let gossip: character::Ref = &characters::gossip::Def;
+    let mut g = gossip_game();
+    to_day(&mut g, 1);
+    // The Gossip's guesses as a (bluffed) Juggler are true, but they are
+    // Juggler claims: the Gossip's ability does not judge them.
+    g.answers(&[&["Imp"]])
+        .characters(&["Imp"])
+        .run(day_action("Gossip", &characters::juggler::Def))
+        .run(next_phase)
+        .run(act(gossip, 2));
+    expect![[r#"
+        * Gossip (juggler) marks Gossip: claimed
+        * Announcement: Gossip juggles
+          Gossip? Whose characters do you guess? => Imp
+          Gossip? Which character is Imp? => Imp
+          Gossip? Which character is Chef? => Washerwoman
+          Gossip? Which character is Empath? => Washerwoman
+        * Gossip claims: Imp is the Imp, Chef is the Washerwoman, Empath is the Washerwoman
+        * === Night 2 ===
+        --- grimoire ---
+        Gossip: Gossip [claimed by juggler]
+        Imp: Imp
+        Chef: Chef
+        Empath: Empath
+    "#]]
+    .assert_eq(&g.transcript());
+}
+
+#[test]
 fn gossip_false_statement_kills_nobody() {
     let gossip: character::Ref = &characters::gossip::Def;
     let mut g = gossip_game();
@@ -288,6 +320,8 @@ fn gossip_false_statement_kills_nobody() {
         .run(next_phase)
         .run(act(gossip, 2));
     expect![[r#"
+        * Gossip (gossip) marks Gossip: claimed
+        * Announcement: Gossip gossips
           Gossip? Who is your statement about? => Chef
           Gossip? Which character do you say they are? => Imp
         * Gossip claims: Chef is the Imp
@@ -382,6 +416,8 @@ fn juggler_learns_how_many_first_day_guesses_were_right() {
         .run(next_phase)
         .run(act(juggler, 2));
     expect![[r#"
+        * Juggler (juggler) marks Juggler: claimed
+        * Announcement: Juggler juggles
         * Juggler (juggler) marks Juggler: AbilityUsed
           Juggler? Whose characters do you guess? => Imp, Chef, Baron
           Juggler? Which character is Imp? => Imp
@@ -394,7 +430,7 @@ fn juggler_learns_how_many_first_day_guesses_were_right() {
           -> Juggler: 2 correct
         sleep Juggler
         --- grimoire ---
-        Juggler: Juggler [AbilityUsed by juggler]
+        Juggler: Juggler [claimed by juggler] [AbilityUsed by juggler]
         Imp: Imp
         Chef: Chef
         Baron: Baron
@@ -409,7 +445,7 @@ fn juggler_learns_how_many_first_day_guesses_were_right() {
         .run(act(juggler, 3));
     expect![[r#"
         --- grimoire ---
-        Juggler: Juggler [AbilityUsed by juggler]
+        Juggler: Juggler [claimed by juggler] [AbilityUsed by juggler]
         Imp: Imp
         Chef: Chef
         Baron: Baron
@@ -436,7 +472,7 @@ fn juggler_poisoned_tonight_may_learn_a_wrong_count() {
           -> Juggler: 0 correct
         sleep Juggler
         --- grimoire ---
-        Juggler: Juggler [AbilityUsed by juggler] [Poisoned by poisoner]
+        Juggler: Juggler [claimed by juggler] [AbilityUsed by juggler] [Poisoned by poisoner]
         Imp: Imp
         Chef: Chef
         Baron: Baron
@@ -1198,6 +1234,7 @@ fn recluse_may_register_as_a_minion_to_the_town_crier_and_juggler() {
         .run(|ctx| {
             ctx.record(botc_narrator::event::Event::Claimed {
                 player: p("Juggler"),
+                ability: "juggler",
                 claims: vec![(p("Recluse"), "Poisoner")],
             });
             narrator::nominate(ctx, &p("Recluse"), &p("Chef"));

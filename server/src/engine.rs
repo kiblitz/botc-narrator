@@ -9,9 +9,7 @@ use std::sync;
 use std::thread;
 use std::time;
 
-use botc_narrator::ability;
 use botc_narrator::character;
-use botc_narrator::characters;
 use botc_narrator::ctx;
 use botc_narrator::game;
 use botc_narrator::narrator;
@@ -323,32 +321,25 @@ fn may_nominate(
 
 /// The ability `id`, if `player` may use it as a day action now.
 fn usable(ctx: &ctx::Write<'_>, player: &player::Id, id: &str) -> Option<character::Ref> {
-    let ability = characters::all().iter().copied().find(|c| c.id() == id)?;
-    let state = ctx.state();
-    let may = state.is_alive(player)
-        && !ability::used(state, player, ability)
-        && narrator::day_action_users(state, ability).contains(player);
-    may.then_some(ability)
+    narrator::day_actions(ctx.state())
+        .into_iter()
+        .find(|(p, a)| p == player && a.id() == id)
+        .map(|(_, a)| a)
 }
 
 /// Who may nominate and which day abilities can be used, for the phones.
 fn refresh(ctx: &ctx::Write<'_>, room: &room::Room, players_nominate: bool) {
     let state = ctx.state();
-    let mut actions: Vec<room::DayAction> = Vec::new();
-    for (_, ability) in ctx.active_abilities() {
-        for user in narrator::day_action_users(state, ability) {
-            let fresh = !actions
-                .iter()
-                .any(|a| a.player == user.as_str() && a.ability == ability.id());
-            if fresh && state.is_alive(&user) && !ability::used(state, &user, ability) {
-                actions.push(room::DayAction {
-                    player: user.to_string(),
-                    ability: ability.id(),
-                    name: ability.name(),
-                });
-            }
-        }
-    }
+    // Publicly claimable abilities are offered to everyone alike, so the
+    // phones do not show who really has them.
+    let actions: Vec<room::DayAction> = narrator::day_actions(state)
+        .into_iter()
+        .map(|(user, ability)| room::DayAction {
+            player: user.to_string(),
+            ability: ability.id(),
+            name: ability.name(),
+        })
+        .collect();
     let able: Vec<String> = state
         .alive_ids()
         .into_iter()

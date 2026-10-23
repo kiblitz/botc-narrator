@@ -376,3 +376,88 @@ async fn only_the_host_nominates_and_enters_the_votes() {
     tokio::time::sleep(time::Duration::from_millis(300)).await;
     assert_eq!(phones[0].view()["stage"], "day");
 }
+
+/// The day abilities a phone is offered.
+fn day_abilities(view: &serde_json::Value) -> Vec<String> {
+    view["day_actions"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|a| a["ability"].as_str())
+        .map(ToString::to_string)
+        .collect()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn every_living_phone_may_claim_the_slayers_shot_so_none_shows_who_has_it() {
+    let base = common::serve(common::quick(), 4).await;
+    let (_room, phones, _) = common::table(&base, &PLAYERS).await;
+    common::until(&phones[0], time::Duration::from_secs(5), |v| {
+        v["seats"].as_array().is_some_and(|s| s.len() == 6)
+    })
+    .await;
+    phones[0].send(json!({"type": "start"}));
+    // Through the first night, answering every prompt.
+    let deadline = time::Instant::now() + time::Duration::from_secs(60);
+    while phones[0].view()["stage"] != "day" {
+        assert!(time::Instant::now() < deadline, "{:#}", phones[0].view());
+        for phone in &phones {
+            if let Some(prompt) = phone.view()["prompt"].as_object() {
+                phone.send(common::answer(prompt));
+            }
+        }
+        tokio::time::sleep(time::Duration::from_millis(50)).await;
+    }
+    let alive = |name: &str| {
+        phones[0].view()["seats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|s| s["name"] == name && s["alive"] == true)
+    };
+    for phone in &phones {
+        common::until(phone, time::Duration::from_secs(5), |v| v["stage"] == "day").await;
+        let offered = day_abilities(&phone.view());
+        if alive(&phone.name) {
+            assert_eq!(offered, ["slayer"], "{}", phone.name);
+        } else {
+            assert!(offered.is_empty(), "{}", phone.name);
+        }
+    }
+    // Every living player shoots once; each shot is announced the same way.
+    let shooters: Vec<&common::Phone> = phones.iter().filter(|p| alive(&p.name)).collect();
+    for shooter in &shooters {
+        if !phones[0].view()["winner"].is_null() || !alive(&shooter.name) {
+            break;
+        }
+        shooter.send(json!({"type": "day_action", "ability": "slayer"}));
+        common::until(shooter, time::Duration::from_secs(5), |v| {
+            v["prompt"].is_object()
+        })
+        .await;
+        let prompt = shooter.view()["prompt"].as_object().unwrap().clone();
+        shooter.send(common::answer(&prompt));
+        let shoots = format!("Announcement: {} shoots", shooter.name);
+        common::until(&phones[0], time::Duration::from_secs(10), |v| {
+            let log = v["log"].as_array().unwrap();
+            let at = log.iter().rposition(|e| e["text"] == shoots.as_str());
+            at.is_some_and(|at| {
+                log[at..].iter().any(|e| {
+                    e["audience"]["kind"] == "public"
+                        && (e["text"] == "Announcement: Nothing happens"
+                            || e["text"].as_str().unwrap().ends_with(" dies"))
+                })
+            })
+        })
+        .await;
+        common::until(shooter, time::Duration::from_secs(5), |v| {
+            !day_abilities(v).contains(&"slayer".to_string())
+        })
+        .await;
+    }
+    let mut leaks = Vec::new();
+    for phone in &phones {
+        common::check_private(&phone.name, &phone.view(), &mut leaks);
+    }
+    assert_eq!(leaks, Vec::<String>::new());
+}

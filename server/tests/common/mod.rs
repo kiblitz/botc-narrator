@@ -361,7 +361,7 @@ pub fn answer(prompt: &serde_json::Map<String, serde_json::Value>) -> serde_json
 }
 
 /// Records anything in `view` that its player should not see yet.
-fn check_private(name: &str, view: &serde_json::Value, leaks: &mut Vec<String>) {
+pub fn check_private(name: &str, view: &serde_json::Value, leaks: &mut Vec<String>) {
     if view["stage"] == "over" || view.is_null() {
         return;
     }

@@ -14,7 +14,6 @@ use rand::seq::SliceRandom;
 use rand::seq::index;
 use serde::Serialize;
 
-use crate::ability;
 use crate::character;
 use crate::characters;
 use crate::ctx;
@@ -33,6 +32,9 @@ pub const MAX_PLAYERS: usize = setup::MAX_PLAYERS;
 const MAX_DAYS: u32 = 12;
 /// Chance a player uses an unused day ability (the Slayer's shot) on a given day.
 const DAY_ACTION: f64 = 0.35;
+/// Chance a living player without a publicly claimable day ability claims
+/// it anyway (a bluffed Slayer shot) on a given day.
+const BLUFF: f64 = 0.02;
 /// Chance the demon picks any player (possibly themself: a starpass) instead of
 /// a good player.
 const DEMON_WILD_PICK: f64 = 0.05;
@@ -677,7 +679,7 @@ impl Recorder {
             | event::Event::ReminderRemoved { player, .. } => {
                 self.push(Kind::Event, Some(player), text, Audience::Storyteller);
             }
-            event::Event::Claimed { player, claims } => {
+            event::Event::Claimed { player, claims, .. } => {
                 let step = self.push(Kind::Event, Some(player), text, Audience::Public);
                 step.players = claims.iter().map(|(p, _)| p.to_string()).collect();
                 step.characters = claims.iter().map(|(_, c)| *c).collect();
@@ -779,26 +781,14 @@ pub fn simulate_named(
 }
 
 /// A day: maybe day abilities (the Slayer's shot, also by a Drunk who
-/// believes they are the Slayer; a Minion's guess of the Damsel), then
-/// nominations and a majority vote.
+/// believes they are the Slayer; a Minion's guess of the Damsel), now and
+/// then a bluffed public one (a shot by someone who is not the Slayer),
+/// then nominations and a majority vote.
 fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
-    let mut users: Vec<(player::Id, character::Ref)> = Vec::new();
-    for (_, ability) in ctx.active_abilities() {
-        for user in narrator::day_action_users(ctx.state(), ability) {
-            if !users
-                .iter()
-                .any(|(p, a)| *p == user && character::same(*a, ability))
-            {
-                users.push((user, ability));
-            }
-        }
-    }
-    for (player, ability) in users {
-        if ctx.state().winner().is_none()
-            && ctx.state().is_alive(&player)
-            && !ability::used(ctx.state(), &player, ability)
-            && rng.random_bool(DAY_ACTION)
-        {
+    for (player, ability) in narrator::day_actions(ctx.state()) {
+        let real = narrator::day_action_users(ctx.state(), ability).contains(&player);
+        let chance = if real { DAY_ACTION } else { BLUFF };
+        if ctx.state().winner().is_none() && rng.random_bool(chance) {
             narrator::day_action(ctx, &player, ability);
         }
     }

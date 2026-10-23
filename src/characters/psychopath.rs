@@ -24,6 +24,17 @@ impl character::Def for Def {
         Some(kill)
     }
 
+    fn public_claim(&self) -> Option<character::PublicClaim> {
+        Some(character::PublicClaim {
+            limit: character::ClaimLimit::EachDay,
+            announcement: "uses the Psychopath ability",
+            resolves_now: true,
+            bluff: |ctx, me| {
+                target(ctx, me);
+            },
+        })
+    }
+
     /// If executed, only dies on losing roshambo against the nominator (the
     /// storyteller if they nominated themself).
     fn intercept_death(
@@ -60,8 +71,13 @@ fn kill(ctx: &mut ctx::Write<'_>, me: &player::Id) {
     if !ctx.state().is_alive(me) {
         return;
     }
-    let candidates = ctx.state().alive_ids();
-    if let Some(target) = ctx.ask_one(me, "Who do you want to kill?", &candidates) {
+    if let Some(target) = target(ctx, me) {
         ability::kill(ctx, me, &target);
     }
+}
+
+/// Asks whom `me` chooses to kill.
+fn target(ctx: &mut ctx::Write<'_>, me: &player::Id) -> Option<player::Id> {
+    let candidates = ctx.state().alive_ids();
+    ctx.ask_one(me, "Who do you want to kill?", &candidates)
 }

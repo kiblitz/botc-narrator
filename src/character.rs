@@ -114,6 +114,37 @@ pub type ReadOnlyFn = fn(&mut ctx::Read<'_>, &player::Id, u32);
 pub type ReadWriteFn = fn(&mut ctx::Write<'_>, &player::Id, u32);
 pub type DayFn = fn(&mut ctx::Write<'_>, &player::Id);
 
+/// A day ability used in front of everyone, which any living player may
+/// claim to use whether or not they have it, so that every phone looks the
+/// same and holding it can be bluffed (`Def::public_claim`).
+#[derive(Clone, Copy)]
+pub struct PublicClaim {
+    /// How often each player is offered it; the ability still enforces its
+    /// own limit for real users (the Slayer's `ability::use_once`).
+    pub limit: ClaimLimit,
+    /// What the table is told first: "{player} {announcement}".
+    pub announcement: &'static str,
+    /// Whether it takes effect at once, so the table is told "Nothing
+    /// happens" afterwards unless someone died or the game ended (the
+    /// Slayer's shot, the Psychopath's kill, the Damsel guess: abilities
+    /// whose only immediate effects are those); not for statements judged
+    /// at night (the Gossip).
+    pub resolves_now: bool,
+    /// A player without the ability: asked the same questions as a holder
+    /// (share the asking with the real ability in one helper, like the
+    /// Slayer's `aim`, so the two cannot drift apart), and nothing happens.
+    pub bluff: DayFn,
+}
+
+/// How often each living player may publicly claim a day ability.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ClaimLimit {
+    OncePerGame,
+    EachDay,
+    /// Once, on the first day (the Juggler).
+    FirstDay,
+}
+
 /// A night ability, tagged with the access it needs. Consecutive read-only
 /// actions in the night order are independent and announced as one batch;
 /// read-write actions are sequential sync points.
@@ -159,8 +190,14 @@ pub trait Def: Sync {
         None
     }
 
-    /// Who may use this ability's `day_action` while `me` has it: `me` by
-    /// default; the Damsel lets every Minion guess it.
+    /// Whether anyone may claim this ability's `day_action` in public (see
+    /// [`PublicClaim`]); `None` (the default) offers it only to its users.
+    fn public_claim(&self) -> Option<PublicClaim> {
+        None
+    }
+
+    /// Who may really use this ability's `day_action` while `me` has it: `me`
+    /// by default; the Damsel lets every Minion guess it.
     fn day_action_users(&self, _state: &game::State, me: &player::Id) -> Vec<player::Id> {
         vec![me.clone()]
     }

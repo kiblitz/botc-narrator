@@ -35,6 +35,18 @@ impl character::Def for Def {
         Some(guess)
     }
 
+    /// Anyone may say they guess the Damsel; only a Minion's guess counts.
+    fn public_claim(&self) -> Option<character::PublicClaim> {
+        Some(character::PublicClaim {
+            limit: character::ClaimLimit::OncePerGame,
+            announcement: "guesses who the Damsel is",
+            resolves_now: true,
+            bluff: |ctx, me| {
+                ask_guess(ctx, me);
+            },
+        })
+    }
+
     /// Every living Minion may guess the Damsel, once in total.
     fn day_action_users(&self, state: &game::State, me: &player::Id) -> Vec<player::Id> {
         if ability::used(state, me, &Def) {
@@ -65,8 +77,7 @@ fn act(ctx: &mut ctx::Write<'_>, me: &player::Id, _night: u32) {
 /// A Minion publicly guesses who the Damsel is (the Minions' one guess): if
 /// right, and the Damsel is alive and functioning, the Damsel's team loses.
 fn guess(ctx: &mut ctx::Write<'_>, minion: &player::Id) {
-    let candidates = ctx.state().alive_except(minion);
-    let Some(guessed) = ctx.ask_one(minion, "Who is the Damsel?", &candidates) else {
+    let Some(guessed) = ask_guess(ctx, minion) else {
         return;
     };
     let damsels: Vec<player::Id> = ctx
@@ -84,4 +95,10 @@ fn guess(ctx: &mut ctx::Write<'_>, minion: &player::Id) {
         let team = state.alignment(&guessed);
         ctx.win(team.opposite());
     }
+}
+
+/// Asks `me` whom they guess is the Damsel.
+fn ask_guess(ctx: &mut ctx::Write<'_>, me: &player::Id) -> Option<player::Id> {
+    let candidates = ctx.state().alive_except(me);
+    ctx.ask_one(me, "Who is the Damsel?", &candidates)
 }

@@ -213,14 +213,17 @@ fn communication_steps_say_which_way_they_go() {
             _ => {}
         }
     }
-    let nomination = trace
+    let (nomination, nominator, nominee) = trace
         .steps
         .iter()
-        .find(|s| s.text == "Ada nominates Bram")
+        .find_map(|s| {
+            let (nominator, nominee) = s.text.split_once(" nominates ")?;
+            Some((s, nominator, nominee))
+        })
         .expect("nomination");
     let flow = nomination.flow.as_ref().expect("nomination flow");
-    assert_eq!(flow.from, sim::Endpoint::Player("Ada".into()));
-    assert_eq!(flow.to, sim::Endpoint::Player("Bram".into()));
+    assert_eq!(flow.from, sim::Endpoint::Player(nominator.into()));
+    assert_eq!(flow.to, sim::Endpoint::Player(nominee.into()));
 }
 
 #[test]
