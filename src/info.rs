@@ -3,6 +3,9 @@ use std::fmt;
 use crate::character;
 use crate::player;
 
+/// The most characters of free text a player may type (`ctx::Read::ask_text`).
+pub const TEXT_LIMIT: usize = 200;
+
 /// Information the storyteller gives a player. Typed so engines can render it
 /// and storytellers can reason about which values are true.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -72,6 +75,12 @@ pub enum Message {
     Nothing,
     /// The storyteller took note of what a player reported (madness).
     Noted,
+    /// The storyteller's yes/no answer to the player's own free question
+    /// (`ctx::Read::answer`).
+    Answer {
+        question: String,
+        yes: bool,
+    },
 }
 
 /// Around the circle: clockwise is increasing seat order.
@@ -118,7 +127,8 @@ impl Message {
             | Message::Accuracy(_)
             | Message::Word(_)
             | Message::Nothing
-            | Message::Noted => Vec::new(),
+            | Message::Noted
+            | Message::Answer { .. } => Vec::new(),
         }
     }
 
@@ -146,7 +156,9 @@ impl Message {
             | Message::IsAligned { .. }
             | Message::Advice { .. } => Vec::new(),
             Message::Accuracy(_) => Vec::new(),
-            Message::Word(_) | Message::Nothing | Message::Noted => Vec::new(),
+            Message::Word(_) | Message::Nothing | Message::Noted | Message::Answer { .. } => {
+                Vec::new()
+            }
         }
     }
 }
@@ -205,6 +217,9 @@ impl fmt::Display for Message {
             Message::Word(word) => write!(f, "The word is \"{word}\""),
             Message::Nothing => f.write_str("The storyteller has nothing for you"),
             Message::Noted => f.write_str("The storyteller has noted it"),
+            Message::Answer { question, yes } => {
+                write!(f, "\"{question}\": {}", if *yes { "Yes" } else { "No" })
+            }
         }
     }
 }

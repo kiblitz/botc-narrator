@@ -180,7 +180,16 @@ function render() {
   clearInterval(state.countdown);
   const view = state.view;
   document.body.className = view ? view.stage : "";
+  // Views arrive while someone types (the Artist's question): keep the
+  // field focused, with its cursor, across the redraw.
+  const typing = document.activeElement && document.activeElement.id === "question" ? document.activeElement : null;
+  const cursor = typing ? [typing.selectionStart, typing.selectionEnd] : null;
   app.replaceChildren(...(view ? game(view) : home()));
+  const field = typing && document.getElementById("question");
+  if (field) {
+    field.focus();
+    field.setSelectionRange(...cursor);
+  }
 }
 
 function home() {
@@ -591,6 +600,19 @@ function prompt(view) {
     const choices = el("div", { class: "choices" });
     p.options.forEach((name, i) => choices.append(el("button", { onclick: () => answer({ option: i }) }, icon(name), name)));
     card.append(choices);
+  } else if (p.kind === "text") {
+    // Private: only this phone and the storyteller see what is typed.
+    const typed = state.picking.text || "";
+    const send = el("button", { class: "primary", id: "ask", disabled: !typed.trim(), onclick: () => answer({ text: state.picking.text.trim() }) }, "Ask");
+    const field = el("textarea", {
+      id: "question", rows: 3, maxlength: p.max, placeholder: "Type your yes/no question",
+      oninput: (e) => {
+        state.picking.text = e.target.value;
+        send.disabled = !e.target.value.trim();
+      },
+    });
+    field.value = typed;
+    card.append(field, el("p", { class: "muted small" }, "Only you and the storyteller see your question."), send);
   } else {
     card.append(el("div", { class: "row" },
       el("button", { class: "primary", onclick: () => answer({ yes: true }) }, "Yes"),

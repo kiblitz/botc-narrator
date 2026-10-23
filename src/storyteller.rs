@@ -49,6 +49,27 @@ pub enum Reason {
         character: &'static str,
         question: &'static str,
     },
+    /// The yes/no answer to a question `player` typed for their ability
+    /// (the Artist's). Only a strategy that [`Strategy::reads_text`] is asked
+    /// for one; `honesty` says which answers the rules allow.
+    Question {
+        player: player::Id,
+        character: &'static str,
+        question: String,
+        honesty: Honesty,
+    },
+}
+
+/// Which answers to a player's free question the rules allow. The engine
+/// cannot read the question, so the storyteller judges which answer is true.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Honesty {
+    /// The player is functioning: only the true answer.
+    Truthful,
+    /// The player is poisoned or drunk: either answer.
+    Either,
+    /// The player's information must be false (Vortox, a lying storyteller).
+    False,
 }
 
 impl Reason {
@@ -57,7 +78,8 @@ impl Reason {
         match self {
             Reason::Information { player, .. }
             | Reason::MayorRedirect { mayor: player }
-            | Reason::Ability { player, .. } => vec![player],
+            | Reason::Ability { player, .. }
+            | Reason::Question { player, .. } => vec![player],
             Reason::Registration { asker, target } => vec![target, asker],
             Reason::DemonBluffs | Reason::StarpassTarget | Reason::Fabled { .. } => Vec::new(),
         }
@@ -68,7 +90,8 @@ impl Reason {
         match self {
             Reason::Information { character, .. }
             | Reason::Ability { character, .. }
-            | Reason::Fabled { character, .. } => vec![*character],
+            | Reason::Fabled { character, .. }
+            | Reason::Question { character, .. } => vec![*character],
             Reason::MayorRedirect { .. } => vec!["Mayor"],
             Reason::DemonBluffs | Reason::StarpassTarget | Reason::Registration { .. } => {
                 Vec::new()
@@ -111,6 +134,22 @@ impl fmt::Display for Reason {
                 character,
                 question,
             } => write!(f, "{character}: {question}"),
+            Reason::Question {
+                player,
+                character,
+                question,
+                honesty,
+            } => {
+                write!(f, "{character} {player} asks \"{question}\": ")?;
+                f.write_str(match honesty {
+                    Honesty::Truthful => {
+                        "answer truthfully from the grimoire (use your best judgement if the \
+                         question is ambiguous or cannot be answered)"
+                    }
+                    Honesty::Either => "they are poisoned or drunk: either answer is allowed",
+                    Honesty::False => "their information must be false: give the untrue answer",
+                })
+            }
         }
     }
 }
@@ -202,6 +241,13 @@ pub fn is_selection<T: PartialEq>(items: &[T], count: usize, allowed: impl Fn(&T
 /// invalid answer falls back to the first `count` options.
 pub trait Strategy {
     fn decide(&mut self, decision: &Decision, view: &game::State) -> Vec<usize>;
+
+    /// Whether this storyteller understands free text (an LLM), so may be
+    /// asked to answer a player's own question ([`Reason::Question`]).
+    /// Abilities ask a structured question instead when it does not.
+    fn reads_text(&self) -> bool {
+        false
+    }
 }
 
 /// Uniformly random legal choices.
@@ -234,13 +280,21 @@ impl Strategy for Random {
 #[derive(Default)]
 pub struct Scripted {
     picks: VecDeque<Vec<usize>>,
+    reads_text: bool,
 }
 
 impl Scripted {
     pub fn new(picks: impl IntoIterator<Item = Vec<usize>>) -> Self {
         Self {
             picks: picks.into_iter().collect(),
+            reads_text: false,
         }
+    }
+
+    /// Stands in for a storyteller that reads free text (an LLM).
+    pub fn reading_text(mut self) -> Self {
+        self.reads_text = true;
+        self
     }
 }
 
@@ -249,5 +303,9 @@ impl Strategy for Scripted {
         self.picks
             .pop_front()
             .unwrap_or_else(|| (0..decision.count).collect())
+    }
+
+    fn reads_text(&self) -> bool {
+        self.reads_text
     }
 }

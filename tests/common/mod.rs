@@ -42,6 +42,8 @@ pub struct Recorder {
     pub mad_about: Vec<player::Id>,
     /// Players who answer yes to every `table::Question`.
     pub agrees: Vec<player::Id>,
+    /// What players type when asked for text, in order; then nothing.
+    pub texts: VecDeque<String>,
     pub log: String,
 }
 
@@ -123,6 +125,12 @@ impl table::Io for Recorder {
         answer
     }
 
+    fn ask_text(&mut self, player: &player::Id, prompt: &str) -> String {
+        let text = self.texts.pop_front().unwrap_or_default();
+        self.line(format!("  {player}? {prompt} => {text:?}"));
+        text
+    }
+
     fn broke_madness(&mut self, player: &player::Id, about: &'static str) -> bool {
         let broke = self.breaks_madness.contains(player);
         self.line(format!("  {player} mad about {about}: broke = {broke}"));
@@ -158,6 +166,8 @@ pub struct Game {
     pub state: game::State,
     pub table: Recorder,
     pub storyteller: storyteller::Scripted,
+    /// Whether the storyteller reads free text (`Game::reading_text`).
+    reads_text: bool,
 }
 
 impl Game {
@@ -166,6 +176,7 @@ impl Game {
             state: state(seats),
             table: Recorder::default(),
             storyteller: storyteller::Scripted::default(),
+            reads_text: false,
         }
     }
 
@@ -175,6 +186,7 @@ impl Game {
             state: game::State::seated(seats),
             table: Recorder::default(),
             storyteller: storyteller::Scripted::default(),
+            reads_text: false,
         }
     }
 
@@ -201,7 +213,25 @@ impl Game {
 
     /// Queue picks for the next storyteller decisions.
     pub fn picks(&mut self, picks: &[&[usize]]) -> &mut Self {
-        self.storyteller = storyteller::Scripted::new(picks.iter().map(|p| p.to_vec()));
+        let picks = storyteller::Scripted::new(picks.iter().map(|p| p.to_vec()));
+        self.storyteller = if self.reads_text {
+            picks.reading_text()
+        } else {
+            picks
+        };
+        self
+    }
+
+    /// From now on the storyteller reads free text (stands in for an LLM).
+    pub fn reading_text(&mut self) -> &mut Self {
+        self.reads_text = true;
+        self.storyteller = std::mem::take(&mut self.storyteller).reading_text();
+        self
+    }
+
+    /// Queue what players type when asked for text.
+    pub fn texts(&mut self, texts: &[&str]) -> &mut Self {
+        self.table.texts = texts.iter().map(ToString::to_string).collect();
         self
     }
 

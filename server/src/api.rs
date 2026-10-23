@@ -297,6 +297,8 @@ pub enum FromPhone {
         option: Option<usize>,
         #[serde(default)]
         yes: Option<bool>,
+        #[serde(default)]
+        text: Option<String>,
     },
     /// A day action from the phone's list, with the targets picked on the
     /// town square (if it has any).
@@ -490,16 +492,18 @@ pub fn handle(
             players,
             option,
             yes,
+            text,
         } => {
             let asked = room.read(|s| {
                 s.game
                     .as_ref()
                     .is_some_and(|g| g.prompts.iter().any(|p| p.id == prompt && p.player == name))
             });
-            let answer = match (players, option, yes) {
-                (Some(players), None, None) => inbox::Answer::Players(players),
-                (None, Some(option), None) => inbox::Answer::Option(option),
-                (None, None, Some(yes)) => inbox::Answer::YesNo(yes),
+            let answer = match (players, option, yes, text) {
+                (Some(players), None, None, None) => inbox::Answer::Players(players),
+                (None, Some(option), None, None) => inbox::Answer::Option(option),
+                (None, None, Some(yes), None) => inbox::Answer::YesNo(yes),
+                (None, None, None, Some(text)) => inbox::Answer::Text(text),
                 _ => return Err("That answer was not understood.".to_string()),
             };
             if !asked {

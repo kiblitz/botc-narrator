@@ -56,6 +56,7 @@ pub enum Answer {
     /// The index of a character option.
     Option(usize),
     YesNo(bool),
+    Text(String),
 }
 
 /// What [`Inbox::wait`] does with an input.

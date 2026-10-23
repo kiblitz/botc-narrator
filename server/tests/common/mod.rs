@@ -356,6 +356,7 @@ pub fn answer(prompt: &serde_json::Map<String, serde_json::Value>) -> serde_json
             json!({"type": "answer", "prompt": id, "players": candidates[..count]})
         }
         "character" => json!({"type": "answer", "prompt": id, "option": 0}),
+        "text" => json!({"type": "answer", "prompt": id, "text": "Is it day?"}),
         _ => json!({"type": "answer", "prompt": id, "yes": false}),
     }
 }

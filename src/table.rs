@@ -74,6 +74,12 @@ pub trait Io {
         false
     }
 
+    /// Ask a player to type a short free text (the Artist's question). An
+    /// empty answer is saying nothing; by default nobody types anything.
+    fn ask_text(&mut self, _player: &player::Id, _prompt: &str) -> String {
+        String::new()
+    }
+
     /// Ask a player to choose one of `options` (characters); returns its
     /// index. Invalid answers are replaced by the first option.
     fn ask_character(

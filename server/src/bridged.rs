@@ -105,4 +105,10 @@ impl storyteller::Strategy for Storyteller {
             }
         }
     }
+
+    /// While a bridge is paired, its LLM reads the players' own questions.
+    /// Should it fail to answer one after all, the random fallback answers.
+    fn reads_text(&self) -> bool {
+        self.room.read(|s| s.bridge.is_some())
+    }
 }

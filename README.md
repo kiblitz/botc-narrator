@@ -7,7 +7,7 @@ A Blood on the Clocktower storyteller engine in Rust, with every character on th
 The engine separates *rules* from *how the game is run*:
 
 - **Characters** (`src/characters/`) describe their ability against an ability context. They never print or prompt directly.
-- **The table** (`table::Io`) is how the storyteller talks to players: `wake`, `sleep`, `tell`, `ask`, and `confirm` for yes/no questions (`table::Question`: use an optional ability, claim a character, said the secret word, lost roshambo). Public announcements are `ctx::Write::announce` events. Implement it for a console, a GUI, a networked app or a test recorder.
+- **The table** (`table::Io`) is how the storyteller talks to players: `wake`, `sleep`, `tell`, `ask`, `ask_text` for a short typed text (the Artist's question), and `confirm` for yes/no questions (`table::Question`: use an optional ability, claim a character, said the secret word, lost roshambo). Public announcements are `ctx::Write::announce` events. Implement it for a console, a GUI, a networked app or a test recorder.
 - **The storyteller** (`storyteller::Strategy`) makes every choice the rules leave to the storyteller's discretion.
 
 ### Storyteller decisions
@@ -19,6 +19,8 @@ Each discretionary choice is a `storyteller::Decision`:
 - the number of options to pick.
 
 The strategy also gets a read-only view of the grimoire. Its answer is validated: an invalid answer falls back to the first options, and a decision with no real choice is not asked at all.
+
+A strategy that understands free text (an LLM: `Strategy::reads_text`) may also answer a player's own question: `ctx::Read::answer` asks it `Reason::Question` with the question and a `storyteller::Honesty` (only the true answer for a functioning player, either answer when drunk or poisoned, the untrue one when their information must be false), options Yes / No. The engine cannot check the answer, so the prompt tells the LLM which answers are legal. Abilities ask a structured question the engine can judge instead when the storyteller does not read text (the Artist: "is this player this character?").
 
 Strategies:
 
@@ -133,7 +135,7 @@ Demons:
 - The Pukka's and Shabaloth's tokens are only updated when they act or die (a Pukka that loses its ability some other way leaves its victim poisoned).
 - Lil' Monsta is not a player, so a poisoned or drunk babysitter still lets a player die (a deliberate reading of the rules).
 - Demon jinxes are not modelled.
-Free-form day abilities are narrowed to typed choices: the Gossip's statement and the Artist's question are "this player is this character" (the Artist is never told "I don't know"), the Savant's statements are about one other player's alignment or character (when malfunctioning, both true or both false is the opposite of one of the storyteller's two picks), and the Fisherman's advice is whom to trust. The Gossip's statement is judged at night, against the characters then. The Juggler guesses only on day 1 (not a later first day as the Juggler), always as many distinct players as they can, up to 5. The Professor and the Huntsman cannot decline while there is someone to choose. The Town Crier ignores Traveller exiles only because exiles are not modelled. The High Priestess sits at 50 / 69, right after the Spy, since the clocktower.online numbering lacks her. In the simulator's player view a revived player still looks dead.
+Free-form day abilities are narrowed to typed choices: the Gossip's statement is "this player is this character", and so is the Artist's question when the storyteller does not read text (with an LLM storyteller the Artist types any question; it is answered yes or no, never "I don't know"), the Savant's statements are about one other player's alignment or character (when malfunctioning, both true or both false is the opposite of one of the storyteller's two picks), and the Fisherman's advice is whom to trust. The Gossip's statement is judged at night, against the characters then. The Juggler guesses only on day 1 (not a later first day as the Juggler), always as many distinct players as they can, up to 5. The Professor and the Huntsman cannot decline while there is someone to choose. The Town Crier ignores Traveller exiles only because exiles are not modelled. The High Priestess sits at 50 / 69, right after the Spy, since the clocktower.online numbering lacks her. In the simulator's player view a revived player still looks dead.
 
 Outsiders:
 

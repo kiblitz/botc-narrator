@@ -137,6 +137,63 @@ impl<'a> Read<'a> {
         self.io.ask_yes_no(player, prompt)
     }
 
+    /// Ask a player to type a short free text; `None` if they typed nothing.
+    /// Whitespace is collapsed and the text cut to [`info::TEXT_LIMIT`].
+    pub fn ask_text(&mut self, player: &player::Id, prompt: &str) -> Option<String> {
+        let typed = self.io.ask_text(player, prompt);
+        let text: String = typed
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .chars()
+            .take(info::TEXT_LIMIT)
+            .collect();
+        (!text.is_empty()).then_some(text)
+    }
+
+    /// Whether the storyteller understands free text, so may [`Read::answer`]
+    /// a player's own question.
+    pub fn storyteller_reads_text(&self) -> bool {
+        self.storyteller.reads_text()
+    }
+
+    /// The storyteller answers `player`'s own yes/no `question` and tells
+    /// them. The engine cannot judge the question, so the decision says
+    /// which answers are legal (`storyteller::Honesty`): only the true one
+    /// for a functioning player, either when malfunctioning, the untrue one
+    /// when their information must be false. Ask only a storyteller that
+    /// [`Read::storyteller_reads_text`]. Returns the answer.
+    pub fn answer(&mut self, player: &player::Id, question: &str) -> bool {
+        let malfunctioning = self.state.is_malfunctioning(player);
+        let honesty =
+            if self.forced_false(player) || (!malfunctioning && self.lying_storyteller(player)) {
+                storyteller::Honesty::False
+            } else if malfunctioning {
+                storyteller::Honesty::Either
+            } else {
+                storyteller::Honesty::Truthful
+            };
+        let reason = storyteller::Reason::Question {
+            player: player.clone(),
+            character: self.state.believed(player).name(),
+            question: question.to_string(),
+            honesty,
+        };
+        let yes = self
+            .choose(reason, vec![true, false], 1, |&yes| {
+                storyteller::Choice::YesNo(yes)
+            })
+            .first()
+            .copied()
+            .unwrap_or(true);
+        let message = info::Message::Answer {
+            question: question.to_string(),
+            yes,
+        };
+        self.tell(player, &message);
+        yes
+    }
+
     /// Ask a player to choose one of `options` (characters).
     pub fn ask_character(
         &mut self,
@@ -893,6 +950,18 @@ impl<'a> Write<'a> {
         options: &[character::Ref],
     ) -> Option<character::Ref> {
         self.read().ask_character(player, prompt, options)
+    }
+
+    pub fn ask_text(&mut self, player: &player::Id, prompt: &str) -> Option<String> {
+        self.read().ask_text(player, prompt)
+    }
+
+    pub fn storyteller_reads_text(&self) -> bool {
+        self.storyteller.reads_text()
+    }
+
+    pub fn answer(&mut self, player: &player::Id, question: &str) -> bool {
+        self.read().answer(player, question)
     }
 
     pub fn is_mad_about(&mut self, player: &player::Id, about: &'static str) -> bool {

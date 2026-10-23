@@ -339,6 +339,9 @@ fn valid(kind: &room::PromptKind, answer: &inbox::Answer) -> bool {
         }
         (room::PromptKind::Character { options }, inbox::Answer::Option(i)) => *i < options.len(),
         (room::PromptKind::YesNo, inbox::Answer::YesNo(_)) => true,
+        (room::PromptKind::Text { max }, inbox::Answer::Text(text)) => {
+            !text.trim().is_empty() && text.chars().count() <= *max
+        }
         _ => false,
     }
 }
@@ -436,6 +439,25 @@ impl table::Io for Table {
             vec![name],
         );
         chosen
+    }
+
+    /// What the player typed is theirs alone (an Artist's question): only
+    /// their phone and the storyteller's decision see it.
+    fn ask_text(&mut self, player: &player::Id, prompt: &str) -> String {
+        let kind = room::PromptKind::Text {
+            max: info::TEXT_LIMIT,
+        };
+        let text = match self.prompt(player, prompt, kind) {
+            Some(inbox::Answer::Text(text)) => text,
+            _ => String::new(),
+        };
+        let said = if text.trim().is_empty() {
+            "You asked nothing".to_string()
+        } else {
+            format!("You asked: \"{}\"", text.trim())
+        };
+        self.private(player, said);
+        text
     }
 
     fn confirm(&mut self, player: &player::Id, question: &table::Question) -> bool {

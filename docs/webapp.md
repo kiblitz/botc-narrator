@@ -65,7 +65,11 @@ Playing.
   and does nothing for anyone else ("Nothing happens"); a kill shows on
   every phone as a death ("Y dies"), never its cause. A private visit is
   asked the same questions in private; a player without the ability is told
-  "The storyteller has nothing for you". Each action is offered within its
+  "The storyteller has nothing for you". The Artist types any yes/no question
+  (only their phone and the storyteller see it) while a storyteller bridge is
+  paired; without one the random storyteller cannot read it, so the Artist
+  asks "Is [player] [character]?" instead, answered truthfully from the
+  grimoire. Each action is offered within its
   limit (once per game, each day, the first day). Travellers' abilities
   (their characters are public) are on their holder's list only, marked
   "yours alone". The Atheist has no day action (see nominating the

@@ -103,6 +103,7 @@ Override only the hooks the ability uses (the full list is in the README,
 | day ability | hook `day_action` (gets its targets from `day_targets`, chosen first); `narrator::day_actions` offers it (to the server and the simulator) while unused; `day_action_users` lets others use it (Damsel guess); `claim` lets any living player claim it, in public (`Visibility::Public`, announced) or as a private visit (`Visibility::Private`: the narrator wakes the player around it, so do not wake them yourself); the bluff asks the same remaining questions (those after the targets), with no effect (share them in one helper, like the Juggler's `guesses`); an empty bluff is right exactly when the ability asks nothing after its targets (Fisherman, Psychopath) |
 | may make a player mad | hook `causes_madness` (players can then report breaking it) |
 | ask a player yes/no | `ctx.ask_yes_no` (the Harlot's visit) |
+| a player's own free question | `ctx.ask_text` + `ctx.answer` (the storyteller answers yes/no as the player's health allows) when `ctx.storyteller_reads_text()`, else a structured question the engine can judge (`artist.rs`) |
 | sober / acts twice / restored / execution-only | `game::Effect::Sober`, `ActsTwice`, `AbilityRestored`, `ExecutionOnly` with `mark`; hook `always_sober` |
 | votes and nominations | hooks `vote_weight`, `storyteller_nominations`, `nominates_again`; `ctx.remove_reminder`, `ctx.spend_ghost_vote` |
 | seats | `ctx.swap_seats` |

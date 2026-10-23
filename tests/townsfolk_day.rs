@@ -505,7 +505,7 @@ fn juggler_who_dies_learns_nothing() {
 // --- Artist -----------------------------------------------------------------------
 
 #[test]
-fn artist_asks_one_question_per_game() {
+fn without_a_storyteller_that_reads_text_the_artist_asks_is_this_player_this_character() {
     let artist: character::Ref = &characters::artist::Def;
     let seats: [(&str, character::Ref); 3] = [
         ("Artist", artist),
@@ -520,9 +520,9 @@ fn artist_asks_one_question_per_game() {
         .run(day_action("Artist", artist));
     expect![[r#"
         wake Artist
-          Artist? Whom is your question about? => Imp
         * Artist (artist) marks Artist: claimed
         * Artist (artist) marks Artist: AbilityUsed
+          Artist? Whom is your question about? => Imp
           Artist? Are they which character? => Imp
           storyteller [1 of 1 options] information for Artist (Artist): "Yes"
           -> Artist: Yes
@@ -545,9 +545,9 @@ fn artist_asks_one_question_per_game() {
         .run(day_action("Artist", artist));
     expect![[r#"
         wake Artist
-          Artist? Whom is your question about? => Imp
         * Artist (artist) marks Artist: claimed
         * Artist (artist) marks Artist: AbilityUsed
+          Artist? Whom is your question about? => Imp
           Artist? Are they which character? => Imp
           storyteller [1 of 2 options] information for Artist (Artist), who is poisoned or drunk: false info is allowed: "No" (false)
           -> Artist: No
@@ -556,6 +556,83 @@ fn artist_asks_one_question_per_game() {
         Artist: Artist [Poisoned by poisoner] [claimed by artist] [AbilityUsed by artist]
         Imp: Imp
         Empath: Empath
+    "#]]
+    .assert_eq(&g.transcript());
+}
+
+/// With a storyteller that reads free text (an LLM), the Artist types any
+/// question; the storyteller must answer truthfully (`Honesty::Truthful`)
+/// and only the Artist hears it.
+#[test]
+fn artist_types_any_question_for_a_storyteller_that_reads_text() {
+    let artist: character::Ref = &characters::artist::Def;
+    let seats: [(&str, character::Ref); 3] = [
+        ("Artist", artist),
+        ("Imp", &characters::imp::Def),
+        ("Empath", &characters::empath::Def),
+    ];
+    let mut g = common::Game::new(&seats);
+    to_day(&mut g, 1);
+    g.reading_text()
+        .texts(&["  Is the   Demon sitting\nnext to me? "])
+        .run(day_action("Artist", artist))
+        .run(day_action("Artist", artist));
+    expect![[r#"
+        wake Artist
+        * Artist (artist) marks Artist: claimed
+        * Artist (artist) marks Artist: AbilityUsed
+          Artist? Ask the storyteller any yes/no question => "  Is the   Demon sitting\nnext to me? "
+          storyteller [1 of 2 options] Artist Artist asks "Is the Demon sitting next to me?": answer truthfully from the grimoire (use your best judgement if the question is ambiguous or cannot be answered): Yes
+          -> Artist: "Is the Demon sitting next to me?": Yes
+        sleep Artist
+        --- grimoire ---
+        Artist: Artist [claimed by artist] [AbilityUsed by artist]
+        Imp: Imp
+        Empath: Empath
+    "#]]
+    .assert_eq(&g.transcript());
+
+    // Poisoned, either answer is legal.
+    let mut g = common::Game::new(&seats);
+    to_day(&mut g, 1);
+    g.run(|ctx| poison(ctx, "Artist"))
+        .quiet()
+        .reading_text()
+        .texts(&["Is the Empath good?"])
+        .picks(&[&[1]])
+        .run(day_action("Artist", artist));
+    expect![[r#"
+        wake Artist
+        * Artist (artist) marks Artist: claimed
+        * Artist (artist) marks Artist: AbilityUsed
+          Artist? Ask the storyteller any yes/no question => "Is the Empath good?"
+          storyteller [1 of 2 options] Artist Artist asks "Is the Empath good?": they are poisoned or drunk: either answer is allowed: No
+          -> Artist: "Is the Empath good?": No
+        sleep Artist
+        --- grimoire ---
+        Artist: Artist [Poisoned by poisoner] [claimed by artist] [AbilityUsed by artist]
+        Imp: Imp
+        Empath: Empath
+    "#]]
+    .assert_eq(&g.transcript());
+
+    // A non-holder types a question just the same and is told nothing; the
+    // storyteller is not asked.
+    let mut g = common::Game::new(&seats);
+    to_day(&mut g, 1);
+    g.reading_text()
+        .texts(&["Am I the Artist?"])
+        .run(day_action("Empath", artist));
+    expect![[r#"
+        wake Empath
+        * Empath (artist) marks Empath: claimed
+          Empath? Ask the storyteller any yes/no question => "Am I the Artist?"
+          -> Empath: The storyteller has nothing for you
+        sleep Empath
+        --- grimoire ---
+        Artist: Artist
+        Imp: Imp
+        Empath: Empath [claimed by artist]
     "#]]
     .assert_eq(&g.transcript());
 }
@@ -585,8 +662,8 @@ fn anyone_may_visit_the_storyteller_as_the_artist_and_a_non_holder_learns_nothin
         .run(day_action("Empath", artist));
     expect![[r#"
         wake Empath
-          Empath? Whom is your question about? => Imp
         * Empath (artist) marks Empath: claimed
+          Empath? Whom is your question about? => Imp
           Empath? Are they which character? => Imp
           -> Empath: The storyteller has nothing for you
         sleep Empath
@@ -625,8 +702,8 @@ fn a_revived_artist_with_the_question_spent_is_told_nothing() {
         .run(day_action("Artist", artist));
     expect![[r#"
         wake Artist
-          Artist? Whom is your question about? => Imp
         * Artist (artist) marks Artist: claimed
+          Artist? Whom is your question about? => Imp
           Artist? Are they which character? => Imp
           -> Artist: The storyteller has nothing for you
         sleep Artist

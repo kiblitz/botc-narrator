@@ -49,7 +49,7 @@ p { margin: 0.25rem 0; }
 .card.alert { border-color: var(--gold); }
 
 label { display: block; color: var(--muted); font-size: 0.9rem; margin: 0.5rem 0 0.25rem; }
-input, select, button {
+input, select, button, textarea {
   font: inherit;
   color: var(--text);
   background: var(--raised);

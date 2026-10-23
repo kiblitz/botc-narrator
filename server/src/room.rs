@@ -563,6 +563,10 @@ pub enum PromptKind {
         options: Vec<&'static str>,
     },
     YesNo,
+    /// A short free text (the Artist's question), at most `max` characters.
+    Text {
+        max: usize,
+    },
 }
 
 #[derive(Clone, Debug, serde::Serialize)]
