@@ -452,7 +452,7 @@ pub trait Def: Sync {
         false
     }
 
-    /// Whether, while this character is on the script (or in play), the
+    /// Whether, while this character is on the script, the
     /// Storyteller may be nominated, voted on and executed like a player
     /// (the Atheist; see `narrator::Nominee::Storyteller`).
     fn storyteller_nominable(&self) -> bool {

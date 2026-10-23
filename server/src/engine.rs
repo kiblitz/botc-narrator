@@ -458,21 +458,10 @@ fn nominate_and_vote(
             game.nominees.push(name.clone());
         }
     });
-    match nominee {
-        narrator::Nominee::Player(nominee) => {
-            match narrator::nominate_by(ctx, nominator, nominee) {
-                narrator::Nominated::DayEnded => return Voted::DayEnded,
-                narrator::Nominated::NoVote => return Voted::NoVote,
-                narrator::Nominated::Vote => {}
-            }
-        }
-        narrator::Nominee::Storyteller => {
-            // Only a player nominates the Storyteller.
-            let Some(nominator) = nominator else {
-                return Voted::NoVote;
-            };
-            narrator::nominate_storyteller(ctx, nominator);
-        }
+    match narrator::nominate_by(ctx, nominator, nominee) {
+        narrator::Nominated::DayEnded => return Voted::DayEnded,
+        narrator::Nominated::NoVote => return Voted::NoVote,
+        narrator::Nominated::Vote => {}
     }
     let needed = narrator::votes_needed(ctx.state());
     let eligible: Vec<String> = ctx
@@ -534,8 +523,5 @@ fn nominate_and_vote(
             ctx.spend_ghost_vote(voter);
         }
     }
-    Voted::Counted(match nominee {
-        narrator::Nominee::Player(nominee) => narrator::vote(ctx, nominee, voters, needed),
-        narrator::Nominee::Storyteller => narrator::vote_storyteller(ctx, voters, needed),
-    })
+    Voted::Counted(narrator::vote_on(ctx, nominee, voters, needed))
 }

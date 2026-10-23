@@ -99,7 +99,7 @@ A character is a unit struct implementing `character::Def` in its own module (`s
 | `fabled_setup`, `fabled_dusk`, `permits_alignment_change`, `lies_to` | Fabled and Loric (no player): setup (Storm Catcher), dusk (Knaves switch), vetoing alignment changes (Spirit of Ivory), a lying storyteller for a player's information (Knaves) |
 | `joins_evil_info`, `hides_evil_info` | appears in the evil team's first-night info (Magician); keeps evil from learning each other (Poppy Grower) |
 | `demonless` | the game has no Demon, so good does not win by the Demon dying (Atheist) |
-| `storyteller_nominable`, `on_storyteller_executed` | while on the script (or in play), the Storyteller may be nominated, voted on and executed like a player (`narrator::Nominee::Storyteller`, `nominate_storyteller`, `vote_storyteller`; the block and tie rules apply); executing them asks these characters who wins (Atheist) |
+| `storyteller_nominable`, `on_storyteller_executed` | while on the script, the Storyteller may be nominated, voted on and executed like a player (`narrator::Nominee::Storyteller` through `narrator::nominate_by`, `vote_on`, `execute`; the block and tie rules apply); executing them asks these characters who wins (Atheist) |
 | `vetoes_win` | stops a win for now (Mastermind) |
 | `seated_next_to_demon` | must sit beside a Demon (Marionette; the simulator's seating arranges it) |
 

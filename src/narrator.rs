@@ -671,17 +671,17 @@ fn counted(state: &game::State, voters: Vec<player::Id>) -> Vec<player::Id> {
         .collect()
 }
 
-/// The characters on the script, or in play, that let the town nominate the
-/// Storyteller (`character::Def::storyteller_nominable`: the Atheist).
+/// The characters on the script that let the town nominate the Storyteller
+/// (`character::Def::storyteller_nominable`: the Atheist). The script only,
+/// never what is in play: every phone sees whether the Storyteller is
+/// nominable.
 fn storyteller_rules(state: &game::State) -> Vec<character::Ref> {
-    let mut rules: Vec<character::Ref> = Vec::new();
-    let in_play = state.players().iter().map(|p| p.character);
-    for c in state.script().iter().copied().chain(in_play) {
-        if c.storyteller_nominable() && !rules.iter().any(|r| character::same(*r, c)) {
-            rules.push(c);
-        }
-    }
-    rules
+    state
+        .script()
+        .iter()
+        .copied()
+        .filter(|c| c.storyteller_nominable())
+        .collect()
 }
 
 /// Whether the Storyteller may be nominated in this game.
@@ -689,17 +689,19 @@ pub fn storyteller_nominable(state: &game::State) -> bool {
     !storyteller_rules(state).is_empty()
 }
 
-/// `nominator` nominates the Storyteller. Refused (noted, nothing happens)
-/// unless the Storyteller is nominable and `nominator` may nominate. No
-/// player is nominated, so nomination abilities do not react.
-pub fn nominate_storyteller(ctx: &mut ctx::Write<'_>, nominator: &player::Id) {
+/// `nominator` nominates the Storyteller. Refused (noted, nothing to vote
+/// on) unless the Storyteller is nominable and `nominator` may nominate. No
+/// player is nominated, so nomination abilities do not react (a known
+/// limitation: a Witch-cursed nominator does not die).
+pub fn nominate_storyteller(ctx: &mut ctx::Write<'_>, nominator: &player::Id) -> Nominated {
     if !storyteller_nominable(ctx.state()) || !can_nominate(ctx.state(), nominator) {
         ctx.note(format!("{nominator} may not nominate the Storyteller"));
-        return;
+        return Nominated::NoVote;
     }
     ctx.record(event::Event::StorytellerNominated {
         nominator: nominator.clone(),
     });
+    Nominated::Vote
 }
 
 /// A vote on the Storyteller: counted like any vote ([`vote`]), but no
@@ -843,10 +845,38 @@ pub enum Nominated {
     Vote,
 }
 
-/// `nominator` nominates `nominee` (the storyteller does when `None`).
-/// A nominator who died nominating (the Witch's curse) still nominated: the
-/// vote goes on.
+/// `nominator` nominates `nominee` (the storyteller does when `None`; only a
+/// player nominates the Storyteller).
 pub fn nominate_by(
+    ctx: &mut ctx::Write<'_>,
+    nominator: Option<&player::Id>,
+    nominee: &Nominee,
+) -> Nominated {
+    match (nominee, nominator) {
+        (Nominee::Player(nominee), _) => nominate_player_by(ctx, nominator, nominee),
+        (Nominee::Storyteller, Some(nominator)) => nominate_storyteller(ctx, nominator),
+        (Nominee::Storyteller, None) => Nominated::NoVote,
+    }
+}
+
+/// A vote on `nominee`: [`vote`] or [`vote_storyteller`]. Returns the votes
+/// counted.
+pub fn vote_on(
+    ctx: &mut ctx::Write<'_>,
+    nominee: &Nominee,
+    voters: Vec<player::Id>,
+    needed: usize,
+) -> usize {
+    match nominee {
+        Nominee::Player(nominee) => vote(ctx, nominee, voters, needed),
+        Nominee::Storyteller => vote_storyteller(ctx, voters, needed),
+    }
+}
+
+/// `nominator` nominates the player `nominee` (the storyteller does when
+/// `None`). A nominator who died nominating (the Witch's curse) still
+/// nominated: the vote goes on.
+fn nominate_player_by(
     ctx: &mut ctx::Write<'_>,
     nominator: Option<&player::Id>,
     nominee: &player::Id,

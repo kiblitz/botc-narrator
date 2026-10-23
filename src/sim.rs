@@ -853,6 +853,7 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
         };
         block.add(nominee, votes, narrator::votes_needed(ctx.state()));
     }
+    // The Butcher's second nomination follows an execution only.
     if block.nominee().is_some() && ctx.state().winner().is_none() {
         narrator::execute_block(ctx, &block);
         // After the first execution, the Butcher may nominate again (once:
@@ -909,24 +910,18 @@ fn nominate_and_vote(
     nominee: &narrator::Nominee,
     rng: &mut impl Rng,
 ) -> Option<usize> {
-    match nominee {
-        narrator::Nominee::Player(nominee) => {
-            match narrator::nominate_by(ctx, nominator, nominee) {
-                narrator::Nominated::DayEnded => return None,
-                narrator::Nominated::NoVote => return Some(0),
-                narrator::Nominated::Vote => {}
-            }
-            let voters = voters(ctx.state(), Some(nominee), rng);
-            let needed = narrator::votes_needed(ctx.state());
-            Some(narrator::vote(ctx, nominee, voters, needed))
-        }
-        narrator::Nominee::Storyteller => {
-            narrator::nominate_storyteller(ctx, nominator?);
-            let voters = voters(ctx.state(), None, rng);
-            let needed = narrator::votes_needed(ctx.state());
-            Some(narrator::vote_storyteller(ctx, voters, needed))
-        }
+    match narrator::nominate_by(ctx, nominator, nominee) {
+        narrator::Nominated::DayEnded => return None,
+        narrator::Nominated::NoVote => return Some(0),
+        narrator::Nominated::Vote => {}
     }
+    let player = match nominee {
+        narrator::Nominee::Player(player) => Some(player),
+        narrator::Nominee::Storyteller => None,
+    };
+    let voters = voters(ctx.state(), player, rng);
+    let needed = narrator::votes_needed(ctx.state());
+    Some(narrator::vote_on(ctx, nominee, voters, needed))
 }
 
 /// Living players vote (ghost votes are not modelled): evil players back good
