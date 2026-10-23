@@ -302,6 +302,10 @@ async fn only_the_host_nominates_and_enters_the_votes() {
     let nominees = common::names(&host["nominees"]);
     assert_eq!(nominators.len(), 6, "{host:#}");
     assert_eq!(nominees.len(), 6, "{host:#}");
+    assert!(
+        !nominees.contains(&"Storyteller".to_string()),
+        "no Atheist on this script"
+    );
     assert!(phones[1].view().get("nominators").is_none());
     assert!(phones[1].view().get("nominees").is_none());
     let (nominator, nominee) = ("Ada", "Bram");
@@ -319,6 +323,12 @@ async fn only_the_host_nominates_and_enters_the_votes() {
             .any(|e| e.contains(text))
     };
     assert!(refused(&phones[1], "Only the host"));
+
+    // Nor can the host nominate the Storyteller without an Atheist on the script.
+    phones[0].send(json!({"type": "nominate", "nominator": nominator, "nominee": "Storyteller"}));
+    tokio::time::sleep(time::Duration::from_millis(300)).await;
+    assert_eq!(phones[0].view()["stage"], "day");
+    assert!(refused(&phones[0], "Not now"));
 
     // The host can, and everyone watches the vote.
     phones[0].send(json!({"type": "nominate", "nominator": nominator, "nominee": nominee}));
@@ -668,4 +678,67 @@ async fn anyone_may_report_breaking_madness_where_there_is_madness() {
         .any(|e| e.contains("Not now"));
     assert!(refused);
     check_no_leaks(&phones);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn on_an_atheist_script_the_host_may_nominate_and_execute_the_storyteller() {
+    let base = common::serve(common::quick(), 10).await;
+    let (_room, phones, _) = common::table(&base, &PLAYERS).await;
+    start_and_reach_day(&phones, "the_midnight_oasis").await;
+    common::until(&phones[0], time::Duration::from_secs(5), |v| {
+        v["nominators"].is_array()
+    })
+    .await;
+    // The Atheist has no day action: every list is the same, without it.
+    for phone in &phones {
+        let list = shared_list(&phone.view());
+        assert!(
+            list.iter().all(|a| a["ability"] != "atheist"),
+            "{}: {list:?}",
+            phone.name
+        );
+    }
+    let host = phones[0].view();
+    assert!(
+        common::names(&host["nominees"]).contains(&"Storyteller".to_string()),
+        "{host:#}"
+    );
+    let nominator = common::names(&host["nominators"])[0].clone();
+    phones[0].send(json!({"type": "nominate", "nominator": nominator, "nominee": "Storyteller"}));
+    for phone in &phones {
+        common::until(phone, time::Duration::from_secs(5), |v| {
+            v["stage"] == "vote" && v["vote"]["nominee"] == "Storyteller"
+        })
+        .await;
+    }
+    let eligible = common::names(&phones[0].view()["vote"]["eligible"]);
+    for voter in &eligible {
+        phones[0].send(json!({"type": "vote", "voter": voter, "yes": true}));
+    }
+    common::until(&phones[0], time::Duration::from_secs(5), |v| {
+        common::raised(v).len() == eligible.len()
+    })
+    .await;
+    phones[0].send(json!({"type": "close_vote"}));
+    common::until(&phones[1], time::Duration::from_secs(5), |v| {
+        log_texts(v)
+            .iter()
+            .any(|t| t.contains("votes for the Storyteller"))
+    })
+    .await;
+    // Nominated once a day, like anyone.
+    common::until(&phones[0], time::Duration::from_secs(5), |v| {
+        v["stage"] == "day" && !common::names(&v["nominees"]).contains(&"Storyteller".to_string())
+    })
+    .await;
+    phones[0].send(json!({"type": "end_day"}));
+    for phone in &phones {
+        common::until(phone, time::Duration::from_secs(10), |v| {
+            !v["winner"].is_null()
+                && log_texts(v)
+                    .iter()
+                    .any(|t| t == "the Storyteller is executed")
+        })
+        .await;
+    }
 }

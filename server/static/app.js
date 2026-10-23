@@ -646,6 +646,10 @@ function nominationCard(view) {
       el("button", { class: "primary", id: "confirm-nomination", onclick: confirmed }, "Confirm"), cancel));
 }
 
+// The nominee that is the Storyteller (room::STORYTELLER), on scripts where
+// the Storyteller may be nominated (the Atheist's).
+const STORYTELLER = "Storyteller";
+
 // The day action that reports breaking madness (room::MADNESS).
 const MADNESS = "madness";
 
@@ -796,8 +800,23 @@ function town(view) {
       seat.alive ? null : el("span", { class: "shroud" }, seat.ghost_vote ? "☠ vote" : "☠"),
       hands.get(seat.name) ? el("span", { class: "hand", title: "hand raised" }, "✋") : null,
     );
-  }, el("span", { class: nominee ? "small" : "small muted" }, townHint(view, n)));
+  }, storytellerSeat(view, n), el("span", { class: nominee ? "small" : "small muted" }, townHint(view, n)));
   return el("div", { class: "card" }, el("h2", {}, "Town square"), ring);
+}
+
+/** The Storyteller in the middle of the circle, when they are nominable
+ * (the host may tap it as the nominee) or nominated. */
+function storytellerSeat(view, n) {
+  const onTrial = (view.vote && view.vote.nominee === STORYTELLER) || n.nominee === STORYTELLER;
+  const pickable = !!n.nominator && !n.nominee && (view.nominees || []).includes(STORYTELLER);
+  if (!onTrial && !pickable) return null;
+  const classes = ["storyteller-seat", onTrial ? "nominee" : "", pickable ? "nominable" : ""];
+  return el(pickable ? "button" : "div", {
+    class: classes.filter(Boolean).join(" "),
+    id: "storyteller-seat",
+    "aria-label": pickable ? `Nominate the ${STORYTELLER}` : null,
+    onclick: pickable ? () => { n.nominee = STORYTELLER; render(); } : null,
+  }, STORYTELLER);
 }
 
 function townHint(view, n) {

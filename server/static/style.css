@@ -138,6 +138,15 @@ button.chosen { outline: 3px solid var(--gold); outline-offset: -3px; }
 .seat .shroud { position: absolute; bottom: 4%; font-size: 0.85em; }
 .seat .hand { position: absolute; top: 0; left: 8%; font-size: 1.2em; }
 .seat-tools { margin-top: 0.6rem; }
+/* The Storyteller, in the middle of the circle, on scripts where they may be nominated. */
+.storyteller-seat {
+  pointer-events: auto;
+  margin-bottom: 0.4rem; padding: 0.4rem 0.8rem;
+  border-radius: 999px; border: 2px solid var(--line);
+  background: var(--raised); color: var(--text); font-weight: 600;
+}
+.storyteller-seat.nominable { border-color: var(--good); }
+.storyteller-seat.nominee { box-shadow: 0 0 0 3px var(--evil); border-color: var(--evil); }
 .dot { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--muted); }
 .dot.on { background: #4fd18b; }
 

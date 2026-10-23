@@ -60,6 +60,8 @@ pub enum Error {
     Started,
     Full,
     BadName,
+    /// The name is the Storyteller's ([`STORYTELLER`]).
+    ReservedName,
     NameTaken,
     NotHost,
     NoSuchScript,
@@ -83,6 +85,7 @@ impl std::fmt::Display for Error {
             Error::Started => f.write_str("That game has already started."),
             Error::Full => f.write_str("That room is full."),
             Error::BadName => write!(f, "Names are 1 to {MOST_NAME_CHARS} characters."),
+            Error::ReservedName => write!(f, "\"{STORYTELLER}\" is the storyteller's name."),
             Error::NameTaken => f.write_str("Someone in the room already has that name."),
             Error::NotHost => f.write_str("Only the host can do that."),
             Error::NoSuchScript => f.write_str("Unknown script."),
@@ -573,13 +576,18 @@ pub struct Vote {
     pub hands: Vec<(String, bool)>,
 }
 
+/// The nominee that is the Storyteller (on a script where they may be
+/// nominated: the Atheist's), in nominations and votes; no player may take
+/// this name.
+pub const STORYTELLER: &str = "Storyteller";
+
 /// The day action that reports breaking madness (not a character id).
 pub const MADNESS: &str = "madness";
 
 /// An entry in a player's list of day actions. The claimable abilities and
 /// the madness report are on every living player's list alike (`shared`), so
 /// no list shows a character; an ability only its holder may use (the
-/// Travellers', the Atheist's) is on theirs alone.
+/// Travellers') is on theirs alone.
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct DayAction {
     pub player: String,
@@ -612,6 +620,9 @@ pub fn valid_name(name: &str) -> Result<String, Error> {
     let chars = name.chars().count();
     if chars == 0 || chars > MOST_NAME_CHARS || name.chars().any(char::is_control) {
         return Err(Error::BadName);
+    }
+    if name.to_lowercase() == STORYTELLER.to_lowercase() {
+        return Err(Error::ReservedName);
     }
     Ok(name)
 }
@@ -692,6 +703,10 @@ mod tests {
         assert_eq!(found.code, room.code);
         assert_eq!(room.update(|s| s.join("bram")), Err(room::Error::NameTaken));
         assert_eq!(room.update(|s| s.join("   ")), Err(room::Error::BadName));
+        assert_eq!(
+            room.update(|s| s.join(" storyteller ")),
+            Err(room::Error::ReservedName)
+        );
         assert_eq!(
             room.update(|s| s.join("A name far longer than twenty")),
             Err(room::Error::BadName)

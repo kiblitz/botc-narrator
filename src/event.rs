@@ -23,6 +23,17 @@ pub enum Event {
         nominator: Option<player::Id>,
     },
     Executed(player::Id),
+    /// A player nominates the Storyteller (on a script where they may be:
+    /// `character::Def::storyteller_nominable`).
+    StorytellerNominated {
+        nominator: player::Id,
+    },
+    StorytellerVoted {
+        voters: Vec<player::Id>,
+        votes: usize,
+        needed: usize,
+    },
+    StorytellerExecuted,
     Died {
         player: player::Id,
         cause: Cause,
@@ -113,6 +124,8 @@ impl Event {
                 Cause::Ability { by } => vec![player, by],
                 Cause::Demon | Cause::Starpass | Cause::Execution => vec![player],
             },
+            Event::StorytellerNominated { nominator } => vec![nominator],
+            Event::StorytellerVoted { voters, .. } => voters.iter().collect(),
             Event::Executed(player)
             | Event::Revived(player)
             | Event::GhostVoteSpent(player)
@@ -141,6 +154,7 @@ impl Event {
                 nominee, voters, ..
             } => std::iter::once(nominee).chain(voters.iter()).collect(),
             Event::PhaseBegan(_)
+            | Event::StorytellerExecuted
             | Event::FabledAdded(_)
             | Event::FabledMarked { .. }
             | Event::Note(_)
@@ -182,6 +196,9 @@ impl Event {
             Event::PhaseBegan(_)
             | Event::MadnessReported(_)
             | Event::Nominated { .. }
+            | Event::StorytellerNominated { .. }
+            | Event::StorytellerVoted { .. }
+            | Event::StorytellerExecuted
             | Event::Executed(_)
             | Event::Died { .. }
             | Event::Revived(_)
@@ -211,6 +228,13 @@ impl fmt::Display for Event {
                 nominator: None,
             } => write!(f, "the storyteller nominates {nominee}"),
             Event::Executed(p) => write!(f, "{p} is executed"),
+            Event::StorytellerNominated { nominator } => {
+                write!(f, "{nominator} nominates the Storyteller")
+            }
+            Event::StorytellerVoted { votes, needed, .. } => {
+                write!(f, "{votes} votes for the Storyteller ({needed} needed)")
+            }
+            Event::StorytellerExecuted => f.write_str("the Storyteller is executed"),
             Event::Died { player, cause } => write!(f, "{player} dies ({cause:?})"),
             Event::Revived(player) => write!(f, "{player} is alive again"),
             Event::KillPrevented { player, by } => write!(f, "{player} survives ({by})"),

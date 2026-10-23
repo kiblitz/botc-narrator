@@ -226,8 +226,7 @@ pub trait Def: Sync {
 
     /// Whether any living player may claim to use this ability's
     /// `day_action` (see [`Claim`]); `None` (the default) offers it only to
-    /// its users (the Travellers, whose characters are public, and the
-    /// Atheist, whose use ends the game).
+    /// its users (the Travellers, whose characters are public).
     fn claim(&self) -> Option<Claim> {
         None
     }
@@ -452,6 +451,17 @@ pub trait Def: Sync {
     fn demonless(&self) -> bool {
         false
     }
+
+    /// Whether, while this character is on the script (or in play), the
+    /// Storyteller may be nominated, voted on and executed like a player
+    /// (the Atheist; see `narrator::Nominee::Storyteller`).
+    fn storyteller_nominable(&self) -> bool {
+        false
+    }
+
+    /// The Storyteller was executed, on a script where this character makes
+    /// them nominable: decide the game (the Atheist).
+    fn on_storyteller_executed(&self, _ctx: &mut ctx::Write<'_>) {}
 
     /// Whether this ability (held by `me`, alive or dead) stops `winner`
     /// from winning now (the Mastermind's extra day). Asked by

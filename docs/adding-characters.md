@@ -98,6 +98,7 @@ Override only the hooks the ability uses (the full list is in the README,
 | gains or loses an ability | `ctx.gain_ability`, `ctx.lose_ability` (acts the same night if its turn is still to come) |
 | alternate demon / forced false info | hooks `counts_as_demon`, `forces_false_info` |
 | evil info / no Demon in the game | hooks `joins_evil_info` (Magician), `hides_evil_info` + `narrator::evil_info` (Poppy Grower), `demonless` (Atheist) |
+| the Storyteller can be nominated and executed | hooks `storyteller_nominable`, `on_storyteller_executed` (Atheist: decides the winner) |
 | survive a death | hook `intercept_death` returning `Prevent` (Fool, Sailor, Tea Lady, Pacifist, Innkeeper); the dying player's own abilities are asked last |
 | day ability | hook `day_action` (gets its targets from `day_targets`, chosen first); `narrator::day_actions` offers it (to the server and the simulator) while unused; `day_action_users` lets others use it (Damsel guess); `claim` lets any living player claim it, in public (`Visibility::Public`, announced) or as a private visit (`Visibility::Private`: the narrator wakes the player around it, so do not wake them yourself); the bluff asks the same remaining questions (those after the targets), with no effect (share them in one helper, like the Juggler's `guesses`); an empty bluff is right exactly when the ability asks nothing after its targets (Fisherman, Psychopath) |
 | may make a player mad | hook `causes_madness` (players can then report breaking it) |

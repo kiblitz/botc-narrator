@@ -7,6 +7,7 @@ use std::sync;
 
 use botc_narrator::character;
 use botc_narrator::game;
+use botc_narrator::narrator;
 use botc_narrator::script;
 
 use crate::room;
@@ -237,6 +238,9 @@ pub fn of(code: &str, state: &room::State, you: &str) -> View {
             .seats
             .iter()
             .map(|s| s.name.clone())
+            .chain(
+                narrator::storyteller_nominable(&g.grimoire).then(|| room::STORYTELLER.to_string()),
+            )
             .filter(|n| !g.nominees.contains(n))
             .collect(),
         _ => Vec::new(),

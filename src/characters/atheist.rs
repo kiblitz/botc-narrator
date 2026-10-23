@@ -1,7 +1,5 @@
-use crate::ability;
 use crate::character;
 use crate::ctx;
-use crate::player;
 use crate::setup;
 
 pub struct Def;
@@ -35,23 +33,19 @@ impl character::Def for Def {
         true
     }
 
-    fn day_action(&self) -> Option<character::DayFn> {
-        Some(execute_storyteller)
+    /// The town may nominate and execute the Storyteller.
+    fn storyteller_nominable(&self) -> bool {
+        true
     }
-}
 
-/// The town nominates and executes the Storyteller, modelled as a day action
-/// of whoever believes they are the Atheist: good wins if an Atheist is in
-/// play, evil wins otherwise (a Drunk who believes they are the Atheist).
-fn execute_storyteller(ctx: &mut ctx::Write<'_>, me: &player::Id, _targets: &[player::Id]) {
-    if !ctx.state().is_alive(me) || !ability::use_once(ctx, me, &Def) {
-        return;
+    /// Good wins if an Atheist is in play; otherwise (a Drunk who believes
+    /// they are the Atheist, or a bluff) evil wins.
+    fn on_storyteller_executed(&self, ctx: &mut ctx::Write<'_>) {
+        let winner = if ctx.state().demonless() {
+            character::Alignment::Good
+        } else {
+            character::Alignment::Evil
+        };
+        ctx.win(winner);
     }
-    ctx.note(format!("{me} has the Storyteller executed"));
-    let winner = if ctx.state().demonless() {
-        character::Alignment::Good
-    } else {
-        character::Alignment::Evil
-    };
-    ctx.win(winner);
 }

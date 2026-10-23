@@ -46,6 +46,13 @@ Playing.
   raised hands live; the vote stays open until the host closes it. The
   storyteller's nominations (the Bishop) and the Butcher's second nomination
   (asked on the Butcher's phone) are voted on the same way.
+- On a script with the Atheist (user, 2026-10-22), the Storyteller is a
+  legal nominee: once the host has tapped the nominator, a **Storyteller**
+  token appears in the middle of the town square. The vote is like any other
+  (once a day, the same votes needed, the block and ties). If the Storyteller
+  is executed at the end of the day, the game ends: good wins if an Atheist
+  is in play, otherwise evil; the phones show only "the Storyteller is
+  executed" and the winner. Nobody may join under the name "Storyteller".
 - **Day actions** (user, 2026-10-22): by day every living phone has one
   **Day actions** button. It opens the same list on every phone, whatever
   the character: each day ability on the script (with its ability text),
@@ -60,8 +67,9 @@ Playing.
   asked the same questions in private; a player without the ability is told
   "The storyteller has nothing for you". Each action is offered within its
   limit (once per game, each day, the first day). Travellers' abilities
-  (their characters are public) and the Atheist's (it ends the game) are on
-  their holder's list only, marked "yours alone".
+  (their characters are public) are on their holder's list only, marked
+  "yours alone". The Atheist has no day action (see nominating the
+  Storyteller above).
 - Honour system: the storyteller cannot hear the table. On scripts with
   madness (Cerenovus, Harpy, Pixie, Mutant), the list also has **I broke
   madness**, for everyone, once a day: the storyteller notes it (the same

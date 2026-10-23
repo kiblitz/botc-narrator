@@ -286,6 +286,9 @@ impl Table {
                 public(self, text.clone());
             }
             event::Event::Nominated { .. }
+            | event::Event::StorytellerNominated { .. }
+            | event::Event::StorytellerVoted { .. }
+            | event::Event::StorytellerExecuted
             | event::Event::Executed(_)
             | event::Event::Voted { .. }
             | event::Event::Announced(_)

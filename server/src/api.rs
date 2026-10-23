@@ -15,6 +15,7 @@ use axum::http;
 use axum::response;
 use axum::routing;
 use botc_bridge::wire;
+use botc_narrator::narrator;
 
 use crate::engine;
 use crate::inbox;
@@ -517,7 +518,9 @@ pub fn handle(
                 s.game.as_ref().is_some_and(|g| {
                     g.stage == room::Stage::Day
                         && g.may_nominate.contains(&nominator)
-                        && s.seats.iter().any(|seat| seat.name == nominee)
+                        && (s.seats.iter().any(|seat| seat.name == nominee)
+                            || (nominee == room::STORYTELLER
+                                && narrator::storyteller_nominable(&g.grimoire)))
                         && !g.nominees.contains(&nominee)
                 })
             });

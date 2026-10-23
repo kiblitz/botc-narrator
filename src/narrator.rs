@@ -647,11 +647,7 @@ pub fn vote(
     voters: Vec<player::Id>,
     needed: usize,
 ) -> usize {
-    // A hand that counts for nothing (a Beggar without a token) is no vote.
-    let voters: Vec<player::Id> = voters
-        .into_iter()
-        .filter(|v| weight(ctx.state(), v) > 0)
-        .collect();
+    let voters = counted(ctx.state(), voters);
     let votes = tally(ctx.state(), &voters);
     ctx.record(event::Event::Voted {
         nominee: nominee.clone(),
@@ -664,6 +660,72 @@ pub fn vote(
         ability.on_vote(ctx, &id, nominee, &voters);
     }
     votes
+}
+
+/// The hands that count: a hand that counts for nothing (a Beggar without a
+/// token) is no vote.
+fn counted(state: &game::State, voters: Vec<player::Id>) -> Vec<player::Id> {
+    voters
+        .into_iter()
+        .filter(|v| weight(state, v) > 0)
+        .collect()
+}
+
+/// The characters on the script, or in play, that let the town nominate the
+/// Storyteller (`character::Def::storyteller_nominable`: the Atheist).
+fn storyteller_rules(state: &game::State) -> Vec<character::Ref> {
+    let mut rules: Vec<character::Ref> = Vec::new();
+    let in_play = state.players().iter().map(|p| p.character);
+    for c in state.script().iter().copied().chain(in_play) {
+        if c.storyteller_nominable() && !rules.iter().any(|r| character::same(*r, c)) {
+            rules.push(c);
+        }
+    }
+    rules
+}
+
+/// Whether the Storyteller may be nominated in this game.
+pub fn storyteller_nominable(state: &game::State) -> bool {
+    !storyteller_rules(state).is_empty()
+}
+
+/// `nominator` nominates the Storyteller. Refused (noted, nothing happens)
+/// unless the Storyteller is nominable and `nominator` may nominate. No
+/// player is nominated, so nomination abilities do not react.
+pub fn nominate_storyteller(ctx: &mut ctx::Write<'_>, nominator: &player::Id) {
+    if !storyteller_nominable(ctx.state()) || !can_nominate(ctx.state(), nominator) {
+        ctx.note(format!("{nominator} may not nominate the Storyteller"));
+        return;
+    }
+    ctx.record(event::Event::StorytellerNominated {
+        nominator: nominator.clone(),
+    });
+}
+
+/// A vote on the Storyteller: counted like any vote ([`vote`]), but no
+/// player is on trial, so `on_vote` abilities do not react. Returns the
+/// votes counted.
+pub fn vote_storyteller(ctx: &mut ctx::Write<'_>, voters: Vec<player::Id>, needed: usize) -> usize {
+    let voters = counted(ctx.state(), voters);
+    let votes = tally(ctx.state(), &voters);
+    ctx.record(event::Event::StorytellerVoted {
+        voters,
+        votes,
+        needed,
+    });
+    votes
+}
+
+/// The Storyteller is executed: every character that made them nominable
+/// decides the game (the Atheist: good wins if an Atheist is in play).
+pub fn execute_storyteller(ctx: &mut ctx::Write<'_>) {
+    ctx.record(event::Event::StorytellerExecuted);
+    for rule in storyteller_rules(ctx.state()) {
+        if ctx.state().winner().is_some() {
+            return;
+        }
+        rule.on_storyteller_executed(ctx);
+    }
 }
 
 /// How many votes `voters` count for: each starts at 1, and every
@@ -732,17 +794,25 @@ pub fn votes_needed(state: &game::State) -> usize {
     state.alive_ids().len().div_ceil(2)
 }
 
+/// Who is nominated: a player, or the Storyteller where a character allows
+/// it ([`storyteller_nominable`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Nominee {
+    Player(player::Id),
+    Storyteller,
+}
+
 /// The day's block: the nominee with the most votes (at least the votes
 /// needed), unless another nominee tied with them.
 #[derive(Clone, Debug, Default)]
 pub struct Block {
-    best: Option<(player::Id, usize)>,
+    best: Option<(Nominee, usize)>,
     tied: bool,
 }
 
 impl Block {
     /// A vote on `nominee` counted `votes` of the `needed`.
-    pub fn add(&mut self, nominee: player::Id, votes: usize, needed: usize) {
+    pub fn add(&mut self, nominee: Nominee, votes: usize, needed: usize) {
         if votes < needed {
             return;
         }
@@ -757,7 +827,7 @@ impl Block {
     }
 
     /// Who is executed at the end of the day, if anyone.
-    pub fn nominee(&self) -> Option<&player::Id> {
+    pub fn nominee(&self) -> Option<&Nominee> {
         self.best.as_ref().filter(|_| !self.tied).map(|(p, _)| p)
     }
 }
@@ -800,10 +870,22 @@ pub fn nominate_by(
 
 /// Executes the block's nominee, if any, unless the game is over.
 pub fn execute_block(ctx: &mut ctx::Write<'_>, block: &Block) {
-    if let Some(nominee) = block.nominee().cloned()
-        && ctx.state().winner().is_none()
-    {
-        ctx.execute(&nominee);
+    if ctx.state().winner().is_some() {
+        return;
+    }
+    if let Some(nominee) = block.nominee().cloned() {
+        execute(ctx, &nominee);
+    }
+}
+
+/// Executes `nominee`: a player (`ctx::Write::execute`) or the Storyteller
+/// ([`execute_storyteller`]).
+pub fn execute(ctx: &mut ctx::Write<'_>, nominee: &Nominee) {
+    match nominee {
+        Nominee::Player(player) => {
+            ctx.execute(player);
+        }
+        Nominee::Storyteller => execute_storyteller(ctx),
     }
 }
 

@@ -209,6 +209,7 @@ fn day(ctx: &mut ctx::Write<'_>, room: &room::Room, inbox: &rc::Rc<cell::RefCell
         if ctx.state().winner().is_some() {
             return;
         }
+        let nominee = narrator::Nominee::Player(nominee);
         match nominate_and_vote(ctx, room, inbox, None, &nominee) {
             Voted::Counted(votes) => block.add(nominee, votes, narrator::votes_needed(ctx.state())),
             Voted::NoVote => {}
@@ -229,7 +230,11 @@ fn day(ctx: &mut ctx::Write<'_>, room: &room::Room, inbox: &rc::Rc<cell::RefCell
             Some(inbox::Input::EndDay) => break,
             Some(inbox::Input::Nominate { nominator, nominee }) => {
                 let nominator = player::Id::new(nominator);
-                let nominee = player::Id::new(nominee);
+                let nominee = if nominee == room::STORYTELLER {
+                    narrator::Nominee::Storyteller
+                } else {
+                    narrator::Nominee::Player(player::Id::new(nominee))
+                };
                 if !players_nominate || !may_nominate(ctx.state(), room, &nominator, &nominee) {
                     continue;
                 }
@@ -300,32 +305,43 @@ fn nominate_again(
     let Some(nominee) = chosen.first() else {
         return;
     };
-    if let Voted::Counted(votes) = nominate_and_vote(ctx, room, inbox, Some(&butcher), nominee)
+    let nominee = narrator::Nominee::Player(nominee.clone());
+    if let Voted::Counted(votes) = nominate_and_vote(ctx, room, inbox, Some(&butcher), &nominee)
         && votes >= narrator::votes_needed(ctx.state())
         && ctx.state().winner().is_none()
     {
-        ctx.execute(nominee);
+        narrator::execute(ctx, &nominee);
     }
 }
 
 /// Whether `nominator` may nominate `nominee` now: a living player who may
-/// nominate and has not today, of a seated player not yet nominated today.
+/// nominate and has not today, of a seated player (or the Storyteller, where
+/// they may be nominated) not yet nominated today.
 fn may_nominate(
     state: &game::State,
     room: &room::Room,
     nominator: &player::Id,
-    nominee: &player::Id,
+    nominee: &narrator::Nominee,
 ) -> bool {
+    let name = nominee_name(nominee);
     let today = room.read(|s| {
         s.game.as_ref().is_some_and(|g| {
-            !g.nominators.iter().any(|n| n == nominator.as_str())
-                && !g.nominees.iter().any(|n| n == nominee.as_str())
+            !g.nominators.iter().any(|n| n == nominator.as_str()) && !g.nominees.contains(&name)
         })
     });
-    today
-        && state.is_alive(nominator)
-        && narrator::can_nominate(state, nominator)
-        && state.players().iter().any(|p| p.id == *nominee)
+    let nominable = match nominee {
+        narrator::Nominee::Player(nominee) => state.players().iter().any(|p| p.id == *nominee),
+        narrator::Nominee::Storyteller => narrator::storyteller_nominable(state),
+    };
+    today && state.is_alive(nominator) && narrator::can_nominate(state, nominator) && nominable
+}
+
+/// How the phones name `nominee` (the Storyteller is [`room::STORYTELLER`]).
+fn nominee_name(nominee: &narrator::Nominee) -> String {
+    match nominee {
+        narrator::Nominee::Player(player) => player.to_string(),
+        narrator::Nominee::Storyteller => room::STORYTELLER.to_string(),
+    }
 }
 
 /// The ability `id`, if `player` may use it as a day action now.
@@ -369,7 +385,7 @@ fn day_actions(state: &game::State) -> Vec<room::DayAction> {
             }
         };
         actions.extend(menu.iter().map(|a| entry(*a, true)));
-        // Abilities only their holder may use (Travellers, the Atheist).
+        // Abilities only their holder may use (Travellers).
         actions.extend(
             offered
                 .iter()
@@ -430,21 +446,33 @@ fn nominate_and_vote(
     room: &room::Room,
     inbox: &rc::Rc<cell::RefCell<inbox::Inbox>>,
     nominator: Option<&player::Id>,
-    nominee: &player::Id,
+    nominee: &narrator::Nominee,
 ) -> Voted {
+    let name = nominee_name(nominee);
     room.update(|s| {
         if let Some(game) = &mut s.game {
             if let Some(nominator) = nominator {
                 game.nominators.push(nominator.to_string());
                 game.may_nominate.retain(|p| p != nominator.as_str());
             }
-            game.nominees.push(nominee.to_string());
+            game.nominees.push(name.clone());
         }
     });
-    match narrator::nominate_by(ctx, nominator, nominee) {
-        narrator::Nominated::DayEnded => return Voted::DayEnded,
-        narrator::Nominated::NoVote => return Voted::NoVote,
-        narrator::Nominated::Vote => {}
+    match nominee {
+        narrator::Nominee::Player(nominee) => {
+            match narrator::nominate_by(ctx, nominator, nominee) {
+                narrator::Nominated::DayEnded => return Voted::DayEnded,
+                narrator::Nominated::NoVote => return Voted::NoVote,
+                narrator::Nominated::Vote => {}
+            }
+        }
+        narrator::Nominee::Storyteller => {
+            // Only a player nominates the Storyteller.
+            let Some(nominator) = nominator else {
+                return Voted::NoVote;
+            };
+            narrator::nominate_storyteller(ctx, nominator);
+        }
     }
     let needed = narrator::votes_needed(ctx.state());
     let eligible: Vec<String> = ctx
@@ -458,7 +486,7 @@ fn nominate_and_vote(
         if let Some(game) = &mut s.game {
             game.stage = room::Stage::Vote;
             game.vote = Some(room::Vote {
-                nominee: nominee.to_string(),
+                nominee: name.clone(),
                 nominator: nominator.map(ToString::to_string),
                 needed,
                 eligible: eligible.clone(),
@@ -506,5 +534,8 @@ fn nominate_and_vote(
             ctx.spend_ghost_vote(voter);
         }
     }
-    Voted::Counted(narrator::vote(ctx, nominee, voters, needed))
+    Voted::Counted(match nominee {
+        narrator::Nominee::Player(nominee) => narrator::vote(ctx, nominee, voters, needed),
+        narrator::Nominee::Storyteller => narrator::vote_storyteller(ctx, voters, needed),
+    })
 }

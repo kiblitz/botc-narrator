@@ -1056,17 +1056,60 @@ fn atheist_setups_have_no_evil_and_the_game_needs_no_demon() {
         ctx.execute(&p("Chef"));
     });
     assert_eq!(g.state.winner(), None, "no Demon is not a good win");
-    g.run(|ctx| narrator::day_action(ctx, &p("Atheist"), &characters::atheist::Def));
+}
+
+/// The Atheist has no day action: the town nominates the Storyteller.
+#[test]
+fn the_atheist_has_no_day_action() {
+    let g = game(&[
+        ("Atheist", &characters::atheist::Def),
+        ("Chef", &characters::chef::Def),
+        ("Monk", &characters::monk::Def),
+        ("Saint", &characters::saint::Def),
+        ("Empath", &characters::empath::Def),
+    ]);
+    assert!(character::Def::day_action(&characters::atheist::Def).is_none());
+    assert!(
+        narrator::day_actions(&g.state)
+            .iter()
+            .all(|(_, a)| a.id() != "atheist")
+    );
+}
+
+/// Day 1 on an Atheist game: Chef nominates the Storyteller and `voters`
+/// raise their hands; the block is executed at the end of the day.
+fn try_the_storyteller(g: &mut common::Game, voters: &[&str]) {
+    g.run(|ctx| {
+        ctx.advance_phase();
+        assert!(narrator::storyteller_nominable(ctx.state()));
+        narrator::nominate_storyteller(ctx, &p("Chef"));
+        let needed = narrator::votes_needed(ctx.state());
+        let votes = narrator::vote_storyteller(ctx, voters.iter().map(|v| p(v)).collect(), needed);
+        let mut block = narrator::Block::default();
+        block.add(narrator::Nominee::Storyteller, votes, needed);
+        narrator::execute_block(ctx, &block);
+    });
+}
+
+#[test]
+fn executing_the_storyteller_with_an_atheist_in_play_wins_for_good() {
+    let mut g = game(&[
+        ("Atheist", &characters::atheist::Def),
+        ("Chef", &characters::chef::Def),
+        ("Monk", &characters::monk::Def),
+        ("Saint", &characters::saint::Def),
+        ("Empath", &characters::empath::Def),
+    ]);
+    try_the_storyteller(&mut g, &["Atheist", "Chef", "Monk"]);
     expect![[r#"
         * === Day 1 ===
-        * Chef is executed
-        * Chef dies (Execution)
-        * Atheist (atheist) marks Atheist: AbilityUsed
-        * Atheist has the Storyteller executed
+        * Chef nominates the Storyteller
+        * 3 votes for the Storyteller (3 needed)
+        * the Storyteller is executed
         * Good wins!
         --- grimoire ---
-        Atheist: Atheist [AbilityUsed by atheist]
-        Chef: Chef [dead]
+        Atheist: Atheist
+        Chef: Chef
         Monk: Monk
         Saint: Saint
         Empath: Empath
@@ -1076,22 +1119,94 @@ fn atheist_setups_have_no_evil_and_the_game_needs_no_demon() {
 }
 
 #[test]
-fn executing_the_storyteller_without_an_atheist_loses() {
-    // A Drunk who believes they are the Atheist.
-    let mut g = common::Game::new(&[
+fn executing_the_storyteller_without_an_atheist_wins_for_evil() {
+    // An Atheist script, and a Drunk who believes they are the Atheist.
+    let mut g = game(&[
         ("Drunk", &characters::drunk::Def),
         ("Chef", &characters::chef::Def),
         ("Monk", &characters::monk::Def),
         ("Baron", &characters::baron::Def),
         ("Imp", &characters::imp::Def),
     ]);
+    g.run(|ctx| ctx.set_believed(&p("Drunk"), Some(&characters::atheist::Def)))
+        .quiet();
+    try_the_storyteller(&mut g, &["Drunk", "Baron", "Imp"]);
+    expect![[r#"
+        * === Day 1 ===
+        * Chef nominates the Storyteller
+        * 3 votes for the Storyteller (3 needed)
+        * the Storyteller is executed
+        * Evil wins!
+        --- grimoire ---
+        Drunk: Drunk (believes Atheist)
+        Chef: Chef
+        Monk: Monk
+        Baron: Baron
+        Imp: Imp
+        winner: Evil
+    "#]]
+    .assert_eq(&g.transcript());
+}
+
+#[test]
+fn a_failed_vote_on_the_storyteller_does_nothing() {
+    let mut g = game(&[
+        ("Atheist", &characters::atheist::Def),
+        ("Chef", &characters::chef::Def),
+        ("Monk", &characters::monk::Def),
+        ("Saint", &characters::saint::Def),
+        ("Empath", &characters::empath::Def),
+    ]);
+    try_the_storyteller(&mut g, &["Atheist", "Chef"]);
+    expect![[r#"
+        * === Day 1 ===
+        * Chef nominates the Storyteller
+        * 2 votes for the Storyteller (3 needed)
+        --- grimoire ---
+        Atheist: Atheist
+        Chef: Chef
+        Monk: Monk
+        Saint: Saint
+        Empath: Empath
+    "#]]
+    .assert_eq(&g.transcript());
+}
+
+#[test]
+fn the_storyteller_tied_with_a_player_is_not_executed() {
+    let mut block = narrator::Block::default();
+    block.add(narrator::Nominee::Storyteller, 3, 3);
+    block.add(narrator::Nominee::Player(p("Chef")), 3, 3);
+    assert_eq!(block.nominee(), None);
+    block.add(narrator::Nominee::Storyteller, 4, 3);
+    assert_eq!(block.nominee(), Some(&narrator::Nominee::Storyteller));
+}
+
+#[test]
+fn the_storyteller_is_not_nominable_without_an_atheist_on_the_script() {
+    let mut g = common::Game::new(&[
+        ("Chef", &characters::chef::Def),
+        ("Monk", &characters::monk::Def),
+        ("Saint", &characters::saint::Def),
+        ("Baron", &characters::baron::Def),
+        ("Imp", &characters::imp::Def),
+    ]);
     g.run(|ctx| {
-        ctx.set_believed(&p("Drunk"), Some(&characters::atheist::Def));
+        narrator::setup(ctx, &common::trouble_brewing());
         ctx.advance_phase();
+    })
+    .quiet();
+    g.run(|ctx| {
         ctx.advance_phase();
-        narrator::day_action(ctx, &p("Drunk"), &characters::atheist::Def);
+        assert!(!narrator::storyteller_nominable(ctx.state()));
+        narrator::nominate_storyteller(ctx, &p("Chef"));
     });
-    assert_eq!(g.state.winner(), Some(character::Alignment::Evil));
+    assert!(
+        g.transcript()
+            .contains("Chef may not nominate the Storyteller"),
+        "{}",
+        g.transcript()
+    );
 }
 
 // --- Cannibal ------------------------------------------------------------------------

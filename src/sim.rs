@@ -58,6 +58,8 @@ const EVIL_TRAVELLER: f64 = 0.4;
 const MAD_ABOUT: f64 = 0.1;
 /// Chance a player uses an optional night ability (the Assassin) when asked.
 const USES_ABILITY: f64 = 0.35;
+/// Chance a nominator nominates the Storyteller, where they may be (the Atheist).
+const NOMINATES_STORYTELLER: f64 = 0.15;
 /// Chance a nominated player claims their character when it pays (the Goblin).
 const CLAIMS: f64 = 0.5;
 /// Chance a good player happens to say the Mezepheles's word on a given day.
@@ -633,6 +635,20 @@ impl Recorder {
                     to: Endpoint::Player(nominee.to_string()),
                 });
             }
+            event::Event::StorytellerNominated { nominator } => {
+                let step = self.push(Kind::Event, Some(nominator), text, Audience::Public);
+                step.flow = Some(Flow {
+                    from: Endpoint::Player(nominator.to_string()),
+                    to: Endpoint::Storyteller,
+                });
+            }
+            event::Event::StorytellerVoted { voters, .. } => {
+                self.push(Kind::Vote, None, text, Audience::Public).voters =
+                    voters.iter().map(ToString::to_string).collect();
+            }
+            event::Event::StorytellerExecuted => {
+                self.push(Kind::Event, None, text, Audience::Public);
+            }
             event::Event::Revived(player) => {
                 self.push(Kind::Event, Some(player), text, Audience::Storyteller);
                 let public = format!("{player} is alive again");
@@ -794,7 +810,7 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
         }
     }
     let mut block = narrator::Block::default();
-    let mut nominated: Vec<player::Id> = Vec::new();
+    let mut nominated: Vec<narrator::Nominee> = Vec::new();
     let storyteller_nominates = narrator::storyteller_nominations(ctx);
     let players_nominate = storyteller_nominates.is_none();
     let nominations: Vec<(Option<player::Id>, Option<player::Id>)> = match storyteller_nominates {
@@ -821,7 +837,7 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
             break;
         }
         let nominee = match (&nominator, nominee) {
-            (_, Some(nominee)) => nominee,
+            (_, Some(nominee)) => narrator::Nominee::Player(nominee),
             (Some(nominator), None) => {
                 match pick_nominee(ctx.state(), nominator, &nominated, rng) {
                     Some(nominee) => nominee,
@@ -837,10 +853,8 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
         };
         block.add(nominee, votes, narrator::votes_needed(ctx.state()));
     }
-    if let Some(nominee) = block.nominee().cloned()
-        && ctx.state().winner().is_none()
-    {
-        ctx.execute(&nominee);
+    if block.nominee().is_some() && ctx.state().winner().is_none() {
+        narrator::execute_block(ctx, &block);
         // After the first execution, the Butcher may nominate again (once:
         // a second execution does not allow a third), unless only the
         // storyteller nominates.
@@ -852,28 +866,38 @@ fn day(ctx: &mut ctx::Write<'_>, rng: &mut impl Rng) {
             && votes >= narrator::votes_needed(ctx.state())
             && ctx.state().winner().is_none()
         {
-            ctx.execute(&nominee);
+            narrator::execute(ctx, &nominee);
         }
     }
     narrator::finish_day(ctx);
 }
 /// A living player `nominator` may nominate who was not nominated today
-/// (evil players do not nominate evil players).
+/// (evil players do not nominate evil players); now and then the
+/// Storyteller, where they may be nominated (the Atheist).
 fn pick_nominee(
     state: &game::State,
     nominator: &player::Id,
-    nominated: &[player::Id],
+    nominated: &[narrator::Nominee],
     rng: &mut impl Rng,
-) -> Option<player::Id> {
+) -> Option<narrator::Nominee> {
     if !state.is_alive(nominator) {
         return None;
+    }
+    if narrator::storyteller_nominable(state)
+        && !nominated.contains(&narrator::Nominee::Storyteller)
+        && rng.random_bool(NOMINATES_STORYTELLER)
+    {
+        return Some(narrator::Nominee::Storyteller);
     }
     let choices: Vec<player::Id> = state
         .alive_except(nominator)
         .into_iter()
-        .filter(|p| !nominated.contains(p) && !(state.is_evil(nominator) && state.is_evil(p)))
+        .filter(|p| {
+            !nominated.contains(&narrator::Nominee::Player(p.clone()))
+                && !(state.is_evil(nominator) && state.is_evil(p))
+        })
         .collect();
-    choices.choose(rng).cloned()
+    choices.choose(rng).cloned().map(narrator::Nominee::Player)
 }
 
 /// Nominates `nominee` (by the storyteller when `nominator` is `None`) and
@@ -882,27 +906,42 @@ fn pick_nominee(
 fn nominate_and_vote(
     ctx: &mut ctx::Write<'_>,
     nominator: Option<&player::Id>,
-    nominee: &player::Id,
+    nominee: &narrator::Nominee,
     rng: &mut impl Rng,
 ) -> Option<usize> {
-    match narrator::nominate_by(ctx, nominator, nominee) {
-        narrator::Nominated::DayEnded => return None,
-        narrator::Nominated::NoVote => return Some(0),
-        narrator::Nominated::Vote => {}
+    match nominee {
+        narrator::Nominee::Player(nominee) => {
+            match narrator::nominate_by(ctx, nominator, nominee) {
+                narrator::Nominated::DayEnded => return None,
+                narrator::Nominated::NoVote => return Some(0),
+                narrator::Nominated::Vote => {}
+            }
+            let voters = voters(ctx.state(), Some(nominee), rng);
+            let needed = narrator::votes_needed(ctx.state());
+            Some(narrator::vote(ctx, nominee, voters, needed))
+        }
+        narrator::Nominee::Storyteller => {
+            narrator::nominate_storyteller(ctx, nominator?);
+            let voters = voters(ctx.state(), None, rng);
+            let needed = narrator::votes_needed(ctx.state());
+            Some(narrator::vote_storyteller(ctx, voters, needed))
+        }
     }
-    let voters = voters(ctx.state(), nominee, rng);
-    let needed = narrator::votes_needed(ctx.state());
-    Some(narrator::vote(ctx, nominee, voters, needed))
 }
 
 /// Living players vote (ghost votes are not modelled): evil players back good
-/// nominees, good players are split.
-fn voters(state: &game::State, nominee: &player::Id, rng: &mut impl Rng) -> Vec<player::Id> {
+/// nominees (and the Storyteller, `None`), good players are split.
+fn voters(
+    state: &game::State,
+    nominee: Option<&player::Id>,
+    rng: &mut impl Rng,
+) -> Vec<player::Id> {
     state
         .alive_ids()
         .into_iter()
         .filter(|voter| {
-            let p = match (state.is_evil(voter), state.is_evil(nominee)) {
+            let evil_nominee = nominee.is_some_and(|n| state.is_evil(n));
+            let p = match (state.is_evil(voter), evil_nominee) {
                 (true, false) => EVIL_VOTES_GOOD,
                 (true, true) => EVIL_VOTES_EVIL,
                 (false, _) => GOOD_VOTES,
