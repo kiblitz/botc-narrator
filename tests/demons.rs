@@ -505,6 +505,82 @@ fn shabaloth_game() -> common::Game {
     ])
 }
 
+/// Regression (soak): the Shabaloth choosing itself and another player kills
+/// both before good wins; the win waited for the whole action.
+#[test]
+fn a_shabaloth_choosing_itself_kills_both_before_the_game_ends() {
+    let mut g = shabaloth_game();
+    g.answers(&[&["Shab", "Chef"]]).run(|ctx| {
+        to_night(ctx, 2);
+        run(ctx, &characters::shabaloth::Def, 2);
+    });
+    expect![[r#"
+        * === Night 1 ===
+        * === Day 1 ===
+        * === Night 2 ===
+        wake Shab
+          Shab? Choose 2 players to kill => Shab, Chef
+        sleep Shab
+        * Shab (shabaloth) marks Shab: Chosen
+        * Shab (shabaloth) marks Chef: Chosen
+        * Shab dies (Demon)
+        * Chef dies (Demon)
+        * Good wins!
+        --- grimoire ---
+        Shab: Shabaloth [dead] [Chosen by shabaloth]
+        Baron: Baron
+        Chef: Chef [dead] [Chosen by shabaloth]
+        Monk: Monk
+        Mayor: Mayor
+        Empath: Empath
+        Soldier: Soldier
+        winner: Good
+    "#]]
+    .assert_eq(&g.transcript());
+}
+
+/// Regression (soak): the Legion declaring evil the winner as the
+/// Grandchild dies does not stop the Grandmother dying with them; the win
+/// is announced after both deaths.
+#[test]
+fn a_win_declared_mid_action_is_announced_after_its_deaths() {
+    let mut g = common::Game::new(&[
+        ("Alice", &characters::legion::Def),
+        ("Bob", &characters::legion::Def),
+        ("Gran", &characters::grandmother::Def),
+        ("Chef", &characters::chef::Def),
+        ("Empath", &characters::empath::Def),
+    ]);
+    g.picks(&[&[0], &[1], &[3], &[1]]).run(|ctx| {
+        narrator::setup(ctx, &script());
+        to_night(ctx, 2);
+        ctx.kill(&p("Empath"), event::Cause::Execution);
+        run(ctx, &characters::legion::Def, 2);
+    });
+    expect![[r#"
+          storyteller [1 of 2 options] Grandmother Gran: who is the Grandchild?: Chef
+        * Gran (grandmother) marks Chef: Grandchild
+        * === Night 1 ===
+        * === Day 1 ===
+        * === Night 2 ===
+        * Empath dies (Execution)
+          storyteller [1 of 2 options] Legion Alice: does a player die tonight?: Yes
+          storyteller [1 of 4 options] Legion Alice: who dies tonight?: Chef
+        * Chef dies (Demon)
+          storyteller [1 of 2 options] Legion Alice: declare evil the winner?: Yes
+        * Gran dies (Ability { by: Id("Gran") })
+        * Evil wins!
+        --- grimoire ---
+        Alice: Legion
+        Bob: Legion
+        Gran: Grandmother [dead]
+        Chef: Chef [dead] [Grandchild by grandmother]
+        Empath: Empath [dead]
+        winner: Evil
+    "#]]
+    .assert_eq(&g.transcript());
+}
+
 #[test]
 fn the_shabaloth_kills_two_and_may_regurgitate_one() {
     let mut g = shabaloth_game();

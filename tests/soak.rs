@@ -112,3 +112,28 @@ fn the_soak_loop_plays_games_and_writes_its_output() {
     }
     std::fs::remove_dir_all(&out).unwrap();
 }
+
+/// Regression (soak): one ability killing several players at once (a
+/// Shabaloth or Po choosing itself, a Harlot's visit) ended the game at the
+/// first death, so the others died after the win and were never announced;
+/// likewise a win declared mid-action (the Legion) before a death it caused
+/// (the Grandmother dying with her grandchild).
+#[test]
+fn simultaneous_deaths_are_all_announced_before_the_win() {
+    for (id, players, seed) in [
+        ("bad_moon_rising", 10, 15554947400389634276),
+        ("bad_moon_rising", 10, 11161736968609814600),
+        ("catfishing", 8, 18026017878132569668),
+        ("the_minotaur_s_labyrinth", 10, 8988868737507419238),
+        ("the_minotaur_s_labyrinth", 7, 1144812118948214340),
+        ("separation_of_church_and_state", 6, 6278229522625069947),
+        ("separation_of_church_and_state", 5, 11355379199763691427),
+    ] {
+        let trace = sim::simulate(seed, players, &script::by_id(id).expect("registered"));
+        assert_eq!(
+            sim::problems(&trace),
+            Vec::<String>::new(),
+            "{id} {players} {seed}"
+        );
+    }
+}

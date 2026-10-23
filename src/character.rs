@@ -345,7 +345,9 @@ pub trait Def: Sync {
     fn on_choose(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _chosen: &[player::Id]) {}
 
     /// The game ended with `winner` winning; called for every player's
-    /// abilities, dead ones too (the Politician may change sides).
+    /// abilities, dead ones too (the Politician may change sides). A win
+    /// declared during a night or day action (`ctx::Write::simultaneously`)
+    /// calls this once the whole action has resolved.
     fn on_win(&self, _ctx: &mut ctx::Write<'_>, _me: &player::Id, _winner: Alignment) {}
 
     /// The ability that made `mad` mad (a `game::Effect::Mad` token placed by

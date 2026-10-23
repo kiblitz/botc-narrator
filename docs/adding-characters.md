@@ -55,6 +55,10 @@ Override only the hooks the ability uses (the full list is in the README,
   character from the grimoire for information.
 - **Death**: `ctx.kill(target, cause)` applies protection and every
   `intercept_death`; execution goes through it too.
+  Night and day actions run in `ctx::Write::simultaneously`, so every death
+  an action causes happens before the game can end: `ctx.check_win` inside
+  one waits for its end, and `ctx.win` takes effect at once (nothing more
+  acts) but is announced when the action ends.
 
 ## Building blocks (`ability`)
 

@@ -216,8 +216,10 @@ pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32)
                     for _ in 0..times(ctx.state(), &id) {
                         let state = ctx.state();
                         if state.winner().is_none() && wakes(state, c, &id) {
-                            f(ctx, &id, night);
-                            ctx.resolve_choices();
+                            ctx.simultaneously(|ctx| {
+                                f(ctx, &id, night);
+                                ctx.resolve_choices();
+                            });
                         }
                     }
                 }
@@ -249,8 +251,10 @@ pub fn run_order(ctx: &mut ctx::Write<'_>, order: &[character::Ref], night: u32)
                     ctx.io().batch_started(batch.len());
                 }
                 for (id, f) in batch {
-                    f(&mut ctx.read(), &id, night);
-                    ctx.resolve_choices();
+                    ctx.simultaneously(|ctx| {
+                        f(&mut ctx.read(), &id, night);
+                        ctx.resolve_choices();
+                    });
                 }
                 if announce {
                     ctx.io().batch_ended();
@@ -461,7 +465,7 @@ pub fn day_action_on(
         None => Vec::new(),
     };
     let Some(claim) = claim else {
-        return f(ctx, player, &targets);
+        return ctx.simultaneously(|ctx| f(ctx, player, &targets));
     };
     // Gone if the claimant dies, so a revived player (the Professor's) may
     // claim again, as a revived Slayer shoots again.
@@ -487,11 +491,13 @@ pub fn day_action_on(
             };
             ctx.announce(announcement);
             let before = ctx.state().history().len();
-            if real {
-                f(ctx, player, &targets);
-            } else {
-                (claim.bluff)(ctx, player, &targets);
-            }
+            ctx.simultaneously(|ctx| {
+                if real {
+                    f(ctx, player, &targets);
+                } else {
+                    (claim.bluff)(ctx, player, &targets);
+                }
+            });
             let someone_died = ctx.state().history()[before..]
                 .iter()
                 .any(|e| matches!(e, event::Event::Died { .. }));
@@ -502,12 +508,14 @@ pub fn day_action_on(
         character::Visibility::Private => {
             // A holder whose once-per-game use is spent (offered again
             // after a revival) is answered like anyone without it.
-            if real && !ability::used(ctx.state(), player, ability) {
-                f(ctx, player, &targets);
-            } else {
-                (claim.bluff)(ctx, player, &targets);
-                ctx.tell(player, &info::Message::Nothing);
-            }
+            ctx.simultaneously(|ctx| {
+                if real && !ability::used(ctx.state(), player, ability) {
+                    f(ctx, player, &targets);
+                } else {
+                    (claim.bluff)(ctx, player, &targets);
+                    ctx.tell(player, &info::Message::Nothing);
+                }
+            });
             ctx.sleep(player);
         }
     }

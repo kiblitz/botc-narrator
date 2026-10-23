@@ -473,6 +473,13 @@ pub struct Write<'a> {
     storyteller: &'a mut dyn storyteller::Strategy,
     /// Night choices not yet resolved (see [`Write::resolve_choices`]).
     choices: Vec<Choice>,
+    /// How many [`Write::simultaneously`] scopes are open: while any is,
+    /// deaths do not end the game yet and a declared win is announced only
+    /// when the outermost closes.
+    open_scopes: u32,
+    /// A win declared inside an open scope, not yet announced (only ever
+    /// true while `open_scopes > 0`).
+    win_pending: bool,
 }
 
 impl<'a> Write<'a> {
@@ -486,7 +493,30 @@ impl<'a> Write<'a> {
             io,
             storyteller,
             choices: Vec::new(),
+            open_scopes: 0,
+            win_pending: false,
         }
+    }
+
+    /// Runs `f` as one resolution (a night action, a day action): every
+    /// death in it happens together, and the game ends, if it does, only
+    /// once all of them have (a Shabaloth choosing itself and another player
+    /// kills both before good wins; a Grandmother dies with her grandchild
+    /// even if the Legion declares evil the winner first). A win declared
+    /// inside (`Write::win`) is set at once, so nothing more acts, but
+    /// announced at the end. Scopes nest; the outermost checks the win.
+    pub fn simultaneously<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.open_scopes += 1;
+        let out = f(self);
+        self.open_scopes -= 1;
+        if self.open_scopes == 0 {
+            if std::mem::take(&mut self.win_pending) {
+                self.announce_win();
+            } else {
+                self.check_win();
+            }
+        }
+        out
     }
 
     /// A read-only view of this context, for talking to players and the storyteller.
@@ -847,22 +877,38 @@ impl<'a> Write<'a> {
         });
     }
 
+    /// `alignment` wins, unless someone already has. Inside a
+    /// [`Write::simultaneously`] scope it is announced when the scope ends.
     pub fn win(&mut self, alignment: character::Alignment) {
-        if self.state.winner().is_none() {
-            self.state.set_winner(alignment);
-            self.record(event::Event::Won(alignment));
-            let everyone = self.state.seat_order();
-            for (id, ability) in self.abilities_of(&everyone) {
-                ability.on_win(self, &id, alignment);
-            }
+        if self.state.winner().is_some() {
+            return;
+        }
+        self.state.set_winner(alignment);
+        if self.open_scopes > 0 {
+            self.win_pending = true;
+        } else {
+            self.announce_win();
+        }
+    }
+
+    /// Records the win and runs every `on_win`.
+    fn announce_win(&mut self) {
+        let Some(alignment) = self.state.winner() else {
+            return;
+        };
+        self.record(event::Event::Won(alignment));
+        let everyone = self.state.seat_order();
+        for (id, ability) in self.abilities_of(&everyone) {
+            ability.on_win(self, &id, alignment);
         }
     }
 
     /// Good wins when no demon lives (unless the game has none, see
     /// `character::Def::demonless`); evil wins when two players remain;
     /// unless an ability vetoes the win (`character::Def::vetoes_win`).
+    /// Inside a [`Write::simultaneously`] scope it waits for the scope's end.
     pub fn check_win(&mut self) {
-        if self.state.winner().is_some() {
+        if self.state.winner().is_some() || self.open_scopes > 0 {
             return;
         }
         let winner = if !self.state.demonless() && !self.state.demon_alive() {
